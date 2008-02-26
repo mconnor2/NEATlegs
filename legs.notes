@@ -1,0 +1,36 @@
+02/20/08
+
+What are the basics that are needed for leg simulation?  If I just want to check that box2d works:
+
+-World
+    -Handles overall simulation loop, wrapper around b2World
+    *constructor creates world,
+      * adds gravity
+      * creates ground
+    *Simulation step may just call world->step
+      * my world maintains time step info?
+        -will that ever be dynamic?
+      *Also has to update muscle forces in leg
+
+-Leg
+    -Actual geometry of the legged creature
+    -Displays geometry
+    -In future I want to be able to specify geometry through data files,
+     but thats easy enough to add.
+    * For now lets just try our hand at creating a 1, 2 and then 3 segment leg
+      and dropping it.
+    -Also stores list of muscles
+    -In future creature needs a brain which interacts with muscles
+
+-Graphics wrapper?  Probably not necessary just yet, and if I keep it simple
+  now then it won't be a problem later to change.
+    -Just drawing lines with SDL (and perhaps SDL_gfx), nothing hard about that
+
+-Muscles
+    -Springs that connect fixed points
+    -Variable length I think... or K, its unclear.. maybe both.
+
+02/23/08
+
+I probably do need a rendering engine to translate from Box2D coordinates to
+screen coordinates.  You know, something like one pixel is a centimeter, and origin is lower left or centerbottom, or whatever.
