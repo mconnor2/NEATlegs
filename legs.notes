@@ -33,6 +33,110 @@ What are the basics that are needed for leg simulation?  If I just want to check
 02/23/08
 
 I probably do need a rendering engine to translate from Box2D coordinates to
-screen coordinates.  You know, something like one pixel is a centimeter, and origin is lower left or centerbottom, or whatever.
+screen coordinates.  You know, something like one pixel is a centimeter, and
+origin is lower left or centerbottom, or whatever.
 
-So I want to be able to specify the center of the screen in boxspace, and number of pixels in a meter (basic unit in boxspace).  And flip the Y so increaseing Y goes up.  
+So I want to be able to specify the center of the screen in boxspace, and
+number of pixels in a meter (basic unit in boxspace).  And flip the Y so
+increaseing Y goes up. 
+
+03/02/08
+
+Implementing NEAT:  
+
+The genome is the link structure, so the brain itself can implement crossover...  But actually, since we need to keep global track of innovation numbers per generation, so should create a mating pool method that will run experiments, keep population and create new population.  That makes sense.  I can think about generalizing it later if necessary.  Clearly its useless right now
+
+Lets first implement the brains then, since that is fun.  I think I decided on method similar to ken's code, at the first step run it until some activation gets to all the nodes (especially output).  Otherwise pass current activations one step forward.  So the brain contains lists of neurons and links:
+
+Neuron:
+    -ID number
+    -Sensor, Output or Hidden
+    -Has received active input?
+    -current input activation (sum of input links last activations)
+    -previous steps full activation
+
+Links:
+    -ID and/or pointer to input and output neuron of the link
+    -Weight
+    -enabled?
+    -Innovation number
+
+So process of running a network:
+    -Initialize sensor activation
+    -If first iteration, then activate network
+	-set input activation to 0, all hidden/output nodes inactive
+	-Repeat until all nodes active:
+	-Go over the links
+	    -If link is enabled and input is active
+		-Set output active, 
+		-add weight*input last activation to output activation sum
+	-Go over the nodes.
+	    -If active, set last activation to sigmoid(activation sum)
+    -Any other iteration:  Repeat once:
+	-set input activation to 0
+	-Go over the links
+	    -If link is enabled
+		-add weight*input last activation to output activation sum
+	-Go over the nodes.
+	    -set last activation to sigmoid(activation sum)
+
+
+So pass in inputs per step as array of values (between 0 and 1), return outputs as array of values between 0 and 1.  Let the instantiating body interpret the rest, and return fitness value.
+
+03/06/08
+
+So it appears that about 3/4 of NEAT are hacks, which is all well and good, its whats necessary to make anything work.  I should probably impliment what I feel like and play with it, discuss with georgina, etc.  My goal is more code simplicity and speed than anything else.  The species idea is nice, along with inter species breeding.  I need to think about the node and innovation number scheme... I am guessing I am probably wrong about sequential nature of the neurons, which slightly complicates my code, but probably not greatly.
+
+03/09/08
+
+For full NEAT genetic algorithm, what do I need:
+
+Species
+    -One genome is the representative member used to identify who
+     belongs in the species.
+    -Stores set of genomes that all belong to one species
+    -For each genome, keep a fitness value
+	*May need to normalize fitness for species size
+    -Need a method to randomly select one member by fitness
+
+
+GeneticPool
+    *Main class, stores the population, populates the next generation, etc.
+    -Population: list of genomes
+	*In this case genome is a list of network connections
+	*May in fact not need single population list, but store by species
+    -Species: list of sets of species
+	*Each species stores a representative species
+	*Then list of genomes of its members
+    -Stores fitness function
+	*impliments fitness class that is given a genome and returns fitness
+	 value
+    -Creates new generation
+	*Calculate fitness values of entire population, species by species if
+	 necessary.
+	    *Report average/best fitness for this generation,
+	    *Store overall champions genome
+	*Calculate how many offspring each species will receive, remove dead
+	 or whatever as necessary.
+	*Go through each species
+	    Champion stays on
+	    For the number of offspring that species gets:
+		Select one member from species weighted by fitness
+		With some probability chose mother from same species
+		 or another.
+		Combine mother and father to form new genome
+		Add genome to next generation
+		    Find appropriate species, etc.
+    -Store innovation numbers per generation(?)
+    -Mate two genomes to form a new genome
+	*Crossover of genes, etc etc
+	*Mutation of weights, addition of nodes/links
+
+
+08/04/08
+
+Its been awhile since I have thought about this.  Huh, who knew that all my plans for summer would fail.  Lets see if I can make a little progress on this everyday now...
+
+So what do I have:
+
+

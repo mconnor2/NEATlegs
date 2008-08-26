@@ -60,12 +60,12 @@ void runSimulation (SDL_Surface *screen, World *world) {
 
     BoxScreen s(screen);
 
-    int rate = 60;
+    int rate = 120;
     SDL_initFramerate(&fpsm);
     SDL_setFramerate(&fpsm,rate);
 
     int nFrames = 100;
-    int frames = 0;
+    long frames = 0;
     Uint32 ticks = SDL_GetTicks(), nt;
     double sec;
     while (1) {

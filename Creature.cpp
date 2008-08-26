@@ -50,13 +50,16 @@ Creature::Creature (World *w) {
     kneeDef.body1 = thigh;
     kneeDef.body2 = shin;
     kneeDef.anchorPoint.Set(0.0f, height+13.0f);
+    kneeDef.lowerAngle = -b2_pi;
+    kneeDef.upperAngle = 0.001f;
+    kneeDef.enableLimit = true;
 
     joints.push_back((RevoluteJoint*) w->createJoint(&kneeDef));
 
     //Create muscle between thigh and shin:
     muscles.push_back(new Muscle(shin,  Vec2(-0.5f,1.5f),
 				 thigh, Vec2(-0.5f,1.0f),
-				 5000.0f, 3.5f));
+				 4000.0f, 3.5f));
     
     b2BodyDef LshinBone;
     LshinBone.AddShape(&shinBoneDef);
@@ -81,13 +84,16 @@ Creature::Creature (World *w) {
     LkneeDef.body1 = Lthigh;
     LkneeDef.body2 = Lshin;
     LkneeDef.anchorPoint.Set(0.0f, height+13.0f);
+    LkneeDef.lowerAngle = -0.001f;
+    LkneeDef.upperAngle = b2_pi;
+    LkneeDef.enableLimit = true;
 
     joints.push_back((RevoluteJoint*) w->createJoint(&LkneeDef));
 
     //Create muscle between thigh and shin:
     muscles.push_back(new Muscle(Lshin,  Vec2(0.5f,1.5f),
 				 Lthigh, Vec2(0.5f,1.0f),
-				 5000.0f, 3.5f));
+				 4000.0f, 3.5f));
 
     b2BoxDef backBoneDef;
     backBoneDef.extents.Set(0.5f,3.0f);
@@ -115,24 +121,34 @@ Creature::Creature (World *w) {
     hipDef.body2 = thigh;
     hipDef.anchorPoint.Set(0.0f, height+17.0f);
 
+    //Right leg hip starts at 0, can rotate (CCW) b2_pi
+    hipDef.lowerAngle = -0.001f;
+    hipDef.upperAngle = b2_pi;
+    hipDef.enableLimit = true;
+
     joints.push_back((RevoluteJoint*) w->createJoint(&hipDef));
     
     //Create muscle between thigh and back:
     muscles.push_back(new Muscle(thigh, Vec2(0.5f,-1.0f),
 				 back,  Vec2(0.5f,-4.0f),
-				 2000.0f, 3.1f));
+				 6000.0f, 3.7f));
     
     b2RevoluteJointDef LhipDef;
     LhipDef.body1 = back;
     LhipDef.body2 = Lthigh;
     LhipDef.anchorPoint.Set(0.0f, height+17.0f);
+    
+    //Left leg hip starts at 0, can rotate (CW) -b2_pi
+    LhipDef.lowerAngle = -b2_pi;
+    LhipDef.upperAngle = 0.001f;
+    LhipDef.enableLimit = true;
 
     joints.push_back((RevoluteJoint*) w->createJoint(&LhipDef));
     
     //Create muscle between thigh and back:
     muscles.push_back(new Muscle(Lthigh, Vec2(-0.5f,-1.0f),
 				 back,  Vec2(-0.5f,-4.0f),
-				 2000.0f, 3.1f));
+				 6000.0f, 3.7f));
 
     w->addCreature(this);
 }
