@@ -1,7 +1,6 @@
 #ifndef _NEAT_NETWORK_H
 #define _NEAT_NETWORK_H
 
-#include <math.h>
 #include <stdlib.h>
 
 using namespace std;
@@ -15,7 +14,6 @@ enum NeuronType {
 
 /**
  * Single neuron, sums weighted input activation in inputSum in one step,
- *  r
  *  and then prepares activation = sigmoid(inputSum) for output of next
  *  step.
  */

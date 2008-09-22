@@ -1,5 +1,6 @@
 #include "Network.h"
 
+#include <math.h>
 #include "random.h"
 
 /**

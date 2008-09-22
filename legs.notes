@@ -133,10 +133,53 @@ GeneticPool
 	*Mutation of weights, addition of nodes/links
 
 
-08/04/08
+09/17/08
 
 Its been awhile since I have thought about this.  Huh, who knew that all my plans for summer would fail.  Lets see if I can make a little progress on this everyday now...
 
-So what do I have:
+So what do I have, from a NEAT perspective:
+
+Network and Neuron
+    -A not especially fast implementation of network and neuron
+	*not fast and not tested I should say
+    -Takes in a genome (which is just an array of Links), and creates new
+     network
+    -a function run which takes in an array of input values and produces an 
+     array of outputs
+
+For just a simple genetic algorithm what do I need (ie no speciation, no structural mutation):
+    -Population of genomes
+    -Ability to plug in various fitness functions
+    -Mate two genomes, produces a third genome
+    -Run experiment one generation
+	-Go over all members of population, find fitness of each
+	    -As said above, do some book keeping:
+	    *Report average/best fitness for this generation
+	    *Store overall champions genome
+	-Create new generation
+	    -Champion stays on
+	    -To fill rest of next generation:
+		pick two genomes randomly, by fitness
+		Mate them, add offspring to next generation
+	
+
+Now how general do I want to make this?  Lets start with not very.  
+
+Well, ok, a little.  At least lets have a genome class and fitness function class.  That should be enough to implement a straight forward fairly generic genetic algorithm implementation.  Haven't thought much how speciation fits into this, but I think thats the easy part.  Innovation numbers is something else.
+
+Genome:
+    -Mate (const genome &parent) -> Genome offspring
+    -Mutate ()
+	*Need to set global experiment options somewhere.  Pass it around, or what?
+    -Load/unload from file... possibly not as easy as java, but I bet I can figure a way...
+    -Clone -> Genome clone
+	*for passing on champion, etc.
+
+Fitness Function:
+    -Score (Genome *g) -> double score
+
+09/20/08
+
+I bet I can get genetic algorithm without speciation running real quick, if I define genomes and fitness function as above.
 
 
