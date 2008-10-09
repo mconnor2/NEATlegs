@@ -182,4 +182,19 @@ Fitness Function:
 
 I bet I can get genetic algorithm without speciation running real quick, if I define genomes and fitness function as above.
 
+09/22/08
+
+Mating.. need to figure that one out.  So we are given two lists of links and the goal is to form a new genome with the links of both parents, with one parents dominating if they line up... ohhh... interesting.
+
+So assuming that innovation numbers are in sorted order we do a merging trick:
+
+Go over both lists
+    If one head innovation number less than other, pass that through to child
+	increment that parent
+    if tied:
+	with some probability take from dominant parent (p1 of p1.mate(p2))
+	otherwise average strength
+
+There are some details about calculating number of neurons, and if the id's will stay consistent somehow... and if should copy around links or create new ones, etc.  Also need to find dominant parent when selecting them at the beginning.
+
 

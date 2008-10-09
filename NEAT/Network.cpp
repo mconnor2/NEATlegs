@@ -4,6 +4,36 @@
 #include "random.h"
 
 /**
+ * When mating, create new links that are copies of its parents links.
+ */
+Link::Link (const Link *l, const double enableRate) {
+    innov = l->innov;
+    inID = l->inID;
+    outID = l->outID;
+    inNode = outNode = NULL;
+    weight = l->weight;
+    enabled = l->enabled;
+    //With some probability enable disabled genes
+    if (!enabled && rand_double() < enableRate)
+	enabled = true;
+}
+/**
+ * Don't just create copy of parents links, but average the weights
+ * of two parent's shared link.
+ */
+Link::Link (const Link *l1, const Link *l2, const double enableRate) {
+    innov = l1->innov; //l1 and l2 innov should match
+    inID = l1->inID;
+    outID = l1->outID;
+    inNode = outNode = NULL;
+    weight = (l1->weight + l2->weight) / 2.0;
+    enabled = l1->enabled && l2->enabled;
+    //With some probability enable disabled genes
+    if (!enabled && rand_double() < enableRate)
+	enabled = true;
+}
+
+/**
  * Initialize a random base network with specified number of sensor input
  *  nodes and number of output nodes.  Each output node will be connected to 
  *  every sensor input with a randomly weighted connection.
@@ -55,6 +85,7 @@ Network::Network (int _nInput, int _nOutput) {
 	    link->enabled = true;
 
 	    link->innov = linkID++;
+	    link++;
 	}
     }
     

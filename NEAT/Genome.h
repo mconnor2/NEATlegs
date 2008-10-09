@@ -13,6 +13,7 @@
 class Genome {
     public:
 	Genome (ExpParameters *_P);
+	Genome (Link *_links, ExpParameters *_P);
 	~Genome();
 
 	Genome *mate(const Genome* parent2) const;

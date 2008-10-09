@@ -54,6 +54,9 @@ struct Link {
 	  int _innov = -1, double _w = 0, bool _enabled = false) :
 	  inID(_inID), outID(_outID), inNode(_in), outNode(_out),
 	  innov(_innov), weight(_w), enabled(_enabled) {}
+
+    Link (const Link *l, const double enableRate);
+    Link (const Link *l1, const Link *l2, const double enableRate);
 };
 
 class Network {

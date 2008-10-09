@@ -14,6 +14,23 @@
 struct ExpParameters {
     int popSize;
     int nInput, nOutput;
+
+    //Mating probabilities:
+    double inheritDominant;		//For shared genes, probability weight
+					//  comes only from dominant parent,
+					//  otherwise averaged.
+    double linkEnabledRate;		//If link disabled in a parent, then
+					//  with some probability enable it
+
+    double weightMutationRate;		//Percent of links that will have
+					//  their weights mutated
+    double weightPerturbScale;		//Scale that weights should be mutated
+    double weightPerturbNormal;		//Chance that weight will get some
+					//  guassian noise added to it
+    double weightPerturbUniform;	//Chance that weight will have some
+					//  uniform noise added to it
+					//Otherwise weight will be reset to
+					//  some random amount
 }
 
 class FitnessFunction : public unary_function<const Genome&, double> {
