@@ -12,9 +12,9 @@
 //KISS RNG for generating random integer
 unsigned int rand_int ();
 
-unsigned int devrand ()
+unsigned int devrand ();
 
-void dev_seed_rand ()
+void dev_seed_rand ();
 
 //Returns double precision number selected uniformly between [0,1)
 // Going for simple approach that only uses 32 bit random numbers

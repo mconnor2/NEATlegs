@@ -1,11 +1,11 @@
-#include "random.h"
-
 #include <stdlib.h>
 #include <iostream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#include "random.h"
 
 using namespace std;
 

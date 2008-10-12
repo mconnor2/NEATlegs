@@ -1,13 +1,16 @@
 #include "Genome.h"
 #include "random.h"
+#include "Network.h"
+#include "GeneticAlgorithm.h"
 
+#include <iostream>
 
 /** 
  * Create default link setup based on number of inputs and outputs.
  */
 Genome::Genome (ExpParameters *_P) : P(_P) {
     nLinks = P->nInput * P->nOutput;
-    int nNeurons = nInput + nOutput;
+    int nNeurons = P->nInput + P->nOutput;
     
     links = new Link[nLinks];
     Link *link = &links[0];
@@ -35,7 +38,7 @@ Genome::Genome (ExpParameters *_P) : P(_P) {
  * Given link structure (from mating say), create new genome.
  *  
  */
-Genome (Link *_links, int _nLinks, ExpParameters *_P) :
+Genome::Genome (Link *_links, int _nLinks, ExpParameters *_P) :
       links(_links), nLinks(_nLinks), P(_P)
 { }
 	
@@ -57,27 +60,66 @@ Genome::~Genome() {
  *  -Take all genes from both
  *  -Randomly select each individual gene, including with some high probability
  *
+ *
+ * Note that mating creates a new genome, which must be disposed of later.
+ *
  * 10/08/08, Currently implemented to take all genes from both, should test
  * 	     other options if we see this as totally not working.
  * 
  *
  */
 Genome *Genome::mate(const Genome* parent2) const {
-    vector<Link *> childLinks;
 
     int p1i = 0, p2i = 0;
+    //Lets do two pass at the mating.  The first pass figures out the size
+    // of the child genome, the second creates a new array of links and fills
+    // it in with copies of parent links. 
+
+    int nChildLinks = 0;
     while (p1i < nLinks or p2i < parent2->nLinks) {
 	if (p1i >= nLinks) {
 	    //There are still some of parent2's links:
-	    childLinks.push_back(new Link(parent2->links[p2i],
-					  P->linkEnableRate));
+	    nChildLinks++;
 	    ++p2i;
 	    continue;
 	}
 	if (p2i >= parent2->nLinks) {
 	    //There are still some of parent1's (this's) links:
-	    childLinks.push_back(new Link(links[p1i],
-					  P->linkEnableRate));
+	    nChildLinks++;
+	    ++p1i;
+	    continue;
+	}
+	//Both parents have links, so lets see if innovation number matches
+	if (links[p1i].innov == parent2->links[p2i].innov) {
+	    //With some probability take from dominant parent (assume p1)
+	    // otherwise create new link that is average of the two.
+	    nChildLinks++;
+	    ++p1i;
+	    ++p2i;
+	}
+	else if (links[p1i].innov < parent2->links[p2i].innov) {
+	    nChildLinks++;
+	    ++p1i;
+	} else {
+	    nChildLinks++;
+	    ++p2i;
+	}
+    }
+
+    Link* childLinks = new Link[nChildLinks];    
+
+    int i = 0;
+    p1i = p2i = 0;
+    while (p1i < nLinks or p2i < parent2->nLinks) {
+	if (p1i >= nLinks) {
+	    //There are still some of parent2's links:
+	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
+	    ++p2i;
+	    continue;
+	}
+	if (p2i >= parent2->nLinks) {
+	    //There are still some of parent1's (this's) links:
+	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    ++p1i;
 	    continue;
 	}
@@ -86,28 +128,24 @@ Genome *Genome::mate(const Genome* parent2) const {
 	    //With some probability take from dominant parent (assume p1)
 	    // otherwise create new link that is average of the two.
 	    if (rand_double() < P->inheritDominant) {
-		childLinks.push_back(new Link(links[p1i],
-					      P->linkEnableRate));
+		childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    } else {
-		childLinks.push_back(new Link(links[p1i],
-					      parent2->links[p2i],
-					      P->linkEnableRate));
+		childLinks[i++].copy(links[p1i], parent2->links[p2i],
+				     P->linkEnabledRate);
 	    }
 	    ++p1i;
 	    ++p2i;
 	}
 	else if (links[p1i].innov < parent2->links[p2i].innov) {
-	    childLinks.push_back(new Link(links[p1i],
-					  P->linkEnableRate));
+	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    ++p1i;
 	} else {
-	    childLinks.push_back(new Link(parent2->links[p2i],
-					  P->linkEnableRate));
+	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
 	    ++p2i;
 	}
     }
 
-    return new Genome(childLinks.c_str(), childLinks.size(), P);
+    return new Genome(childLinks, nChildLinks, P);
 }
 
 /**
@@ -136,22 +174,32 @@ void Genome::mutate() {
 	if (mutateType < P->weightPerturbNormal) {
 	    //Add random amount sampled from normal distribution with
 	    // P->weightPerturbScale variance
-	    links[i]->weight += P->weightPerturbScale*rand_gauss();
-	} else if (mutateType < weightPerturbNormal+weightPerturbUniform) {
+	    links[i].weight += P->weightPerturbScale*rand_gauss();
+	} else if (mutateType < P->weightPerturbNormal+
+				P->weightPerturbUniform) {
 	    //Add random amount sampled from uniform distribution over
 	    //[-weightPerturbScale, weightPerturbScale]
-	    links[i]->weight += 2*P->weightPerturbScale*rand_double() -
-				  P->weightPerturbScale;
+	    links[i].weight += 2*P->weightPerturbScale*rand_double() -
+				 P->weightPerturbScale;
 	} else {
 	    //Randomly set the weight to some random amount in range:
 	    //[-weightPerturbScale, weightPerturbScale]
-	    links[i]->weight = 2*P->weightPerturbScale*rand_double() -
-				 P->weightPerturbScale;
+	    links[i].weight = 2*P->weightPerturbScale*rand_double() -
+				P->weightPerturbScale;
 	    //XXX Could also try guassian
 	}
     }
 }
 
 Network *Genome::createNewNetwork() const {
-
+    return new Network(P->nInput, P->nOutput, links, nLinks);
+}
+	
+void Genome::printDescription(const char *prefix) const {
+    std::cout<<prefix<<"Genome has "<<nLinks<<" links."<<endl;
+    for (int i = 0; i<nLinks; ++i) {
+	std::cout<<prefix<<"  Link "<<i<<": ";
+	links[i].printLink();
+	std::cout<<endl;
+    }
 }

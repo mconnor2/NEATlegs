@@ -1,8 +1,13 @@
 #ifndef _GENOME_H
 #define _GENOME_H
 
-#include "Network.h"
-#include "GeneticAlgorithm.h"
+//#include "Network.h"
+struct Link;
+class Network;
+
+//#include "GeneticAlgorithm.h"
+struct ExpParameters;
+
 
 /**
  * NEAT Genome: vector of Links that define a networks structure.
@@ -13,7 +18,7 @@
 class Genome {
     public:
 	Genome (ExpParameters *_P);
-	Genome (Link *_links, ExpParameters *_P);
+	Genome (Link *_links, int _nLinks, ExpParameters *_P);
 	~Genome();
 
 	Genome *mate(const Genome* parent2) const;
@@ -21,6 +26,8 @@ class Genome {
 	void mutate();
 
 	Network *createNewNetwork() const;
+
+	void printDescription(const char *prefix = "") const;
 
 	//void save(file)
 	//void load(file)

@@ -4,7 +4,10 @@
 #include <functional>
 #include <vector>
 
-#include "Genome.h"
+using namespace std;
+
+//#include "Genome.h"
+class Genome;
 
 
 /**
@@ -31,12 +34,12 @@ struct ExpParameters {
 					//  uniform noise added to it
 					//Otherwise weight will be reset to
 					//  some random amount
-}
+};
 
-class FitnessFunction : public unary_function<const Genome&, double> {
-    public:
-	virtual double operator()(const Genome *g);
-}
+//class FitnessFunction : public unary_function<const Genome*, double> {
+//    public:
+//	virtual double operator()(const Genome *g) = 0;
+//};
 
 /**
  * NEAT Genetic Algorithm
@@ -45,6 +48,7 @@ class FitnessFunction : public unary_function<const Genome&, double> {
  *   of individuals competing at this experiment
  *  -Divide individuals into species to try to foster innovations
  */
+template <class FitnessFunction>
 class GeneticAlgorithm {
     public:
 	GeneticAlgorithm(ExpParameters *P, FitnessFunction *f);
@@ -54,14 +58,20 @@ class GeneticAlgorithm {
 	// the max fitness of current generation.
 	double nextGeneration();
 
+	void printPopulation();
+
     private:
 	ExpParameters *P;
 	FitnessFunction *fitnessF;
 	int generation;
 
+	Genome *selectParent(const vector<double> &fitVals, double rfit);
+
 	vector<Genome *> population;
 
-}
+};
 
+
+#include "GeneticAlgorithm.cpp"
 
 #endif

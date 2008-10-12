@@ -2,6 +2,7 @@
 #define _NEAT_NETWORK_H
 
 #include <stdlib.h>
+#include <math.h>
 
 using namespace std;
 
@@ -45,7 +46,7 @@ struct Neuron {
 struct Link {
     int innov;
     int inID, outID;
-    Neuron* inNode, outNode;
+    Neuron *inNode, *outNode;
     double weight;
     bool enabled;
 
@@ -55,13 +56,15 @@ struct Link {
 	  inID(_inID), outID(_outID), inNode(_in), outNode(_out),
 	  innov(_innov), weight(_w), enabled(_enabled) {}
 
-    Link (const Link *l, const double enableRate);
-    Link (const Link *l1, const Link *l2, const double enableRate);
+    void copy (const Link &l, const double enableRate);
+    void copy (const Link &l1, const Link &l2, const double enableRate);
+
+    void printLink();
 };
 
 class Network {
     public:
-	Network (int nInput, int nOutput);
+	//Network (int nInput, int nOutput);
 	Network (int nInput, int nOutput, Link* genome, int geneLength);
 
 	~Network ();
@@ -74,10 +77,12 @@ class Network {
 	
 	int nLinks, nNeurons;
 	//Total number of neurons is sum of three below
-	int nSensor, nOutput, nHidden;
+	int nInput, nOutput, nHidden;
 
 	bool initialized;
 
-}
+	bool allActive ();
+
+};
 
 #endif

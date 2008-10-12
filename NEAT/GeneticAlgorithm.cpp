@@ -1,17 +1,20 @@
-#include "GeneticAlgorithm.h"
+//#include "GeneticAlgorithm.h"
 
 #include <algorithm>
 #include <iterator>
+#include <iostream>
 
-using namespace std;
+#include "Genome.h"
+#include "random.h"
 
 typedef vector<Genome *>::iterator population_iterator;
 
 /**
  * Initialize the population of genomes using the appropriate parameters
  */
-GeneticAlgorithm::GeneticAlgorithm(ExpParameters *_P, FitnessFunction *_f) :
-	*P(_P), fitnessF(_f)
+template <class FitnessFunction>
+GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
+    (ExpParameters *_P, FitnessFunction *_f) : P(_P), fitnessF(_f)
 {
     population.reserve(P->popSize);
     for (int i = 0; i<P->popSize; ++i) {
@@ -20,7 +23,8 @@ GeneticAlgorithm::GeneticAlgorithm(ExpParameters *_P, FitnessFunction *_f) :
     generation = 0;
 }
 
-GeneticAlgorithm::~GeneticAlgorithm() {
+template <class FitnessFunction>
+GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
     //Must clean up the population of genomes
     for (population_iterator i = population.begin();
 	 i != population.end(); ++i) 
@@ -48,26 +52,35 @@ GeneticAlgorithm::~GeneticAlgorithm() {
  *  	-Next generation is now current generation
  *  -Return max fitness
  */
-double GeneticAlgorithm::nextGeneration() {
+template <class FitnessFunction>
+double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
     //First find the fitness for all members of current generation
-    vector<double> fitVals(P->popSize);
+    vector<double> fitVals(P->popSize, 0);
 
     //Just for fun, lets use transform to find the fitness for
     // each individual, and fill the fitVals 
     transform(population.begin(), population.end(),
-	      fitVals, *f);
+	      fitVals.begin(), *fitnessF);
 
     double maxFit = -1e20, sumFit = 0;
     int maxFiti = -1;
     for (int i = 0; i<P->popSize; ++i) {
-	avgFit += fitVals[i];
+	sumFit += fitVals[i];
 	if (fitVals[i] > maxFit) {
 	    maxFit = fitVals[i];
 	    maxFiti = i;
 	}
     }
-    avgFit = sumFit / (double)P->popSize;
+    double avgFit = sumFit / (double)P->popSize;
+
+#ifdef _DEBUG_PRINT
+    cout<<"Fitness values: ";
+    for (int i = 0; i<P->popSize; ++i) {
+	cout<<fitVals[i]<<", ";
+    }
+    cout<<endl;
+#endif
 
     cout<<"Generation "<<generation
 	<<": Max fitness = "<<maxFit
@@ -82,7 +95,7 @@ double GeneticAlgorithm::nextGeneration() {
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
     for (int i = 0; i<P->popSize-1; ++i) {
-	Genome *p1, *p2;
+	Genome *p1 = NULL, *p2 = NULL;
 	//Choose first parent:
 	double rfit = maxFit * rand_double();
 	p1 = selectParent(fitVals, rfit);
@@ -92,9 +105,9 @@ double GeneticAlgorithm::nextGeneration() {
 	    i--;
 	    continue;
 	}
-	Genome *child = p1.mate(p2);
+	Genome *child = p1->mate(p2);
 
-	child.mutate();
+	child->mutate();
 	
 	nextGen.push_back(child);
     }
@@ -109,11 +122,14 @@ double GeneticAlgorithm::nextGeneration() {
     }
     copy(nextGen.begin(), nextGen.end(), population.begin());
 
+    ++generation;
+
     return maxFit;
 }
 
-Genome *GeneticAlgorithm::selectParent(const vector<double> &fitVals,
-				       double rfit)
+template <class FitnessFunction>
+inline Genome *GeneticAlgorithm<FitnessFunction>::selectParent
+	(const vector<double> &fitVals, double rfit)
 {
     for (int p = 0; p < P->popSize-1; ++p) {
 	if (rfit < fitVals[p]) {
@@ -122,4 +138,13 @@ Genome *GeneticAlgorithm::selectParent(const vector<double> &fitVals,
 	rfit -= fitVals[p];
     }
     return NULL;
+}
+
+template <class FitnessFunction>
+void GeneticAlgorithm<FitnessFunction>::printPopulation() {
+    cout<<"Population size: "<<population.size()<<endl;
+    for (int i = 0; i<population.size(); ++i) {
+	cout<<"Member "<<i<<":"<<endl;
+	population[i]->printDescription("  ");
+    }
 }

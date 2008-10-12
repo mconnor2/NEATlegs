@@ -3,16 +3,18 @@
 #include <math.h>
 #include "random.h"
 
+#include <iostream>
+
 /**
  * When mating, create new links that are copies of its parents links.
  */
-Link::Link (const Link *l, const double enableRate) {
-    innov = l->innov;
-    inID = l->inID;
-    outID = l->outID;
+void Link::copy (const Link &l, const double enableRate) {
+    innov = l.innov;
+    inID = l.inID;
+    outID = l.outID;
     inNode = outNode = NULL;
-    weight = l->weight;
-    enabled = l->enabled;
+    weight = l.weight;
+    enabled = l.enabled;
     //With some probability enable disabled genes
     if (!enabled && rand_double() < enableRate)
 	enabled = true;
@@ -21,16 +23,22 @@ Link::Link (const Link *l, const double enableRate) {
  * Don't just create copy of parents links, but average the weights
  * of two parent's shared link.
  */
-Link::Link (const Link *l1, const Link *l2, const double enableRate) {
-    innov = l1->innov; //l1 and l2 innov should match
-    inID = l1->inID;
-    outID = l1->outID;
+void Link::copy (const Link &l1, const Link &l2, const double enableRate) {
+    innov = l1.innov; //l1 and l2 innov should match
+    inID = l1.inID;
+    outID = l1.outID;
     inNode = outNode = NULL;
-    weight = (l1->weight + l2->weight) / 2.0;
-    enabled = l1->enabled && l2->enabled;
+    weight = (l1.weight + l2.weight) / 2.0;
+    enabled = l1.enabled && l2.enabled;
     //With some probability enable disabled genes
     if (!enabled && rand_double() < enableRate)
 	enabled = true;
+}
+    
+void Link::printLink() {
+    std::cout<<"Innov "<<innov<<": "<<inID<<"->"<<outID
+	     <<": weight "<<weight;
+    if (!enabled) std::cout<<" (!)";
 }
 
 /**
@@ -42,6 +50,7 @@ Link::Link (const Link *l1, const Link *l2, const double enableRate) {
  *  fixed order so all networks created with this number of inputs and outputs
  *  will have same structure/innovation numbers
  */
+/*
 Network::Network (int _nInput, int _nOutput) {
     nInput = _nInput;
     nOutput = _nOutput;
@@ -91,6 +100,7 @@ Network::Network (int _nInput, int _nOutput) {
     
     initialized = false;
 }
+*/
 
 /**
  * Create a network using a previously defined links genome.
@@ -99,6 +109,10 @@ Network::Network (int _nInput, int _nOutput) {
  * be built (pointers of links filled out).  First the number of hidden
  * nodes will need to be found from the link genome to calculate the total
  * number of neurons necessary (nInput + nOutput + nHidden)
+ *
+ * Since the links is basically the DNA of the Network, it is not created by
+ * the network, but rather it creates the network.  Thus the network should
+ * not destroy it when it is finished.
  */
 Network::Network (int _nInput, int _nOutput, 
 		  Link* genome, int geneLength) {
@@ -123,7 +137,7 @@ Network::Network (int _nInput, int _nOutput,
     neurons = new Neuron[nNeurons];
 
     //Initialize sensor and output neurons (the rest should default to hidden
-    Neuron *n = neurons[0];
+    Neuron *n = &neurons[0];
     for (int i = 0; i<nInput+nOutput; ++i) {
 	n->ID = i;
 	if (i < nInput) {
@@ -148,7 +162,7 @@ Network::Network (int _nInput, int _nOutput,
 
 Network::~Network () {
     delete [] neurons;
-    delete [] links;
+    //delete [] links;
 }
 
 bool Network::allActive () {
@@ -160,9 +174,18 @@ bool Network::allActive () {
 
 void Network::run (double inputs[], double outputs[]) {
     //setup sensor neurons with the inputs
-    for (int i = 0; i<nInputs; i++) {
+#ifdef _DEBUG_PRINT
+    std::cout<<"Running network on input:";
+#endif
+    for (int i = 0; i<nInput; i++) {
 	neurons[i].activation = inputs[i];
+#ifdef _DEBUG_PRINT
+	std::cout<<" "<<inputs[i];
+#endif
     }
+#ifdef _DEBUG_PRINT
+	std::cout<<endl;
+#endif
 
     if (!initialized) {
 	//First time through lets run it til all nodes receive at least
