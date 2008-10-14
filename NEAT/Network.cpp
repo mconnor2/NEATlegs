@@ -188,11 +188,19 @@ void Network::run (double inputs[], double outputs[]) {
 #endif
 
     if (!initialized) {
+	#ifdef _DEBUG_PRINT
+	    std::cout<<"  Network not initialized, making sure all nodes are active."<<endl;
+	#endif
+
 	//First time through lets run it til all nodes receive at least
 	// some active input
 	do {
 	    //At the start of each round, assume inputSum is zeroed
 	    
+	    #ifdef _DEBUG_PRINT
+		std::cout<<"  Propogating forward..."<<endl;
+	    #endif
+
 	    //Go over links and if link is enabled and input node
 	    // activated, propogate signal
 	    for (int lid = 0; lid<nLinks; lid++) {
@@ -202,7 +210,20 @@ void Network::run (double inputs[], double outputs[]) {
 		links[lid].outNode->inputSum +=
 		    links[lid].inNode->activation * links[lid].weight;
 		links[lid].outNode->active = true;
+	    	
+		#ifdef _DEBUG_PRINT
+		    std::cout<<"  Link #"<<lid<<": ("
+			     <<links[lid].inID<<") "
+			     <<links[lid].inNode->activation<<" * "
+			     <<links[lid].weight<<" -> ("
+			     <<links[lid].outID<<") "
+			     <<links[lid].outNode->inputSum<<endl;
+		#endif
 	    }
+
+	    #ifdef _DEBUG_PRINT
+		std::cout<<"  Computing node activations:"<<endl;
+	    #endif
 
 	    //Now go over neurons to propogate input to sigmoid activation
 	    // also clear inputSum for the next step
@@ -211,6 +232,12 @@ void Network::run (double inputs[], double outputs[]) {
 		if (!n->active)
 		    continue;
 		n->activation = n->sigmoid(n->inputSum);
+		
+		#ifdef _DEBUG_PRINT
+		    std::cout<<"  Node "<<nid<<": f("<<n->inputSum<<") = "
+			     <<n->activation<<endl;
+		#endif
+		
 		n->inputSum = 0;
 	    }
 	} while (!allActive());
@@ -237,9 +264,21 @@ void Network::run (double inputs[], double outputs[]) {
 	    n->inputSum = 0;
 	}
     }
+    
+    #ifdef _DEBUG_PRINT
+	std::cout<<"Network output:";
+    #endif
+
     //Now copy output neurons activation to output array
     Neuron *n = &neurons[nInput];
     for (int i = 0; i<nOutput; ++i, ++n) {
 	outputs[i] = n->activation;
+	
+	#ifdef _DEBUG_PRINT
+	    std::cout<<" "<<n->activation;
+	#endif
     }
+    #ifdef _DEBUG_PRINT
+	std::cout<<endl<<endl;
+    #endif
 }

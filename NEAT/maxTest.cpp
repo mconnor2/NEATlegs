@@ -21,8 +21,6 @@ class maxOutputTest : public unary_function<const Genome*, double> {
 	    double input[3] = {1,1,1};
 	    double output[1] = {0};
 
-	    cout<<"Finding fitness..."<<endl;
-
 	    N->run(input, output);
 
 	    return (output[0]);
@@ -57,15 +55,16 @@ int main (int argc, char **argv) {
 
     double maxFit = -1e9, curMaxFit = 0;
     
-    cout<<"Generation 0"<<endl;
-    GA->printPopulation();
+    //cout<<"Generation 0"<<endl;
+    //GA->printPopulation();
 
-    curMaxFit = GA->nextGeneration();
-    if (curMaxFit > maxFit) maxFit = curMaxFit;
-    cout<<"  After generation 0, maximum fitness =  "<<maxFit<<endl;
-    cout<<"=========================================================="<<endl;
-    cout<<"Generation 1"<<endl;
-    GA->printPopulation();
-
+    for (int gen = 0; gen < 100; gen++) {
+	curMaxFit = GA->nextGeneration();
+	if (curMaxFit > maxFit) maxFit = curMaxFit;
+	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
+	cout<<"=========================================================="<<endl;
+	//cout<<"Generation "<<gen+1<<endl;
+	//GA->printPopulation();
+    }
     return 0;
 }
