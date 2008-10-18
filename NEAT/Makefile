@@ -1,5 +1,5 @@
 CFLAGS = -O3 -g 
-#CFLAGS += -D_DEBUG_PRINT
+CFLAGS += -D_DEBUG_PRINT
 SDL_INC = -I/usr/include -I/usr/include/SDL -I/usr/local/include/SDL
 SDL_LIBS = -L/usr/lib -L/usr/local/lib64 -lSDL -lSDL_gfx -lpthread
 

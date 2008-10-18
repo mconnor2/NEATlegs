@@ -106,6 +106,10 @@ Genome *Genome::mate(const Genome* parent2) const {
 	}
     }
 
+    #ifdef _DEBUG_PRINT
+	cout<<"  Mating, creating network with "<<nChildLinks<<" links."<<endl;
+    #endif
+
     Link* childLinks = new Link[nChildLinks];    
 
     int i = 0;
@@ -113,23 +117,49 @@ Genome *Genome::mate(const Genome* parent2) const {
     while (p1i < nLinks or p2i < parent2->nLinks) {
 	if (p1i >= nLinks) {
 	    //There are still some of parent2's links:
+	    #ifdef _DEBUG_PRINT
+		cout<<"     p1 has no more links, taking from p2: ";
+		parent2->links[p2i].printLink();
+		cout<<endl;
+	    #endif
 	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
 	    ++p2i;
 	    continue;
 	}
 	if (p2i >= parent2->nLinks) {
 	    //There are still some of parent1's (this's) links:
+	    #ifdef _DEBUG_PRINT
+		cout<<"     p1 has no more links, taking from p2: ";
+		links[p1i].printLink();
+		cout<<endl;
+	    #endif
 	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    ++p1i;
 	    continue;
 	}
 	//Both parents have links, so lets see if innovation number matches
 	if (links[p1i].innov == parent2->links[p2i].innov) {
+	    #ifdef _DEBUG_PRINT
+		cout<<"    link both p1 and p2 share.\n";
+	    #endif
 	    //With some probability take from dominant parent (assume p1)
 	    // otherwise create new link that is average of the two.
 	    if (rand_double() < P->inheritDominant) {
+		#ifdef _DEBUG_PRINT
+		    cout<<"      Taking from dominant parent:";
+		    links[p1i].printLink();
+		    cout<<endl;
+		#endif
 		childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    } else {
+		#ifdef _DEBUG_PRINT
+		    cout<<"      Averaging from both parents:\n";
+		    cout<<"      ";
+		    links[p1i].printLink();
+		    cout<<" .. ";
+		    parent2->links[p2i].printLink();
+		    cout<<endl;
+		#endif
 		childLinks[i++].copy(links[p1i], parent2->links[p2i],
 				     P->linkEnabledRate);
 	    }
@@ -137,9 +167,19 @@ Genome *Genome::mate(const Genome* parent2) const {
 	    ++p2i;
 	}
 	else if (links[p1i].innov < parent2->links[p2i].innov) {
+	    #ifdef _DEBUG_PRINT
+		cout<<"     p2 does not have this link: ";
+		links[p1i].printLink();
+		cout<<endl;
+	    #endif
 	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    ++p1i;
 	} else {
+	    #ifdef _DEBUG_PRINT
+		cout<<"     p1 does not have this link: ";
+		parent2->links[p2i].printLink();
+		cout<<endl;
+	    #endif
 	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
 	    ++p2i;
 	}
@@ -165,28 +205,49 @@ Genome *Genome::mate(const Genome* parent2) const {
  * 10/08/08 For now only implementing weight mutation.
  */
 void Genome::mutate() {
+    #ifdef _DEBUG_PRINT
+	cout<<"  Mutating weights:"<<endl;
+    #endif
+
     //Go over each link, see if we mutate the weight
     for (int i = 0; i<nLinks; ++i) {
 	if (rand_double() > P->weightMutationRate)
 	    continue;
 	double mutateType = rand_double();
 	
+	#ifdef _DEBUG_PRINT
+	    cout<<"    Mutating link #"<<i
+		<<": w_orig = "<<links[i].weight<<endl;
+	#endif
+
 	if (mutateType < P->weightPerturbNormal) {
 	    //Add random amount sampled from normal distribution with
 	    // P->weightPerturbScale variance
 	    links[i].weight += P->weightPerturbScale*rand_gauss();
+	    #ifdef _DEBUG_PRINT
+		cout<<"      Perturb normal -> w_new = "
+		    <<links[i].weight<<endl;
+	    #endif
 	} else if (mutateType < P->weightPerturbNormal+
 				P->weightPerturbUniform) {
 	    //Add random amount sampled from uniform distribution over
 	    //[-weightPerturbScale, weightPerturbScale]
 	    links[i].weight += 2*P->weightPerturbScale*rand_double() -
 				 P->weightPerturbScale;
+	    #ifdef _DEBUG_PRINT
+		cout<<"      Perturb uniform -> w_new = "
+		    <<links[i].weight<<endl;
+	    #endif
 	} else {
 	    //Randomly set the weight to some random amount in range:
 	    //[-weightPerturbScale, weightPerturbScale]
 	    links[i].weight = 2*P->weightPerturbScale*rand_double() -
 				P->weightPerturbScale;
 	    //XXX Could also try guassian
+	    #ifdef _DEBUG_PRINT
+		cout<<"      Randomly reset -> w_new = "
+		    <<links[i].weight<<endl;
+	    #endif
 	}
     }
 }

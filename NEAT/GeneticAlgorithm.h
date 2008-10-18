@@ -65,7 +65,7 @@ class GeneticAlgorithm {
 	FitnessFunction *fitnessF;
 	int generation;
 
-	Genome *selectParent(const vector<double> &fitVals, double rfit);
+	int selectParent(const vector<double> &fitVals, double rfit);
 
 	vector<Genome *> population;
 

@@ -74,13 +74,13 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     }
     double avgFit = sumFit / (double)P->popSize;
 
-#ifdef _DEBUG_PRINT
-    cout<<"Fitness values: ";
-    for (int i = 0; i<P->popSize; ++i) {
-	cout<<fitVals[i]<<", ";
-    }
-    cout<<endl;
-#endif
+    #ifdef _DEBUG_PRINT
+	cout<<"Fitness values: ";
+	for (int i = 0; i<P->popSize; ++i) {
+	    cout<<fitVals[i]<<", ";
+	}
+	cout<<endl;
+    #endif
 
     cout<<"Generation "<<generation
 	<<": Max fitness = "<<maxFit
@@ -95,21 +95,47 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
     for (int i = 0; i<P->popSize-1; ++i) {
+	int p1id = -1, p2id = -1;
 	Genome *p1 = NULL, *p2 = NULL;
 	//Choose first parent:
-	double rfit = maxFit * rand_double();
-	p1 = selectParent(fitVals, rfit);
-	p2 = selectParent(fitVals, rfit);
-	if (p1 == NULL or p2 == NULL) {
-	    cerr<<"Something wrong with selection of parents..."<<endl;
+	double rfit = sumFit * rand_double();
+	p1id = selectParent(fitVals, rfit);
+	
+	rfit = sumFit * rand_double();
+	p2id = selectParent(fitVals, rfit);
+
+	#ifdef _DEBUG_PRINT
+	    cout<<"  Creating child "<<i<<endl;
+	    cout<<"    Parents p1: "<<p1id<<", fit="<<fitVals[p1id]<<", "
+		<<"p2: "<<p2id<<", fit="<<fitVals[p2id]<<endl;
+	#endif
+
+	if (p1id < 0 or p2id < 0 or 
+	    p1id >= P->popSize or p2id >= P->popSize) {
+	    cerr<<"Something wrong with selection of parents..."
+		<<" p1 = "<<p1id<<" p2 = "<<p2id<<endl;;
 	    i--;
 	    continue;
 	}
+
+	// Make sure p1 is dominant parent
+	if (fitVals[p1id] > fitVals[p2id]) {
+	    p1 = population[p1id];
+	    p2 = population[p2id];
+	} else {
+	    p2 = population[p1id];
+	    p1 = population[p2id];
+	}
+
 	Genome *child = p1->mate(p2);
 
 	child->mutate();
 	
 	nextGen.push_back(child);
+
+	#ifdef _DEBUG_PRINT
+	    cout<<endl;
+	#endif
     }
 
     //Don't need memory used by previous generation, so delete those genomes
@@ -128,16 +154,16 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 }
 
 template <class FitnessFunction>
-inline Genome *GeneticAlgorithm<FitnessFunction>::selectParent
+inline int GeneticAlgorithm<FitnessFunction>::selectParent
 	(const vector<double> &fitVals, double rfit)
 {
-    for (int p = 0; p < P->popSize-1; ++p) {
+    for (int p = 0; p < P->popSize; ++p) {
 	if (rfit < fitVals[p]) {
-	    return population[p];
+	    return p;
 	}
 	rfit -= fitVals[p];
     }
-    return NULL;
+    return -1;
 }
 
 template <class FitnessFunction>

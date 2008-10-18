@@ -55,16 +55,16 @@ int main (int argc, char **argv) {
 
     double maxFit = -1e9, curMaxFit = 0;
     
-    //cout<<"Generation 0"<<endl;
-    //GA->printPopulation();
+    cout<<"Generation 0"<<endl;
+    GA->printPopulation();
 
-    for (int gen = 0; gen < 100; gen++) {
+    for (int gen = 0; gen < 10; gen++) {
 	curMaxFit = GA->nextGeneration();
 	if (curMaxFit > maxFit) maxFit = curMaxFit;
 	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
 	cout<<"=========================================================="<<endl;
-	//cout<<"Generation "<<gen+1<<endl;
-	//GA->printPopulation();
+	cout<<"Generation "<<gen+1<<endl;
+	GA->printPopulation();
     }
     return 0;
 }

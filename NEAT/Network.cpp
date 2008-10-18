@@ -4,6 +4,7 @@
 #include "random.h"
 
 #include <iostream>
+#include <map>
 
 /**
  * When mating, create new links that are copies of its parents links.
@@ -122,16 +123,30 @@ Network::Network (int _nInput, int _nOutput,
     links = genome;
     nLinks = geneLength;
 
+    //Since neurons do not need to be sequential in the genome,
+    // but we would rather process the network as if they were,
+    // we'll create a mapping from each links neuron ID to real
+    // neuron ID.
+    int nextID = 0;
+    std::map<int, int> neuronIDMap;
+    
+    //First make sure input and output IDs stay the same
+    for (int i = 0; i< nInput; i++) 
+	neuronIDMap.insert(make_pair(i, nextID++));
+    
+    for (int i = 0; i< nOutput; i++) 
+	neuronIDMap.insert(make_pair(i+nInput, nextID++));
+    
     //Now find the number of total neurons referred to in genome
-    int maxID = -1;
     for (int i = 0; i<nLinks; ++i) {
-	if (links[i].inID > maxID)
-	    maxID = links[i].inID;
-	if (links[i].outID > maxID)
-	    maxID = links[i].outID;
+	if (neuronIDMap.count(links[i].inID) == 0)
+	    neuronIDMap.insert(make_pair(links[i].inID, nextID++));
+	
+	if (neuronIDMap.count(links[i].outID) == 0)
+	    neuronIDMap.insert(make_pair(links[i].outID, nextID++));
     }
 
-    nNeurons = maxID+1;
+    nNeurons = nextID;
     nHidden = nNeurons - (nInput + nOutput);
     
     neurons = new Neuron[nNeurons];
@@ -152,9 +167,11 @@ Network::Network (int _nInput, int _nOutput,
     }
 
     //Now go through links and fill in neuron pointers
+    // use the neuronIDMap to map from link neuron ID to index into
+    // neurons array.
     for (int i = 0; i<nLinks; ++i) {
-	links[i].inNode = &neurons[links[i].inID];
-	links[i].outNode = &neurons[links[i].outID];
+	links[i].inNode = &neurons[ neuronIDMap[links[i].inID] ];
+	links[i].outNode = &neurons[ neuronIDMap[links[i].outID] ];
     }
     
     initialized = false;
@@ -246,6 +263,10 @@ void Network::run (double inputs[], double outputs[]) {
 	//Just need to make one pass as above
 	// and no need to check activation
 	
+	#ifdef _DEBUG_PRINT
+	    std::cout<<"  Propogating forward one cycle..."<<endl;
+	#endif
+	
 	//At the start of each round, assume inputSum is zeroed
 	
 	//Go over links and if link is enabled propogate signal
@@ -254,13 +275,31 @@ void Network::run (double inputs[], double outputs[]) {
 		continue;
 	    links[lid].outNode->inputSum +=
 		links[lid].inNode->activation * links[lid].weight;
+	    
+	    #ifdef _DEBUG_PRINT
+		std::cout<<"  Link #"<<lid<<": ("
+			 <<links[lid].inID<<") "
+			 <<links[lid].inNode->activation<<" * "
+			 <<links[lid].weight<<" -> ("
+			 <<links[lid].outID<<") "
+			 <<links[lid].outNode->inputSum<<endl;
+	    #endif
 	}
 
 	//Now go over neurons to propogate input to sigmoid activation
 	// also clear inputSum for the next step
+	#ifdef _DEBUG_PRINT
+	    std::cout<<"  Computing node activations:"<<endl;
+	#endif
 	Neuron *n = &neurons[nInput];
 	for (int nid = nInput; nid < nNeurons; ++nid, ++n) {
 	    n->activation = n->sigmoid(n->inputSum);
+	    
+	    #ifdef _DEBUG_PRINT
+		std::cout<<"  Node "<<nid<<": f("<<n->inputSum<<") = "
+			 <<n->activation<<endl;
+	    #endif
+	    
 	    n->inputSum = 0;
 	}
     }
