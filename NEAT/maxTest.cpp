@@ -40,6 +40,7 @@ int main (int argc, char **argv) {
     P.nInput = 3; P.nOutput = 1;
 
     //Mating probabilities:
+    P.inheritAllLinks = false;
     P.inheritDominant = 0.9;
     P.linkEnabledRate = 0.5;
 

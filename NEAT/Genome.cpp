@@ -81,9 +81,13 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
     while (p1i < nLinks or p2i < parent2->nLinks) {
 	if (p1i >= nLinks) {
 	    //There are still some of parent2's links:
-	    nChildLinks++;
-	    ++p2i;
-	    continue;
+	    if (P->inheritAllLinks) {
+		nChildLinks++;
+		++p2i;
+		continue;
+	    } else {
+		break;
+	    }
 	}
 	if (p2i >= parent2->nLinks) {
 	    //There are still some of parent1's (this's) links:
@@ -103,7 +107,8 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	    nChildLinks++;
 	    ++p1i;
 	} else {
-	    nChildLinks++;
+	    if (P->inheritAllLinks)
+		nChildLinks++;
 	    ++p2i;
 	}
     }
@@ -132,20 +137,24 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
     while (p1i < nLinks or p2i < parent2->nLinks) {
 	if (p1i >= nLinks) {
 	    //There are still some of parent2's links:
-	    #ifdef _DEBUG_PRINT
-		cout<<"     p1 has no more links, taking from p2: ";
-		parent2->links[p2i].printLink();
-		cout<<endl;
-	    #endif
-	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
-	    
-	    if (addLink) {
-		neuronIDs.insert(parent2->links[p2i].inID);
-		neuronIDs.insert(parent2->links[p2i].outID);
-	    }
+	    if (P->inheritAllLinks) {
+		#ifdef _DEBUG_PRINT
+		    cout<<"     p1 has no more links, taking from p2: ";
+		    parent2->links[p2i].printLink();
+		    cout<<endl;
+		#endif
+		childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
+		
+		if (addLink) {
+		    neuronIDs.insert(parent2->links[p2i].inID);
+		    neuronIDs.insert(parent2->links[p2i].outID);
+		}
 
-	    ++p2i;
-	    continue;
+		++p2i;
+		continue;
+	    } else {
+		break;
+	    }
 	}
 	if (p2i >= parent2->nLinks) {
 	    //There are still some of parent1's (this's) links:
@@ -194,8 +203,6 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	    if (addLink) {
 		neuronIDs.insert(links[p1i].inID);
 		neuronIDs.insert(links[p1i].outID);
-		cout<<"Adding neuron ID: "<<links[p1i].inID
-		    <<"->"<<links[p1i].outID<<endl;
 	    }
 	    
 	    ++p1i;
@@ -216,18 +223,19 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 
 	    ++p1i;
 	} else {
-	    #ifdef _DEBUG_PRINT
-		cout<<"     p1 does not have this link: ";
-		parent2->links[p2i].printLink();
-		cout<<endl;
-	    #endif
-	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
-	    
-	    if (addLink) {
-		neuronIDs.insert(parent2->links[p2i].inID);
-		neuronIDs.insert(parent2->links[p2i].outID);
+	    if (P->inheritAllLinks) {
+		#ifdef _DEBUG_PRINT
+		    cout<<"     p1 does not have this link: ";
+		    parent2->links[p2i].printLink();
+		    cout<<endl;
+		#endif
+		childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
+		
+		if (addLink) {
+		    neuronIDs.insert(parent2->links[p2i].inID);
+		    neuronIDs.insert(parent2->links[p2i].outID);
+		}
 	    }
-
 	    ++p2i;
 	}
     }
@@ -280,9 +288,6 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	// in parents
 	vector<int> neurons;
 	neurons.insert(neurons.begin(), neuronIDs.begin(), neuronIDs.end());
-
-	cout<<"Adding a link, # of neurons =? "<<neurons.size()
-	    <<" .. "<<neuronIDs.size()<<endl;
 
 	int nNeurons = neurons.size();
 

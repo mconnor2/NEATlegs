@@ -18,6 +18,9 @@ struct ExpParameters {
     int popSize;
     int nInput, nOutput;
 
+    bool inheritAllLinks;		//Should child get links (excess, etc)
+					// from both parents, or just dominant
+
     //Mating probabilities:
     double inheritDominant;		//For shared genes, probability weight
 					//  comes only from dominant parent,
