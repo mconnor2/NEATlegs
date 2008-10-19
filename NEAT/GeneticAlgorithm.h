@@ -8,7 +8,7 @@ using namespace std;
 
 //#include "Genome.h"
 class Genome;
-
+class InnovationStore;
 
 /**
  * Paramters for running genetic algorithm experiment.  
@@ -34,6 +34,11 @@ struct ExpParameters {
 					//  uniform noise added to it
 					//Otherwise weight will be reset to
 					//  some random amount
+
+    double addLinkMutationRate;		//Percent of matings that will have
+					// a link added
+    double addNodeMutationRate;		//Percent of matings that will have
+					// a new node and two links added
 };
 
 //class FitnessFunction : public unary_function<const Genome*, double> {
@@ -64,6 +69,8 @@ class GeneticAlgorithm {
 	ExpParameters *P;
 	FitnessFunction *fitnessF;
 	int generation;
+	
+	InnovationStore *IS;
 
 	int selectParent(const vector<double> &fitVals, double rfit);
 

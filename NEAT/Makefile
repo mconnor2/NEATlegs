@@ -1,4 +1,4 @@
-CFLAGS = -O3 -g 
+CFLAGS = -g 
 CFLAGS += -D_DEBUG_PRINT
 SDL_INC = -I/usr/include -I/usr/include/SDL -I/usr/local/include/SDL
 SDL_LIBS = -L/usr/lib -L/usr/local/lib64 -lSDL -lSDL_gfx -lpthread
@@ -9,8 +9,8 @@ BOX_LIBS = -L/home/mconnor/local/lib -lBox2D
 CXX = g++ 
 
 TARGET = maxTest
-SRCS = random.cpp Network.cpp Genome.cpp maxTest.cpp 
-OBJS = random.o Network.o Genome.o maxTest.o 
+SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp maxTest.cpp 
+OBJS = random.o Network.o InnovationStore.o Genome.o maxTest.o 
 
 
 .SUFFIXES: .cpp

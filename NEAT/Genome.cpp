@@ -2,8 +2,10 @@
 #include "random.h"
 #include "Network.h"
 #include "GeneticAlgorithm.h"
+#include "InnovationStore.h"
 
 #include <iostream>
+#include <set>
 
 /** 
  * Create default link setup based on number of inputs and outputs.
@@ -68,7 +70,7 @@ Genome::~Genome() {
  * 
  *
  */
-Genome *Genome::mate(const Genome* parent2) const {
+Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 
     int p1i = 0, p2i = 0;
     //Lets do two pass at the mating.  The first pass figures out the size
@@ -105,6 +107,19 @@ Genome *Genome::mate(const Genome* parent2) const {
 	    ++p2i;
 	}
     }
+    //Since we need to figure out the number of links before hand, we will
+    // do structural mutation during mating, and need to calculate if these
+    // mutations will occur, and add them to nChildLinks
+    int addLink = 0, addNode = 0;
+    if (rand_double() < P->addLinkMutationRate) addLink = 1;
+    if (rand_double() < P->addNodeMutationRate) addNode = 1;
+
+
+    //For add link mutation, we'll need to know the set of neurons to try
+    // to connect
+    std::set<int> neuronIDs;
+    
+    nChildLinks += addLink + 2*addNode;
 
     #ifdef _DEBUG_PRINT
 	cout<<"  Mating, creating network with "<<nChildLinks<<" links."<<endl;
@@ -123,6 +138,12 @@ Genome *Genome::mate(const Genome* parent2) const {
 		cout<<endl;
 	    #endif
 	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
+	    
+	    if (addLink) {
+		neuronIDs.insert(parent2->links[p2i].inID);
+		neuronIDs.insert(parent2->links[p2i].outID);
+	    }
+
 	    ++p2i;
 	    continue;
 	}
@@ -134,6 +155,12 @@ Genome *Genome::mate(const Genome* parent2) const {
 		cout<<endl;
 	    #endif
 	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
+	    
+	    if (addLink) {
+		neuronIDs.insert(links[p1i].inID);
+		neuronIDs.insert(links[p1i].outID);
+	    }
+
 	    ++p1i;
 	    continue;
 	}
@@ -163,6 +190,14 @@ Genome *Genome::mate(const Genome* parent2) const {
 		childLinks[i++].copy(links[p1i], parent2->links[p2i],
 				     P->linkEnabledRate);
 	    }
+	    
+	    if (addLink) {
+		neuronIDs.insert(links[p1i].inID);
+		neuronIDs.insert(links[p1i].outID);
+		cout<<"Adding neuron ID: "<<links[p1i].inID
+		    <<"->"<<links[p1i].outID<<endl;
+	    }
+	    
 	    ++p1i;
 	    ++p2i;
 	}
@@ -173,6 +208,12 @@ Genome *Genome::mate(const Genome* parent2) const {
 		cout<<endl;
 	    #endif
 	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
+	    
+	    if (addLink) {
+		neuronIDs.insert(links[p1i].inID);
+		neuronIDs.insert(links[p1i].outID);
+	    }
+
 	    ++p1i;
 	} else {
 	    #ifdef _DEBUG_PRINT
@@ -181,8 +222,92 @@ Genome *Genome::mate(const Genome* parent2) const {
 		cout<<endl;
 	    #endif
 	    childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
+	    
+	    if (addLink) {
+		neuronIDs.insert(parent2->links[p2i].inID);
+		neuronIDs.insert(parent2->links[p2i].outID);
+	    }
+
 	    ++p2i;
 	}
+    }
+    
+    if (addNode) {
+	//Randomly select a link to disable and replace by two links and a
+	// new neuron inside.
+	int splitLink = 0;
+	do {
+	    splitLink = rand_int()%i;
+	} while(!childLinks[splitLink].enabled);
+	
+	int newNeuronID = -1;
+
+	IS->addNode(childLinks[splitLink].innov,
+		    childLinks[i].innov, //preInnov
+		    childLinks[i+1].innov, //postInnov
+		    newNeuronID);
+
+	#ifdef _DEBUG_PRINT
+	    cout<<"  Adding New node:"<<endl;
+	    cout<<"    Splitting link: ";
+	    childLinks[splitLink].printLink();
+	    cout<<endl;
+	    cout<<"    New neuron id: "<<newNeuronID<<endl;
+	    cout<<"    New pre link innovation: "<<childLinks[i].innov
+		<<", post link: "<<childLinks[i+1].innov<<endl;
+	#endif
+
+	//Now connect splitLink.in to new neuron
+	childLinks[i].inID = childLinks[splitLink].inID;
+	childLinks[i].outID = newNeuronID;
+	childLinks[i].weight = 1.0;
+	childLinks[i].enabled = true;
+
+	//And connect new neuron to splitLink.out
+	childLinks[i+1].inID = newNeuronID;
+	childLinks[i+1].outID = childLinks[splitLink].outID;
+	childLinks[i+1].weight = childLinks[splitLink].weight;
+	childLinks[i+1].enabled = true;
+	
+	//Old connection is disabled
+	childLinks[splitLink].enabled = false;
+
+	i+=2;
+    }
+
+    if (addLink) {
+	//Randomly select input neuron and output neuron from those seen
+	// in parents
+	vector<int> neurons;
+	neurons.insert(neurons.begin(), neuronIDs.begin(), neuronIDs.end());
+
+	cout<<"Adding a link, # of neurons =? "<<neurons.size()
+	    <<" .. "<<neuronIDs.size()<<endl;
+
+	int nNeurons = neurons.size();
+
+	//Input neuron can be any node,
+	//Output neuron cannot be an input node.
+	childLinks[i].inID  = neurons[rand_int()%nNeurons];
+	childLinks[i].outID = neurons[rand_int()%(nNeurons-P->nInput)+
+				      P->nInput];
+
+	//Use innovation store to find if this innovation has been done before
+	// and set the innovation appropriately.
+	IS->addLink(childLinks[i].inID, childLinks[i].outID, 
+		    childLinks[i].innov);
+	
+	//And set the weight to random gaussian, mean 0, std dev 1
+	childLinks[i].weight = rand_gauss();
+	childLinks[i].enabled = true;
+	
+	#ifdef _DEBUG_PRINT
+	    cout<<"  Adding New link:";
+	    childLinks[i].printLink();
+	    cout<<endl;
+	#endif
+	
+	++i;
     }
 
     return new Genome(childLinks, nChildLinks, P);

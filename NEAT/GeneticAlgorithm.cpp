@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "Genome.h"
+#include "InnovationStore.h"
 #include "random.h"
 
 typedef vector<Genome *>::iterator population_iterator;
@@ -21,6 +22,8 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
 	population.push_back(new Genome(P));
     }
     generation = 0;
+
+    IS = new InnovationStore(P);
 }
 
 template <class FitnessFunction>
@@ -32,6 +35,7 @@ GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
 	delete (*i);
     }
 
+    delete IS;
 }
 
 
@@ -89,6 +93,8 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     vector<Genome *> nextGen;
     nextGen.reserve(P->popSize);
 
+    IS->newGeneration();
+
     //Save champion for next generation
     nextGen.push_back(population[maxFiti]);
     
@@ -127,7 +133,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    p1 = population[p2id];
 	}
 
-	Genome *child = p1->mate(p2);
+	Genome *child = p1->mate(p2, IS);
 
 	child->mutate();
 	

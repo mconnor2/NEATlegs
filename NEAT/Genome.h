@@ -8,6 +8,7 @@ class Network;
 //#include "GeneticAlgorithm.h"
 struct ExpParameters;
 
+class InnovationStore;
 
 /**
  * NEAT Genome: vector of Links that define a networks structure.
@@ -21,7 +22,7 @@ class Genome {
 	Genome (Link *_links, int _nLinks, ExpParameters *_P);
 	~Genome();
 
-	Genome *mate(const Genome* parent2) const;
+	Genome *mate(const Genome* parent2, InnovationStore *IS) const;
 
 	void mutate();
 
@@ -34,7 +35,8 @@ class Genome {
     private:
 	Link* links;
 	int nLinks;
-	ExpParameters *P;	
+
+	ExpParameters *P;
 };
 
 
