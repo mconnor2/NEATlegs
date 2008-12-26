@@ -30,7 +30,7 @@ void Link::copy (const Link &l1, const Link &l2, const double enableRate) {
     outID = l1.outID;
     inNode = outNode = NULL;
     weight = (l1.weight + l2.weight) / 2.0;
-    enabled = l1.enabled && l2.enabled;
+    enabled = l1.enabled; // && l2.enabled;
     //With some probability enable disabled genes
     if (!enabled && rand_double() < enableRate)
 	enabled = true;

@@ -35,15 +35,29 @@ class xorTest : public unary_function<const Genome*, double> {
 
 	    double sqDiff = 0;
 
+	    const int Passes = 32;
+
 	    for (int i = 0; i<Rounds; ++i) {
 		input[0] = xorInput[2*i];
 		input[1] = xorInput[2*i+1];
-		N->run(input, output);
+		
+		//Instead of making one pass through the network for
+		// every input pattern, lets make some P passes (32?)
+		// and average the output over each pass, allowing the
+		// network to find a steady state.
+		double sumOut = 0;
+		for (int p = 0; p<Passes; ++p) {
+		    N->run(input, output);
+		    sumOut += output[0];
+		}
+		sumOut /= (double)Passes;
 
-		sqDiff += (output[0] - xorOutput[i]) *
-			  (output[0] - xorOutput[i]);
+		sqDiff += (sumOut - xorOutput[i]) *
+			  (sumOut - xorOutput[i]);
 	    }
 
+	    //Now return #Rounds - sqDiff, so a perfect xor will have
+	    // 0 sqDiff, and hence largest fitness (#Rounds).
 	    return (Rounds-sqDiff);
 	}
     
@@ -74,7 +88,7 @@ int main (int argc, char **argv) {
     ExpParameters P;
     //Setup experiment parameters:
     // Keep population small so we can watch the results at first.
-    P.popSize = 10;
+    P.popSize = 100;
     
     // Given vector (1,1,1) want to see largest combination weights:
     P.nInput = 3; P.nOutput = 1;
@@ -82,10 +96,10 @@ int main (int argc, char **argv) {
     //Mating probabilities:
     P.inheritAllLinks = false;
     P.inheritDominant = 0.9;
-    P.linkEnabledRate = 0.2;
+    P.linkEnabledRate = 0.1;
 
     P.weightMutationRate   = 0.5;
-    P.weightPerturbScale   = 0.1;
+    P.weightPerturbScale   = 0.01;
     P.weightPerturbNormal  = 0.4;
     P.weightPerturbUniform = 0.4;
     
@@ -102,7 +116,11 @@ int main (int argc, char **argv) {
     //cout<<"Generation 0"<<endl;
     //GA->printPopulation();
 
-    for (int gen = 0; gen < 100; gen++) {
+    for (int gen = 0; gen < 1000; gen++) {
+	//Each generation will receive a different input, so network
+	// can't just memorize pattern
+	fit.regenerate();
+
 	curMaxFit = GA->nextGeneration();
 	if (curMaxFit > maxFit) maxFit = curMaxFit;
 	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
