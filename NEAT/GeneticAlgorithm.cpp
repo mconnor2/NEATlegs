@@ -97,7 +97,11 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
     //Save champion for next generation
     nextGen.push_back(population[maxFiti]);
-    
+   
+    cout<<"Max fit network:"<<endl;
+    population[maxFiti]->printDescription("  ");
+    cout<<endl;
+
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
     for (int i = 0; i<P->popSize-1; ++i) {

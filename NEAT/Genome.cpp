@@ -12,13 +12,13 @@
  */
 Genome::Genome (ExpParameters *_P) : P(_P) {
     nLinks = P->nInput * P->nOutput;
-    int nNeurons = P->nInput + P->nOutput;
+    nNodes = P->nInput + P->nOutput;
     
     links = new Link[nLinks];
     Link *link = &links[0];
     int linkID = 0;
     for (int inID = 0; inID < P->nInput; ++inID) {
-	for (int outID = P->nInput; outID < nNeurons; ++outID) {
+	for (int outID = P->nInput; outID < nNodes; ++outID) {
 	    link->inID = inID;
 	    link->inNode = NULL;
 	    link->outID = outID;
@@ -40,8 +40,9 @@ Genome::Genome (ExpParameters *_P) : P(_P) {
  * Given link structure (from mating say), create new genome.
  *  
  */
-Genome::Genome (Link *_links, int _nLinks, ExpParameters *_P) :
-      links(_links), nLinks(_nLinks), P(_P)
+Genome::Genome (Link *_links, int _nLinks, int _nNodes, 
+		ExpParameters *_P) :
+      links(_links), nLinks(_nLinks), nNodes(_nNodes), P(_P)
 { }
 	
 Genome::~Genome() {
@@ -78,6 +79,7 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
     // it in with copies of parent links. 
 
     int nChildLinks = 0;
+    int nChildNodes = 0;
     while (p1i < nLinks or p2i < parent2->nLinks) {
 	if (p1i >= nLinks) {
 	    //There are still some of parent2's links:

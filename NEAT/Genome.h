@@ -19,7 +19,7 @@ class InnovationStore;
 class Genome {
     public:
 	Genome (ExpParameters *_P);
-	Genome (Link *_links, int _nLinks, ExpParameters *_P);
+	Genome (Link *_links, int _nLinks, int _nNodes, ExpParameters *_P);
 	~Genome();
 
 	Genome *mate(const Genome* parent2, InnovationStore *IS) const;
@@ -35,6 +35,7 @@ class Genome {
     private:
 	Link* links;
 	int nLinks;
+	int nNodes;
 
 	ExpParameters *P;
 };

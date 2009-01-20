@@ -197,4 +197,59 @@ Go over both lists
 
 There are some details about calculating number of neurons, and if the id's will stay consistent somehow... and if should copy around links or create new ones, etc.  Also need to find dominant parent when selecting them at the beginning.
 
+10/18/08
+
+Lets put some thought into structural mutation...
+
+First type is adding a new links:
+    -Randomly select two neurons, add a new link between them with some small
+     weight.  
+	*Creates one new link
+	*need to check innovation to see if this has been added before, find
+	 appropriate innovation number.
+
+Second type is adding new node over existing link
+    -Select one link randomly, must be enabled?
+	*Disable this link
+	*Check innovation, see if this link has been split so far
+	    if so, find appropriate innov info (innov of pre/post, new neuron
+	    number)
+	*Create new neuron with new number of next neuron id
+	*Create two new links, set weight of one to 1, and old weight to
+	 the other.
+
+So global info I need to keep track of (either overall, or each generation)
+-Innovation tracking:
+    -Add link innovation
+	*Index by two neuronIDs that are being connected
+	    -stores the innovation number for this link
+    -Add node innovation
+	*Index by innovation number of link being split
+	    -stores the innovation number of two new links, new neuron ID
+    -Next Innovation number
+    -Next Neuron ID
+
+So up to now the genetic algorithm is actually real generic.  Do I want to break that by including NEAT innovation?  It probably won't end up being super intwined... yeah, lets just do that now and if I ever need different genetic algorithm later I can pull this out.  Abstract away innovation and species for use with other genome definitions.
+
+11/22/08
+
+ToDo:
+
+So I have an xor experiment running, but at the moment I don't actually know if its working.  Time to implement more debugging/inspection/experiment features.  This means:
+
+-Write network to file
+    *Must be human readable.
+    *XML?
+-For each generation also report mean size of a network, and size of best
+ network
+-Create experiment file, contains parameters to recreate an experiment
+    *Network parameters
+    *Genetic algorithm parameters
+    *Name of files
+    *Where to save files
+    *again, XML?
+-Save best network in each generation (if changes?)
+
+boy, do I gain anything from xml, except perhaps experience playing with XML.  Lets do some quick searching for free XML parsing library.
+
 
