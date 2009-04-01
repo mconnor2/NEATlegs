@@ -252,4 +252,27 @@ So I have an xor experiment running, but at the moment I don't actually know if 
 
 boy, do I gain anything from xml, except perhaps experience playing with XML.  Lets do some quick searching for free XML parsing library.
 
+03/06/09
+
+Huh, been awhile.
+
+Ok, lets try for speciation, I am betting once I get this architecture into my memory I can implement that easily.
+
+Once I have NEAT reasonably working on xor test (not entirely sure what I am expecting, but an improvement of maximum fitness over 500 generations is one thing), the immediate plan is:
+    -Debug (valgrind?)
+    -Profile
+	-Any spots where small scale parallelization is warranted, or just ignore it?
+    -Read in parameters
+    -save output in usable format
+	-Both experimental output and network specifications
+	*Screw XML for now, just do it in text, can change that later and
+	 convert
+    -Implement Pole balancing test?
+
+Ahh, experimenting with xor I think I have found a parameter that seemed to be causing XOR to fail.  The probability of randomly resetting the weight seems to have done the trick, or rather it being too large.  I will need to do more rigerous experiments to verify that, but if I set it to 0.2 then can never really get above 75 (max 100), but if I set this prob to 0 then can get to 0.98.
+
+04/01/09
+
+I still don't have proper debugging output to inspect the actual structure of the NEAT solutions to xor, although I am reasonably confident that they are correct.  I should add an additional output that tests the classifier for a looser more correct xor test, setting some threshold and seeing if the binary values are correct... pretty sure a correct network will solve it in very few generations.
+
 

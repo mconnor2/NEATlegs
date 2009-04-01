@@ -66,7 +66,11 @@ class GeneticAlgorithm {
 	// the max fitness of current generation.
 	double nextGeneration();
 
-	void printPopulation();
+	void printPopulation() const;
+
+	Genome* bestIndiv() const {
+	    return population[maxFitI];
+	}
 
     private:
 	ExpParameters *P;
@@ -78,6 +82,8 @@ class GeneticAlgorithm {
 	int selectParent(const vector<double> &fitVals, double rfit);
 
 	vector<Genome *> population;
+
+	int maxFitI;
 
 };
 

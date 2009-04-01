@@ -79,7 +79,6 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
     // it in with copies of parent links. 
 
     int nChildLinks = 0;
-    int nChildNodes = 0;
     while (p1i < nLinks or p2i < parent2->nLinks) {
 	if (p1i >= nLinks) {
 	    //There are still some of parent2's links:
@@ -147,10 +146,8 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 		#endif
 		childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
 		
-		if (addLink) {
-		    neuronIDs.insert(parent2->links[p2i].inID);
-		    neuronIDs.insert(parent2->links[p2i].outID);
-		}
+		neuronIDs.insert(parent2->links[p2i].inID);
+		neuronIDs.insert(parent2->links[p2i].outID);
 
 		++p2i;
 		continue;
@@ -167,10 +164,8 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	    #endif
 	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    
-	    if (addLink) {
-		neuronIDs.insert(links[p1i].inID);
-		neuronIDs.insert(links[p1i].outID);
-	    }
+	    neuronIDs.insert(links[p1i].inID);
+	    neuronIDs.insert(links[p1i].outID);
 
 	    ++p1i;
 	    continue;
@@ -202,10 +197,8 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 				     P->linkEnabledRate);
 	    }
 	    
-	    if (addLink) {
-		neuronIDs.insert(links[p1i].inID);
-		neuronIDs.insert(links[p1i].outID);
-	    }
+	    neuronIDs.insert(links[p1i].inID);
+	    neuronIDs.insert(links[p1i].outID);
 	    
 	    ++p1i;
 	    ++p2i;
@@ -218,10 +211,8 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	    #endif
 	    childLinks[i++].copy(links[p1i], P->linkEnabledRate);
 	    
-	    if (addLink) {
-		neuronIDs.insert(links[p1i].inID);
-		neuronIDs.insert(links[p1i].outID);
-	    }
+	    neuronIDs.insert(links[p1i].inID);
+	    neuronIDs.insert(links[p1i].outID);
 
 	    ++p1i;
 	} else {
@@ -233,15 +224,15 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 		#endif
 		childLinks[i++].copy(parent2->links[p2i], P->linkEnabledRate);
 		
-		if (addLink) {
-		    neuronIDs.insert(parent2->links[p2i].inID);
-		    neuronIDs.insert(parent2->links[p2i].outID);
-		}
+		neuronIDs.insert(parent2->links[p2i].inID);
+		neuronIDs.insert(parent2->links[p2i].outID);
 	    }
 	    ++p2i;
 	}
     }
-    
+   
+    int nChildNodes = neuronIDs.size();
+
     if (addNode) {
 	//Randomly select a link to disable and replace by two links and a
 	// new neuron inside.
@@ -256,6 +247,8 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 		    childLinks[i].innov, //preInnov
 		    childLinks[i+1].innov, //postInnov
 		    newNeuronID);
+
+	++nChildNodes;
 
 	#ifdef _DEBUG_PRINT
 	    cout<<"  Adding New node:"<<endl;
@@ -317,7 +310,7 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	++i;
     }
 
-    return new Genome(childLinks, nChildLinks, P);
+    return new Genome(childLinks, nChildLinks, nChildNodes, P);
 }
 
 /**
@@ -389,10 +382,13 @@ Network *Genome::createNewNetwork() const {
 }
 	
 void Genome::printDescription(const char *prefix) const {
-    std::cout<<prefix<<"Genome has "<<nLinks<<" links."<<endl;
+    std::cout<<prefix<<"Genome has "<<nLinks<<" links, "
+	     <<nNodes<<" nodes."<<endl;
+/*
     for (int i = 0; i<nLinks; ++i) {
 	std::cout<<prefix<<"  Link "<<i<<": ";
 	links[i].printLink();
 	std::cout<<endl;
     }
+*/
 }

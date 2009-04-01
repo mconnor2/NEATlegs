@@ -24,6 +24,8 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
     generation = 0;
 
     IS = new InnovationStore(P);
+    
+    maxFitI = -1;
 }
 
 template <class FitnessFunction>
@@ -68,12 +70,12 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	      fitVals.begin(), *fitnessF);
 
     double maxFit = -1e20, sumFit = 0;
-    int maxFiti = -1;
+    maxFitI = -1;
     for (int i = 0; i<P->popSize; ++i) {
 	sumFit += fitVals[i];
 	if (fitVals[i] > maxFit) {
 	    maxFit = fitVals[i];
-	    maxFiti = i;
+	    maxFitI = i;
 	}
     }
     double avgFit = sumFit / (double)P->popSize;
@@ -96,10 +98,10 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     IS->newGeneration();
 
     //Save champion for next generation
-    nextGen.push_back(population[maxFiti]);
+    nextGen.push_back(population[maxFitI]);
    
     cout<<"Max fit network:"<<endl;
-    population[maxFiti]->printDescription("  ");
+    population[maxFitI]->printDescription("  ");
     cout<<endl;
 
     //Now fill rest of population by mating random individuals, chosen by
@@ -153,7 +155,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     // Don't delete the champion, because that pointer is just copied
     // to the next generation.
     for (int i = 0; i<P->popSize; ++i) {
-	if (i != maxFiti)
+	if (i != maxFitI)
 	    delete population[i];
     }
     copy(nextGen.begin(), nextGen.end(), population.begin());
@@ -177,7 +179,7 @@ inline int GeneticAlgorithm<FitnessFunction>::selectParent
 }
 
 template <class FitnessFunction>
-void GeneticAlgorithm<FitnessFunction>::printPopulation() {
+void GeneticAlgorithm<FitnessFunction>::printPopulation() const {
     cout<<"Population size: "<<population.size()<<endl;
     for (int i = 0; i<population.size(); ++i) {
 	cout<<"Member "<<i<<":"<<endl;

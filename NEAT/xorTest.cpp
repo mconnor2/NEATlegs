@@ -60,7 +60,45 @@ class xorTest : public unary_function<const Genome*, double> {
 	    // 0 sqDiff, and hence largest fitness (#Rounds).
 	    return (Rounds-sqDiff);
 	}
+  
+	//Now run XOR, but this time instead of returning distance from
+	// correct, use 0-1 error where we threshold classification at 
+	// 0.5
+	int testError(const Genome *g) {
+	    auto_ptr<Network> N(g->createNewNetwork());
+
+	    double input[3] = {1,1,1};
+	    double output[1] = {0};
+
+	    double sqDiff = 0;
+
+	    const int Passes = 32;
+
+	    int error = 0;
+
+	    for (int i = 0; i<Rounds; ++i) {
+		input[0] = xorInput[2*i];
+		input[1] = xorInput[2*i+1];
+		
+		//Instead of making one pass through the network for
+		// every input pattern, lets make some P passes (32?)
+		// and average the output over each pass, allowing the
+		// network to find a steady state.
+		double sumOut = 0;
+		for (int p = 0; p<Passes; ++p) {
+		    N->run(input, output);
+		    sumOut += output[0];
+		}
+		sumOut /= (double)Passes;
+
+		if (sumOut >= 0.5 && xorOutput[i] == 0 ||
+		    sumOut < 0.5  && xorOutput[i] == 1) 
+		    error++;
+	    }
     
+	    return error;
+	}
+
 	void regenerate () {
 	    xorInput.clear();
 	    xorOutput.clear();
@@ -98,15 +136,15 @@ int main (int argc, char **argv) {
     P.inheritDominant = 0.9;
     P.linkEnabledRate = 0.1;
 
-    P.weightMutationRate   = 0.5;
+    P.weightMutationRate   = 0.2;
     P.weightPerturbScale   = 0.01;
-    P.weightPerturbNormal  = 0.4;
-    P.weightPerturbUniform = 0.4;
+    P.weightPerturbNormal  = 0.6;
+    P.weightPerturbUniform = 0.39;
     
-    P.addLinkMutationRate = 0.1;
-    P.addNodeMutationRate = 0.1;
+    P.addLinkMutationRate = 0.02;
+    P.addNodeMutationRate = 0.02;
     
-    xorTest fit(100);
+    xorTest fit(30);
 
     GeneticAlgorithm<xorTest> *GA = 
 	new GeneticAlgorithm<xorTest>(&P, &fit);
@@ -123,10 +161,14 @@ int main (int argc, char **argv) {
 
 	curMaxFit = GA->nextGeneration();
 	if (curMaxFit > maxFit) maxFit = curMaxFit;
-	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
+	int error = fit.testError(GA->bestIndiv());
+	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit
+	    <<", test error = "<<error<<endl;
 	cout<<"========================================================="<<endl;
 	//cout<<"Generation "<<gen+1<<endl;
 	//GA->printPopulation();
+	
+	if (error == 0) break;
     }
     return 0;
 }
