@@ -17,7 +17,7 @@ using namespace std;
  * of the generation get same input, but overall can't just memorize
  * sequence.
  */
-class xorTest : public unary_function<const Genome*, double> {
+class xorTest : public unary_function<const GenomeP, double> {
     public:
 	xorTest (int N) {
 	    Rounds = N;
@@ -27,7 +27,7 @@ class xorTest : public unary_function<const Genome*, double> {
 
 	}
 
-	double operator()(const Genome *g) {
+	double operator()(const GenomeP &g) {
 	    auto_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};
@@ -64,7 +64,7 @@ class xorTest : public unary_function<const Genome*, double> {
 	//Now run XOR, but this time instead of returning distance from
 	// correct, use 0-1 error where we threshold classification at 
 	// 0.5
-	int testError(const Genome *g) {
+	int testError(const GenomeP &g) {
 	    auto_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};

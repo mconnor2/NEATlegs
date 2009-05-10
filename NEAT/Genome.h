@@ -5,10 +5,14 @@
 struct Link;
 class Network;
 
+#include <boost/shared_ptr.hpp>
+
 //#include "GeneticAlgorithm.h"
 struct ExpParameters;
-
+class Genome;
 class InnovationStore;
+
+typedef boost::shared_ptr<Genome> GenomeP;
 
 /**
  * NEAT Genome: vector of Links that define a networks structure.
@@ -22,7 +26,7 @@ class Genome {
 	Genome (Link *_links, int _nLinks, int _nNodes, ExpParameters *_P);
 	~Genome();
 
-	Genome *mate(const Genome* parent2, InnovationStore *IS) const;
+	GenomeP mate(const GenomeP &parent2, InnovationStore *IS) const;
 
 	void mutate();
 
@@ -39,6 +43,7 @@ class Genome {
 
 	ExpParameters *P;
 };
+
 
 
 #endif

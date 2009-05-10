@@ -71,7 +71,7 @@ Genome::~Genome() {
  * 
  *
  */
-Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
+GenomeP Genome::mate(const GenomeP &parent2, InnovationStore *IS) const {
 
     int p1i = 0, p2i = 0;
     //Lets do two pass at the mating.  The first pass figures out the size
@@ -310,7 +310,10 @@ Genome *Genome::mate(const Genome* parent2, InnovationStore *IS) const {
 	++i;
     }
 
-    return new Genome(childLinks, nChildLinks, nChildNodes, P);
+    
+    //return new Genome(childLinks, nChildLinks, nChildNodes, P);
+    GenomeP child(new Genome(childLinks, nChildLinks, nChildNodes, P));
+    return child;
 }
 
 /**

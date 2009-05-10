@@ -13,9 +13,9 @@ using namespace std;
  *  If all goes correctly, should find networks keep increasing weights.
  */
 
-class maxOutputTest : public unary_function<const Genome*, double> {
+class maxOutputTest : public unary_function<const GenomeP, double> {
     public:
-	double operator()(const Genome *g) {
+	double operator()(const GenomeP &g) {
 	    auto_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};

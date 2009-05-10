@@ -8,7 +8,7 @@
 #include "InnovationStore.h"
 #include "random.h"
 
-typedef vector<Genome *>::iterator population_iterator;
+typedef vector<GenomeP>::iterator population_iterator;
 
 /**
  * Initialize the population of genomes using the appropriate parameters
@@ -19,7 +19,8 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
 {
     population.reserve(P->popSize);
     for (int i = 0; i<P->popSize; ++i) {
-	population.push_back(new Genome(P));
+	GenomeP g(new Genome(P));
+	population.push_back(g);
     }
     generation = 0;
 
@@ -31,11 +32,13 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
 template <class FitnessFunction>
 GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
     //Must clean up the population of genomes
+    /*
     for (population_iterator i = population.begin();
 	 i != population.end(); ++i) 
     {
 	delete (*i);
     }
+    */
 
     delete IS;
 }
@@ -92,7 +95,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	<<": Max fitness = "<<maxFit
 	<<", mean fitness = "<<avgFit<<endl;
 
-    vector<Genome *> nextGen;
+    vector<GenomeP> nextGen;
     nextGen.reserve(P->popSize);
 
     IS->newGeneration();
@@ -108,7 +111,6 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     // distribution of fitness.
     for (int i = 0; i<P->popSize-1; ++i) {
 	int p1id = -1, p2id = -1;
-	Genome *p1 = NULL, *p2 = NULL;
 	//Choose first parent:
 	double rfit = sumFit * rand_double();
 	p1id = selectParent(fitVals, rfit);
@@ -130,6 +132,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    continue;
 	}
 
+	GenomeP p1, p2;
 	// Make sure p1 is dominant parent
 	if (fitVals[p1id] > fitVals[p2id]) {
 	    p1 = population[p1id];
@@ -139,26 +142,36 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    p1 = population[p2id];
 	}
 
-	Genome *child = p1->mate(p2, IS);
+	GenomeP child = p1->mate(p2, IS);
 
 	child->mutate();
-	
+
 	nextGen.push_back(child);
 
 	#ifdef _DEBUG_PRINT
 	    cout<<endl;
 	#endif
     }
+    
+    #ifdef _DEBUG_PRINT
+	cout<<"Next generation has population "<<nextGen.size()<<endl;
+    #endif
 
     //Don't need memory used by previous generation, so delete those genomes
     // and copy next generation to current.
     // Don't delete the champion, because that pointer is just copied
     // to the next generation.
-    for (int i = 0; i<P->popSize; ++i) {
-	if (i != maxFitI)
-	    delete population[i];
-    }
-    copy(nextGen.begin(), nextGen.end(), population.begin());
+    //for (int i = 0; i<P->popSize; ++i) {
+    //	if (i != maxFitI)
+    //	    delete population[i];
+    //}
+    
+    //population.clear();
+    //population.resize(P->popSize);
+    
+    //copy(nextGen.begin(), nextGen.end(), population.begin());
+    
+    population.swap(nextGen);
 
     ++generation;
 

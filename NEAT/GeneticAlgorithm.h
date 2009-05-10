@@ -6,9 +6,9 @@
 
 using namespace std;
 
-//#include "Genome.h"
-class Genome;
-class InnovationStore;
+#include "Genome.h"
+//class Genome;
+//class InnovationStore;
 
 /**
  * Paramters for running genetic algorithm experiment.  
@@ -68,7 +68,7 @@ class GeneticAlgorithm {
 
 	void printPopulation() const;
 
-	Genome* bestIndiv() const {
+	GenomeP bestIndiv() const {
 	    return population[maxFitI];
 	}
 
@@ -81,7 +81,7 @@ class GeneticAlgorithm {
 
 	int selectParent(const vector<double> &fitVals, double rfit);
 
-	vector<Genome *> population;
+	vector<GenomeP> population;
 
 	int maxFitI;
 
