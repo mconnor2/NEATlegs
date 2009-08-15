@@ -141,8 +141,11 @@ int main (int argc, char **argv) {
     P.weightPerturbNormal  = 0.6;
     P.weightPerturbUniform = 0.39;
     
-    P.addLinkMutationRate = 0.02;
-    P.addNodeMutationRate = 0.02;
+    P.addLinkMutationRate = 0.01;
+    P.addNodeMutationRate = 0.01;
+    
+    P.compatGDiff = 1.0;
+    P.compatWDiff = 0.4;
     
     xorTest fit(30);
 

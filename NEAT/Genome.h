@@ -30,6 +30,8 @@ class Genome {
 
 	void mutate();
 
+	double compat(const GenomeP &g2);
+
 	Network *createNewNetwork() const;
 
 	void printDescription(const char *prefix = "") const;

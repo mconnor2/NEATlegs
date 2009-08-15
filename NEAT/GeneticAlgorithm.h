@@ -42,12 +42,24 @@ struct ExpParameters {
 					// a link added
     double addNodeMutationRate;		//Percent of matings that will have
 					// a new node and two links added
+
+    double compatGDiff;			//How much gene difference is
+					//weighted for compatability
+    double compatWDiff;			//How much link weight difference is
+					//weighed for compatability
 };
 
 //class FitnessFunction : public unary_function<const Genome*, double> {
 //    public:
 //	virtual double operator()(const Genome *g) = 0;
 //};
+
+struct Specie {
+    int nMembers;
+    vector<GenomeP> members;
+
+    GenomeP representative () = {return members[0];}
+};
 
 /**
  * NEAT Genetic Algorithm

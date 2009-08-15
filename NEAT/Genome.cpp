@@ -6,6 +6,10 @@
 
 #include <iostream>
 #include <set>
+#include <algorithm>
+#include <boost/lambda.hpp>
+
+using namespace boost::lambda;
 
 /** 
  * Create default link setup based on number of inputs and outputs.
@@ -308,8 +312,14 @@ GenomeP Genome::mate(const GenomeP &parent2, InnovationStore *IS) const {
 	#endif
 	
 	++i;
+
     }
 
+    //XXX May have to sort childLinks because innovation store adds innovation
+    //    IDs out of order, possibly?  If erasing IS every generation, then
+    //    only the added links from mutation are a problem, otherwise new
+    //    innovation numbers can come from anywhere.
+    stable_sort(childLinks,childLinks + nChildLinks, _1.innov < _2.innov);
     
     //return new Genome(childLinks, nChildLinks, nChildNodes, P);
     GenomeP child(new Genome(childLinks, nChildLinks, nChildNodes, P));
@@ -378,6 +388,41 @@ void Genome::mutate() {
 	    #endif
 	}
     }
+}
+
+/**
+ * Find compatability between two genomes, a rough measure of distance
+ *  of one individual from another, just looking at genes.
+ *
+ * Compatability is weighted sum of #mismatching genes and weight difference
+ *  for matching genes.
+ */
+double Genome::compat(const GenomeP &g2) {
+    int gDiff = 0;
+    double wDiff = 0.0;
+
+    int p1i = 0, p2i = 0;
+    while (p1i < nLinks or p2i < g2->nLinks) {
+	if (p1i >= nLinks) {
+	    gDiff++;
+	    p2i++;
+	} else if (p2i >= g2->nLinks) {
+	    gDiff++;
+	    p1i++;
+	} else if (links[p1i].innov < g2->links[p2i].innov) {
+	    gDiff++;
+	    p1i++;
+	} else if (links[p1i].innov > g2->links[p2i].innov) {
+	    gDiff++;
+	    p2i++;
+	} else { //innov equal
+	    wDiff += fabs(links[p1i].weight - g2->links[p2i].weight);
+	    p1i++;
+	    p2i++;
+	}
+    }
+    
+    return (P->compatGDiff * gDiff + P->compatWdiff * wDiff);
 }
 
 Network *Genome::createNewNetwork() const {
