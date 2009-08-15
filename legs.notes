@@ -275,4 +275,63 @@ Ahh, experimenting with xor I think I have found a parameter that seemed to be c
 
 I still don't have proper debugging output to inspect the actual structure of the NEAT solutions to xor, although I am reasonably confident that they are correct.  I should add an additional output that tests the classifier for a looser more correct xor test, setting some threshold and seeing if the binary values are correct... pretty sure a correct network will solve it in very few generations.
 
+04/05/09
+
+NEAT does solve xor reasonably quickly, and I bet I could do some parameter tuning to improve that further.  It would be easy to do this in a fairly general way if I do better command line parsing for experiment parameters:
+
+I should load experiment parameters:
+    -From command line (pass argv, argc to exp Parameters)
+    -From a file (read file on command line, pass to expParameter)
+
+I bet I can do one or both pretty nicely, but the question is if I care at the moment...
+
+I want to do speciation first.  Lets summarize the speciation procedure, what is necessary to implement and how to implement:
+
+Necessary procedures:
+    -Compatability distance between two genomes:
+	linear combination of number of excess genes, disjoint genes, and difference in weight of shared genes.
+	*Not sure I agree with the difference of definition of excess and disjoint, so how about we just combine them to nonmatching genes, normalized by number of total genes (in larger genome) (in his experiments first two weights are equal, so they might as well be summed)
+
+    -Given compatability threshold, find first species cluster where compatability between representative and genome is less than this threshold
+	-If no species matches, form new species
+
+    -Individual fitness now shared, so divide by size of the species it is in
+    (thus large species naturally shrink)
+    
+    -Selecting for mating:
+	Given some interspecies mating parameter p, with probability 1-p mate
+	for a genome will come from its own species, otherwise from outside.
+    
+New parameters:
+    -compatability distance weights, cG and cW (gene diff weight, weight difference weight) (suggested defaults, 1.0 and 0.4)
+    -compatability threshold (suggested default, 3.0)
+    -interspecies mating parameter p
+
+New structures:
+    -List of species
+	*Each species has:
+	 -a list of pointers to its members
+	 -representative member (first member in list?)
+	 -total fitness of members
+
+** As I start to store multiple pointers to each genome, I should make it a shared_ptr (which is almost always the best procedure anyway).
+
+07/19/09
+
+I guess its my three month check in... Let us see what trivial accomplishment I can do today.
+
+Speciation.. where should that go...
+
+Compatability should be part of Genome implementation, so put that there (either static function taking in two genomes, or genome.compat(other)... 
+
+Oooh, this would have been a subtle issue, but are the innovation numbers guaranteed to be ascending in the links list for the genome?  I think it depends on how I use the innovation store, but might as well sort them anyway to defeat this and not be too clever from the start. 
+
+Now I'm going to need species, which is a simple structure, but what are necessary operators:
+
+Generating next generation:
+    Find fitness function of all population, 
+	-Go by species of last generation, finding sum of that species
+	 fitness
+    
+
 
