@@ -7,7 +7,7 @@
 #include <iostream>
 #include <set>
 #include <algorithm>
-#include <boost/lambda.hpp>
+#include <boost/lambda/lambda.hpp>
 
 using namespace boost::lambda;
 
@@ -319,7 +319,7 @@ GenomeP Genome::mate(const GenomeP &parent2, InnovationStore *IS) const {
     //    IDs out of order, possibly?  If erasing IS every generation, then
     //    only the added links from mutation are a problem, otherwise new
     //    innovation numbers can come from anywhere.
-    stable_sort(childLinks,childLinks + nChildLinks, _1.innov < _2.innov);
+    stable_sort(childLinks,childLinks + nChildLinks);
     
     //return new Genome(childLinks, nChildLinks, nChildNodes, P);
     GenomeP child(new Genome(childLinks, nChildLinks, nChildNodes, P));
@@ -422,7 +422,7 @@ double Genome::compat(const GenomeP &g2) {
 	}
     }
     
-    return (P->compatGDiff * gDiff + P->compatWdiff * wDiff);
+    return (P->compatGDiff * gDiff + P->compatWDiff * wDiff);
 }
 
 Network *Genome::createNewNetwork() const {

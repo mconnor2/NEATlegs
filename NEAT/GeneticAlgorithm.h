@@ -58,7 +58,7 @@ struct Specie {
     int nMembers;
     vector<GenomeP> members;
 
-    GenomeP representative () = {return members[0];}
+    GenomeP representative () {return members[0];}
 };
 
 /**

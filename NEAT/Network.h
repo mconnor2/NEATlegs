@@ -60,6 +60,11 @@ struct Link {
     void copy (const Link &l1, const Link &l2, const double enableRate);
 
     void printLink();
+
+    //For sorting links, go by innovation number
+    bool operator< (const Link &l2) const {
+	return innov < l2.innov;
+    }
 };
 
 class Network {
