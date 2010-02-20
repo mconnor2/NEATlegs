@@ -36,12 +36,19 @@ class Genome {
 
 	void printDescription(const char *prefix = "") const;
 
+	const int getSpecie() const {return specie;}
+	
+	//Individual Genome will store current fitness.
+	double fitness;
+
 	//void save(file)
 	//void load(file)
     private:
 	Link* links;
 	int nLinks;
 	int nNodes;
+
+	int specie;
 
 	ExpParameters *P;
 };
