@@ -8,7 +8,7 @@
 #include "InnovationStore.h"
 #include "random.h"
 
-typedef vector<GenomeP>::iterator population_iterator;
+#include <boost/mem_fn.hpp>
 
 /**
  * Initialize the population of genomes using the appropriate parameters
@@ -21,6 +21,8 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
     for (int i = 0; i<P->popSize; ++i) {
 	GenomeP g(new Genome(P));
 	population.push_back(g);
+	
+	speciate(g, species);
     }
     generation = 0;
 
@@ -33,7 +35,7 @@ template <class FitnessFunction>
 GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
     //Must clean up the population of genomes
     /*
-    for (population_iterator i = population.begin();
+    for (genomeVec_it i = population.begin();
 	 i != population.end(); ++i) 
     {
 	delete (*i);
@@ -43,7 +45,27 @@ GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
     delete IS;
 }
 
-
+template <class FitnessFunction>
+int GeneticAlgorithm<FitnessFunction>::speciate(const GenomeP& g, 
+						specieVec &sv) 
+{
+    int s = 0;
+    for (; s<sv.size(); ++s) {
+	if (g->compat(sv[s]->representative()) < P->compatThresh) {
+	    g->specie = s;
+	    sv[s]->addMember(g);
+	    break;
+	}
+    }
+    if (s == sv.size()) {
+	//No compatable species found, add one
+	SpecieP ns(new Specie());
+	sv.push_back(ns);
+	sv[s]->addMember(g);
+    }
+    return s;
+}
+    
 /**
  * Run one iteration of genetic algorithm, creating new generation and
  *  deleting previous.
@@ -64,20 +86,23 @@ GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
 template <class FitnessFunction>
 double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
-    //First find the fitness for all members of current generation
-    vector<double> fitVals(P->popSize, 0);
+    //Just for fun, lets use for_each to find the fitness for
+    // each individual, storing them in individual genome
+    for_each(population.begin(), population.end(), *fitnessF);
 
-    //Just for fun, lets use transform to find the fitness for
-    // each individual, and fill the fitVals 
-    transform(population.begin(), population.end(),
-	      fitVals.begin(), *fitnessF);
-
+    //Sum fitness of each species, and divide individuals by size of group
+    for_each(species.begin(), species.end(), 
+	     boost::mem_fn(&Specie::calculateFitness));
+    
+    //Since each individual's fitness is divided by size of the group
+    // then sum of total fitness should be same as sum of the species average
+    // fitness
     double maxFit = -1e20, sumFit = 0;
     maxFitI = -1;
     for (int i = 0; i<P->popSize; ++i) {
-	sumFit += fitVals[i];
-	if (fitVals[i] > maxFit) {
-	    maxFit = fitVals[i];
+	sumFit += population[i]->fitness;
+	if (population[i]->fitness > maxFit) {
+	    maxFit = population[i]->fitness;
 	    maxFitI = i;
 	}
     }
@@ -95,51 +120,60 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	<<": Max fitness = "<<maxFit
 	<<", mean fitness = "<<avgFit<<endl;
 
-    vector<GenomeP> nextGen;
+    genomeVec nextGen;
     nextGen.reserve(P->popSize);
+
+    specieVec nextGenSpecies;
+    nextGenSpecies.reserve(species.size());
 
     IS->newGeneration();
 
-    //Save champion for next generation
-    nextGen.push_back(population[maxFitI]);
-   
+    int nextGenPop = 0;
+
+    //Save champions for next generation
+    // stay representative member for next gen species
+    //nextGen.push_back(population[maxFitI]);
+    for (int s = 0; s<species.size(); s++) {
+	nextGen.push_back(species[s]->representative());
+
+	nextGenSpecies.push_back(SpecieP(new Specie()));
+	nextGenSpecies[s]->addMember(species[s]->representative());
+	
+	nextGenPop++;
+    }
+    
     cout<<"Max fit network:"<<endl;
     population[maxFitI]->printDescription("  ");
     cout<<endl;
 
+    cout<<"#Species "<<species.size()<<endl;
+
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
-    for (int i = 0; i<P->popSize-1; ++i) {
-	int p1id = -1, p2id = -1;
+    for (; nextGenPop<P->popSize; ++nextGenPop) {
+	GenomeP p1, p2;
 	//Choose first parent:
 	double rfit = sumFit * rand_double();
-	p1id = selectParent(fitVals, rfit);
+	p1 = selectParent(population, rfit);
 	
 	rfit = sumFit * rand_double();
-	p2id = selectParent(fitVals, rfit);
+	p2 = selectParent(population, rfit);
 
-	#ifdef _DEBUG_PRINT
-	    cout<<"  Creating child "<<i<<endl;
-	    cout<<"    Parents p1: "<<p1id<<", fit="<<fitVals[p1id]<<", "
-		<<"p2: "<<p2id<<", fit="<<fitVals[p2id]<<endl;
-	#endif
-
-	if (p1id < 0 or p2id < 0 or 
-	    p1id >= P->popSize or p2id >= P->popSize) {
-	    cerr<<"Something wrong with selection of parents..."
-		<<" p1 = "<<p1id<<" p2 = "<<p2id<<endl;;
-	    i--;
+	if (p1 == NULL or p2 == NULL) {
+	    cerr<<"Something wrong with selection of parents..."<<endl;
+	    --nextGenPop;
 	    continue;
 	}
 
-	GenomeP p1, p2;
+	#ifdef _DEBUG_PRINT
+	    cout<<"  Creating child "<<i<<endl;
+	    cout<<"    Parents p1: fit="<<p1->fitness<<", "
+		<<"p2: fit="<<p2->fitness<<endl;
+	#endif
+
 	// Make sure p1 is dominant parent
-	if (fitVals[p1id] > fitVals[p2id]) {
-	    p1 = population[p1id];
-	    p2 = population[p2id];
-	} else {
-	    p2 = population[p1id];
-	    p1 = population[p2id];
+	if (p1->fitness < p2->fitness) {
+	    p1.swap(p2);
 	}
 
 	GenomeP child = p1->mate(p2, IS);
@@ -147,6 +181,9 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	child->mutate();
 
 	nextGen.push_back(child);
+
+	//Find the specie this child belongs to.
+	speciate(child, nextGenSpecies);
 
 	#ifdef _DEBUG_PRINT
 	    cout<<endl;
@@ -173,22 +210,24 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     
     population.swap(nextGen);
 
+    species.swap(nextGenSpecies);
+
     ++generation;
 
     return maxFit;
 }
 
 template <class FitnessFunction>
-inline int GeneticAlgorithm<FitnessFunction>::selectParent
-	(const vector<double> &fitVals, double rfit)
+inline GenomeP GeneticAlgorithm<FitnessFunction>::selectParent
+	(const genomeVec &pop, double rfit)
 {
-    for (int p = 0; p < P->popSize; ++p) {
-	if (rfit < fitVals[p]) {
-	    return p;
+    for (genome_cit pi = pop.begin(); pi != pop.end(); ++pi) {
+	if (rfit < (*pi)->fitness) {
+	    return *pi;
 	}
-	rfit -= fitVals[p];
+	rfit -= (*pi)->fitness;
     }
-    return -1;
+    return GenomeP();
 }
 
 template <class FitnessFunction>

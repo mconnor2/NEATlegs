@@ -58,7 +58,7 @@ class xorTest : public unary_function<const GenomeP, double> {
 
 	    //Now return #Rounds - sqDiff, so a perfect xor will have
 	    // 0 sqDiff, and hence largest fitness (#Rounds).
-	    return (Rounds-sqDiff);
+	    return (g->fitness = (Rounds-sqDiff));
 	}
   
 	//Now run XOR, but this time instead of returning distance from
@@ -146,6 +146,8 @@ int main (int argc, char **argv) {
     
     P.compatGDiff = 1.0;
     P.compatWDiff = 0.4;
+    
+    P.compatThresh = 2;
     
     xorTest fit(30);
 

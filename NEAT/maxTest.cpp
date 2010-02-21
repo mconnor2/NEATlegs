@@ -23,7 +23,7 @@ class maxOutputTest : public unary_function<const GenomeP, double> {
 
 	    N->run(input, output);
 
-	    return (output[0]);
+	    return (g->fitness = output[0]);
 	}
 };
 
@@ -51,7 +51,7 @@ int main (int argc, char **argv) {
     
     P.addLinkMutationRate = 0.1;
     P.addNodeMutationRate = 0.1;
-    
+   
     maxOutputTest fit;
 
     GeneticAlgorithm<maxOutputTest> *GA = 

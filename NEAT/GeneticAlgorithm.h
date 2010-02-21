@@ -3,12 +3,14 @@
 
 #include <functional>
 #include <vector>
+#include <boost/shared_ptr.hpp>
 
 using namespace std;
 
 #include "Genome.h"
 //class Genome;
 //class InnovationStore;
+
 
 /**
  * Paramters for running genetic algorithm experiment.  
@@ -47,6 +49,9 @@ struct ExpParameters {
 					//weighted for compatability
     double compatWDiff;			//How much link weight difference is
 					//weighed for compatability
+    
+    double compatThresh;		//Compatability threshold for members
+					// of the same specie
 };
 
 //class FitnessFunction : public unary_function<const Genome*, double> {
@@ -54,12 +59,44 @@ struct ExpParameters {
 //	virtual double operator()(const Genome *g) = 0;
 //};
 
+typedef vector<GenomeP> genomeVec;
+typedef genomeVec::iterator genome_it;
+typedef genomeVec::const_iterator genome_cit;
+
 struct Specie {
     int nMembers;
-    vector<GenomeP> members;
+    double fitness;	//Average fitness of its members
+    genomeVec members;
+
+    Specie() : nMembers(0), fitness(-1) {}
 
     GenomeP representative () const {return members[0];}
+    
+    void addMember(const GenomeP &m) {
+	members.push_back(m);
+	nMembers++;
+    };
+
+    double calculateFitness() {
+	fitness = 0;
+	GenomeP maxFit = members[0];
+	for (genome_it pi = members.begin(); pi != members.end(); ++pi) {
+	    (*pi)->fitness /= nMembers;
+	    fitness += (*pi)->fitness;
+
+	    if ((*pi)->fitness > maxFit->fitness) {
+		maxFit = *pi;
+	    }
+	}
+
+	//Make sure the representative member is the most fit
+	members[0].swap(maxFit);
+    }
 };
+
+typedef boost::shared_ptr<Specie> SpecieP;
+typedef vector<SpecieP> specieVec;
+
 
 /**
  * NEAT Genetic Algorithm
@@ -91,14 +128,17 @@ class GeneticAlgorithm {
 	
 	InnovationStore *IS;
 
-	int selectParent(const vector<double> &fitVals, double rfit);
+	GenomeP selectParent(const genomeVec &pop, double rfit);
+	
+        int speciate(const GenomeP& g, specieVec &sv);
 
-	vector<GenomeP> population;
+	genomeVec population;
+
+	specieVec species;
 
 	int maxFitI;
 
 };
-
 
 #include "GeneticAlgorithm.cpp"
 
