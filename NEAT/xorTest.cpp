@@ -147,8 +147,9 @@ int main (int argc, char **argv) {
     P.compatGDiff = 1.0;
     P.compatWDiff = 0.4;
     
-    P.compatThresh = 2;
-    
+    P.compatThresh = 4;
+    P.specieMate = 0.85;
+
     xorTest fit(30);
 
     GeneticAlgorithm<xorTest> *GA = 

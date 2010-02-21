@@ -90,13 +90,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     // each individual, storing them in individual genome
     for_each(population.begin(), population.end(), *fitnessF);
 
-    //Sum fitness of each species, and divide individuals by size of group
-    for_each(species.begin(), species.end(), 
-	     boost::mem_fn(&Specie::calculateFitness));
-    
-    //Since each individual's fitness is divided by size of the group
-    // then sum of total fitness should be same as sum of the species average
-    // fitness
+    //Find true mean and max fitness of population, ignoring species size
     double maxFit = -1e20, sumFit = 0;
     maxFitI = -1;
     for (int i = 0; i<P->popSize; ++i) {
@@ -107,6 +101,18 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	}
     }
     double avgFit = sumFit / (double)P->popSize;
+    
+    //Sum fitness of each species, and divide individuals by size of group
+    for_each(species.begin(), species.end(), 
+	     boost::mem_fn(&Specie::calculateFitness));
+   
+    //Since each individual's fitness is divided by size of the group
+    // then sum of total fitness should be same as sum of the species average
+    // fitness
+    sumFit = 0;
+    for (int i = 0; i<P->popSize; ++i)
+	sumFit += population[i]->fitness;
+    
 
     #ifdef _DEBUG_PRINT
 	cout<<"Fitness values: ";
@@ -152,13 +158,32 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     // distribution of fitness.
     for (; nextGenPop<P->popSize; ++nextGenPop) {
 	GenomeP p1, p2;
-	//Choose first parent:
-	double rfit = sumFit * rand_double();
-	p1 = selectParent(population, rfit);
-	
-	rfit = sumFit * rand_double();
-	p2 = selectParent(population, rfit);
+	if (rand_double() < P->specieMate) {
+	    //Select Species based on average fitness
+	    double rfit = sumFit * rand_double();
+	    SpecieP sp = selectParent(species, rfit);
 
+	    if (sp == NULL) {
+		cerr<<"Something wrong with specie selection..."<<endl;
+		--nextGenPop;
+		continue;
+	    }
+
+	    //Now choose both parents from this species
+	    rfit = sp->fitness * rand_double();
+	    p1 = selectParent(sp->members, rfit);
+	
+	    rfit = sp->fitness * rand_double();
+	    p2 = selectParent(sp->members, rfit);
+	} else {
+	    //Interspecies mating, go over entire population
+	    // although each members fitness scaled by species size
+	    double rfit = sumFit * rand_double();
+	    p1 = selectParent(population, rfit);
+	
+	    rfit = sumFit * rand_double();
+	    p2 = selectParent(population, rfit);
+	}
 	if (p1 == NULL or p2 == NULL) {
 	    cerr<<"Something wrong with selection of parents..."<<endl;
 	    --nextGenPop;
@@ -216,18 +241,21 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
     return maxFit;
 }
-
-template <class FitnessFunction>
-inline GenomeP GeneticAlgorithm<FitnessFunction>::selectParent
-	(const genomeVec &pop, double rfit)
+	
+template<class FitnessFunction> template<class FitnessStore>
+FitnessStore GeneticAlgorithm<FitnessFunction>::
+    selectParent(const vector<FitnessStore> &pop, double rfit)
 {
-    for (genome_cit pi = pop.begin(); pi != pop.end(); ++pi) {
-	if (rfit < (*pi)->fitness) {
+    typedef vector<FitnessStore> fitVec;
+    for (typename fitVec::const_iterator pi = pop.begin(); 
+	 pi != pop.end(); ++pi) 
+    {
+	if (rfit < (*pi)->fitness) 
 	    return *pi;
-	}
+	
 	rfit -= (*pi)->fitness;
     }
-    return GenomeP();
+    return FitnessStore();
 }
 
 template <class FitnessFunction>

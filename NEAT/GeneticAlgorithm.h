@@ -52,6 +52,9 @@ struct ExpParameters {
     
     double compatThresh;		//Compatability threshold for members
 					// of the same specie
+
+    double specieMate;			//Number of children whose parents
+					// are selected from one specie
 };
 
 //class FitnessFunction : public unary_function<const Genome*, double> {
@@ -128,9 +131,10 @@ class GeneticAlgorithm {
 	
 	InnovationStore *IS;
 
-	GenomeP selectParent(const genomeVec &pop, double rfit);
-	
-        int speciate(const GenomeP& g, specieVec &sv);
+	template<class FitnessStore>
+	FitnessStore selectParent(const vector<FitnessStore> &pop, double rfit);
+        
+	int speciate(const GenomeP& g, specieVec &sv);
 
 	genomeVec population;
 
