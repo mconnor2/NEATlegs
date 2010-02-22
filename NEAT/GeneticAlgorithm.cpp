@@ -106,6 +106,8 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     for_each(species.begin(), species.end(), 
 	     boost::mem_fn(&Specie::calculateFitness));
    
+    print_statistics(generation,maxFit,avgFit);
+
     //Since each individual's fitness is divided by size of the group
     // then sum of total fitness should be same as sum of the species average
     // fitness
@@ -241,7 +243,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
     return maxFit;
 }
-	
+
 template<class FitnessFunction> template<class FitnessStore>
 FitnessStore GeneticAlgorithm<FitnessFunction>::
     selectParent(const vector<FitnessStore> &pop, double rfit)
@@ -266,3 +268,22 @@ void GeneticAlgorithm<FitnessFunction>::printPopulation() const {
 	population[i]->printDescription("  ");
     }
 }
+
+template<class FitnessFunction> 
+void GeneticAlgorithm<FitnessFunction>::
+    print_statistics(int gen, double maxFit, double meanFit)
+{
+    //Print out overall fitness statistics of current gen
+    cerr<<gen<<"\t"<<meanFit<<"\t"<<maxFit;
+
+    //Print out number of species, and for each species give stats
+    cerr<<"\t"<<species.size();
+    for (int i = 0; i<species.size(); ++i) {
+	//For each species print number of members, mean fitness, max fitness
+	cerr<<"\t"<<species[i]->members.size()
+	    <<"\t"<<species[i]->fitness
+	    <<"\t"<<species[i]->maxFitness();
+    }
+    cerr<<endl;
+}
+	

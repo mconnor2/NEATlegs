@@ -80,6 +80,11 @@ struct Specie {
 	nMembers++;
     };
 
+    double maxFitness() {
+	//Representative is the most fit individual, per generation
+	return members[0]->fitness;
+    }
+
     double calculateFitness() {
 	fitness = 0;
 	GenomeP maxFit = members[0];
@@ -135,6 +140,8 @@ class GeneticAlgorithm {
 	FitnessStore selectParent(const vector<FitnessStore> &pop, double rfit);
         
 	int speciate(const GenomeP& g, specieVec &sv);
+
+	void print_statistics(int gen, double maxFit, double meanFit);
 
 	genomeVec population;
 
