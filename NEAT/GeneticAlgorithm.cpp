@@ -9,6 +9,7 @@
 #include "random.h"
 
 #include <boost/mem_fn.hpp>
+#include <boost/bind.hpp>
 
 /**
  * Initialize the population of genomes using the appropriate parameters
@@ -100,16 +101,20 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     //Sum fitness of each species, and divide individuals by size of group
     for_each(species.begin(), species.end(), 
 	     boost::mem_fn(&Specie::calculateFitness));
-   
-    print_statistics(generation,maxFit,avgFit);
 
     //Since each individual's fitness is divided by size of the group
     // then sum of total fitness should be same as sum of the species average
     // fitness
+    //XXX May be (slightly?) faster to sum over fewer species than entire
+    //    population.  Sum should be the same
     sumFit = 0;
     for (int i = 0; i<P->popSize; ++i)
 	sumFit += population[i]->fitness;
     
+    species.remove_if(boost::bind(&Specie::cull, _1, 
+				  P->oldAge, boost::ref(sumFit)));
+
+    print_statistics(generation,maxFit,avgFit);
 
     #ifdef _DEBUG_PRINT
 	cout<<"Fitness values: ";
