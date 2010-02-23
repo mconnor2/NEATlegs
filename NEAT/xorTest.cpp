@@ -27,7 +27,7 @@ class xorTest : public unary_function<const GenomeP, double> {
 
 	}
 
-	double operator()(const GenomeP &g) {
+	double operator()(const GenomeP &g) const {
 	    auto_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};
@@ -64,7 +64,7 @@ class xorTest : public unary_function<const GenomeP, double> {
 	//Now run XOR, but this time instead of returning distance from
 	// correct, use 0-1 error where we threshold classification at 
 	// 0.5
-	int testError(const GenomeP &g) {
+	int testError(const GenomeP &g) const {
 	    auto_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};
@@ -126,7 +126,7 @@ int main (int argc, char **argv) {
     ExpParameters P;
     //Setup experiment parameters:
     // Keep population small so we can watch the results at first.
-    P.popSize = 100;
+    P.popSize = 1000;
     
     // Given vector (1,1,1) want to see largest combination weights:
     P.nInput = 3; P.nOutput = 1;
@@ -137,18 +137,18 @@ int main (int argc, char **argv) {
     P.linkEnabledRate = 0.1;
 
     P.weightMutationRate   = 0.2;
-    P.weightPerturbScale   = 0.01;
+    P.weightPerturbScale   = 0.1;
     P.weightPerturbNormal  = 0.6;
     P.weightPerturbUniform = 0.39;
     
-    P.addLinkMutationRate = 0.005;
-    P.addNodeMutationRate = 0.005;
+    P.addLinkMutationRate = 0.3;
+    P.addNodeMutationRate = 0.01;
     
     P.compatGDiff = 1.0;
     P.compatWDiff = 0.4;
     
-    P.compatThresh = 4;
-    P.specieMate = 0.85;
+    P.compatThresh = 3;
+    P.specieMate = 0.99;
 
     xorTest fit(30);
 

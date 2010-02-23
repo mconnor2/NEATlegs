@@ -27,8 +27,6 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
     generation = 0;
 
     IS = new InnovationStore(P);
-    
-    maxFitI = -1;
 }
 
 template <class FitnessFunction>
@@ -92,12 +90,11 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
     //Find true mean and max fitness of population, ignoring species size
     double maxFit = -1e20, sumFit = 0;
-    maxFitI = -1;
     for (int i = 0; i<P->popSize; ++i) {
 	sumFit += population[i]->fitness;
 	if (population[i]->fitness > maxFit) {
 	    maxFit = population[i]->fitness;
-	    maxFitI = i;
+	    maxFitI = population[i];
 	}
     }
     double avgFit = sumFit / (double)P->popSize;
@@ -151,7 +148,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     }
     
     cout<<"Max fit network:"<<endl;
-    population[maxFitI]->printDescription("  ");
+    maxFitI->printDescription("  ");
     cout<<endl;
 
     cout<<"#Species "<<species.size()<<endl;
@@ -271,7 +268,7 @@ void GeneticAlgorithm<FitnessFunction>::printPopulation() const {
 
 template<class FitnessFunction> 
 void GeneticAlgorithm<FitnessFunction>::
-    print_statistics(int gen, double maxFit, double meanFit)
+    print_statistics(int gen, double maxFit, double meanFit) const
 {
     //Print out overall fitness statistics of current gen
     cerr<<gen<<"\t"<<meanFit<<"\t"<<maxFit;

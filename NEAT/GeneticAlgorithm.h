@@ -126,7 +126,7 @@ class GeneticAlgorithm {
 	void printPopulation() const;
 
 	GenomeP bestIndiv() const {
-	    return population[maxFitI];
+	    return maxFitI;
 	}
 
     private:
@@ -141,13 +141,13 @@ class GeneticAlgorithm {
         
 	int speciate(const GenomeP& g, specieVec &sv);
 
-	void print_statistics(int gen, double maxFit, double meanFit);
+	void print_statistics(int gen, double maxFit, double meanFit) const;
 
 	genomeVec population;
 
 	specieVec species;
 
-	int maxFitI;
+	GenomeP maxFitI;
 
 };
 
