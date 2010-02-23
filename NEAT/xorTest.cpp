@@ -126,7 +126,7 @@ int main (int argc, char **argv) {
     ExpParameters P;
     //Setup experiment parameters:
     // Keep population small so we can watch the results at first.
-    P.popSize = 1000;
+    P.popSize = 100;
     
     // Given vector (1,1,1) want to see largest combination weights:
     P.nInput = 3; P.nOutput = 1;
@@ -150,10 +150,11 @@ int main (int argc, char **argv) {
     P.compatThresh = 3;
     P.specieMate = 0.99;
 
+    P.oldAge = 5;
+
     xorTest fit(30);
 
-    GeneticAlgorithm<xorTest> *GA = 
-	new GeneticAlgorithm<xorTest>(&P, &fit);
+    GeneticAlgorithm<xorTest> GA(&P, &fit);
 
     double maxFit = -1e9, curMaxFit = 0;
     
@@ -165,14 +166,14 @@ int main (int argc, char **argv) {
 	// can't just memorize pattern
 	fit.regenerate();
 
-	curMaxFit = GA->nextGeneration();
+	curMaxFit = GA.nextGeneration();
 	if (curMaxFit > maxFit) maxFit = curMaxFit;
-	int error = fit.testError(GA->bestIndiv());
+	int error = fit.testError(GA.bestIndiv());
 	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit
 	    <<", test error = "<<error<<endl;
 	cout<<"========================================================="<<endl;
 	//cout<<"Generation "<<gen+1<<endl;
-	//GA->printPopulation();
+	//GA.printPopulation();
 	
 	if (error == 0) break;
     }

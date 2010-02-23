@@ -158,7 +158,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
-    for (; nextGenPop<P->popSize; ++nextGenPop) {
+    while (nextGenPop<P->popSize) {
 	GenomeP p1, p2;
 	if (rand_double() < P->specieMate) {
 	    //Select Species based on average fitness
@@ -167,7 +167,6 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 
 	    if (sit == species.end()) {
 		cerr<<"Something wrong with specie selection..."<<endl;
-		--nextGenPop;
 		continue;
 	    }
 
@@ -182,7 +181,6 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    
 	    if (p1t == sp->members.end() or p2t == sp->members.end()) {
 		cerr<<"Something wrong with selection of parents..."<<endl;
-		--nextGenPop;
 		continue;
 	    }
 	    p1 = *p1t;
@@ -199,7 +197,6 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    
 	    if (p1t == population.begin() or p2t == population.end()) {
 		cerr<<"Something wrong with selection of parents..."<<endl;
-		--nextGenPop;
 		continue;
 	    }
 	    
@@ -227,6 +224,8 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	//Find the specie this child belongs to.
 	speciate(child, nextGenSpecies);
 
+	++nextGenPop;
+	
 	#ifdef _DEBUG_PRINT
 	    cout<<endl;
 	#endif
@@ -236,20 +235,6 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	cout<<"Next generation has population "<<nextGen.size()<<endl;
     #endif
 
-    //Don't need memory used by previous generation, so delete those genomes
-    // and copy next generation to current.
-    // Don't delete the champion, because that pointer is just copied
-    // to the next generation.
-    //for (int i = 0; i<P->popSize; ++i) {
-    //	if (i != maxFitI)
-    //	    delete population[i];
-    //}
-    
-    //population.clear();
-    //population.resize(P->popSize);
-    
-    //copy(nextGen.begin(), nextGen.end(), population.begin());
-    
     population.swap(nextGen);
 
     species.swap(nextGenSpecies);
