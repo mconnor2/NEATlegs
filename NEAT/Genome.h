@@ -5,6 +5,7 @@
 struct Link;
 class Network;
 
+#include <vector>
 #include <boost/shared_ptr.hpp>
 
 //#include "GeneticAlgorithm.h"
@@ -13,6 +14,9 @@ class Genome;
 class InnovationStore;
 
 typedef boost::shared_ptr<Genome> GenomeP;
+typedef std::vector<GenomeP> genomeVec;
+typedef genomeVec::iterator genome_it;
+typedef genomeVec::const_iterator genome_cit;
 
 /**
  * NEAT Genome: vector of Links that define a networks structure.

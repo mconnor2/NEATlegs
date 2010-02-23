@@ -9,8 +9,8 @@ BOX_LIBS = -L/home/mconnor/local/lib -lBox2D
 CXX = g++ 
 
 TARGET = xorTest
-SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp xorTest.cpp
-OBJS = random.o Network.o InnovationStore.o Genome.o xorTest.o
+SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp Sepecie.cpp xorTest.cpp
+OBJS = random.o Network.o InnovationStore.o Genome.o Specie.o xorTest.o
 
 TESTS = maxTest.cpp
 

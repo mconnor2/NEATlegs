@@ -7,7 +7,10 @@
 
 using namespace std;
 
+//Really only need these for typedefs, can put those in one header to
+// keep in one place
 #include "Genome.h"
+#include "Specie.h"
 //class Genome;
 //class InnovationStore;
 
@@ -55,55 +58,10 @@ struct ExpParameters {
 
     double specieMate;			//Number of children whose parents
 					// are selected from one specie
+
+    int oldAge;				//Age after which young species are
+					// not safe from culling
 };
-
-//class FitnessFunction : public unary_function<const Genome*, double> {
-//    public:
-//	virtual double operator()(const Genome *g) = 0;
-//};
-
-typedef vector<GenomeP> genomeVec;
-typedef genomeVec::iterator genome_it;
-typedef genomeVec::const_iterator genome_cit;
-
-struct Specie {
-    int nMembers;
-    double fitness;	//Average fitness of its members
-    genomeVec members;
-
-    Specie() : nMembers(0), fitness(-1) {}
-
-    GenomeP representative () const {return members[0];}
-    
-    void addMember(const GenomeP &m) {
-	members.push_back(m);
-	nMembers++;
-    };
-
-    double maxFitness() {
-	//Representative is the most fit individual, per generation
-	return members[0]->fitness;
-    }
-
-    double calculateFitness() {
-	fitness = 0;
-	GenomeP maxFit = members[0];
-	for (genome_it pi = members.begin(); pi != members.end(); ++pi) {
-	    (*pi)->fitness /= nMembers;
-	    fitness += (*pi)->fitness;
-
-	    if ((*pi)->fitness > maxFit->fitness) {
-		maxFit = *pi;
-	    }
-	}
-
-	//Make sure the representative member is the most fit
-	members[0].swap(maxFit);
-    }
-};
-
-typedef boost::shared_ptr<Specie> SpecieP;
-typedef vector<SpecieP> specieVec;
 
 
 /**
@@ -136,10 +94,11 @@ class GeneticAlgorithm {
 	
 	InnovationStore *IS;
 
-	template<class FitnessStore>
-	FitnessStore selectParent(const vector<FitnessStore> &pop, double rfit);
+	template<class FitnessIt>
+	FitnessIt selectParent(FitnessIt first, FitnessIt last, 
+			       double rfit);
         
-	int speciate(const GenomeP& g, specieVec &sv);
+	void speciate(const GenomeP& g, specieVec &sv);
 
 	void print_statistics(int gen, double maxFit, double meanFit) const;
 

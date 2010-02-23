@@ -44,26 +44,24 @@ GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
 }
 
 template <class FitnessFunction>
-int GeneticAlgorithm<FitnessFunction>::speciate(const GenomeP& g, 
+void GeneticAlgorithm<FitnessFunction>::speciate(const GenomeP& g, 
 						specieVec &sv) 
 {
-    int s = 0;
-    for (; s<sv.size(); ++s) {
-	if (g->compat(sv[s]->representative()) < P->compatThresh) {
-	    g->specie = s;
-	    sv[s]->addMember(g);
+    specie_it s;
+    for (s = sv.begin(); s != sv.end(); ++s) {
+	if (g->compat((*s)->representative()) < P->compatThresh) {
+	    (*s)->addMember(g);
 	    break;
 	}
     }
-    if (s == sv.size()) {
+    if (s == sv.end()) {
 	//No compatable species found, add one
 	SpecieP ns(new Specie());
 	sv.push_back(ns);
-	sv[s]->addMember(g);
+	sv.back()->addMember(g);
     }
-    return s;
 }
-    
+
 /**
  * Run one iteration of genetic algorithm, creating new generation and
  *  deleting previous.
@@ -124,12 +122,17 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     cout<<"Generation "<<generation
 	<<": Max fitness = "<<maxFit
 	<<", mean fitness = "<<avgFit<<endl;
+    
+    cout<<"Max fit network:"<<endl;
+    maxFitI->printDescription("  ");
+
+    cout<<"#Species "<<species.size()<<endl;
+    cout<<endl;
 
     genomeVec nextGen;
     nextGen.reserve(P->popSize);
 
     specieVec nextGenSpecies;
-    nextGenSpecies.reserve(species.size());
 
     IS->newGeneration();
 
@@ -138,20 +141,15 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     //Save champions for next generation
     // stay representative member for next gen species
     //nextGen.push_back(population[maxFitI]);
-    for (int s = 0; s<species.size(); s++) {
-	nextGen.push_back(species[s]->representative());
+    for (specie_it s = species.begin(); s != species.end(); s++) {
+	nextGen.push_back((*s)->representative());
 
-	nextGenSpecies.push_back(SpecieP(new Specie()));
-	nextGenSpecies[s]->addMember(species[s]->representative());
+	nextGenSpecies.push_back(SpecieP(new Specie((*s)->age + 1)));
+	nextGenSpecies.back()->addMember((*s)->representative());
 	
 	nextGenPop++;
     }
     
-    cout<<"Max fit network:"<<endl;
-    maxFitI->printDescription("  ");
-    cout<<endl;
-
-    cout<<"#Species "<<species.size()<<endl;
 
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
@@ -160,33 +158,48 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	if (rand_double() < P->specieMate) {
 	    //Select Species based on average fitness
 	    double rfit = sumFit * rand_double();
-	    SpecieP sp = selectParent(species, rfit);
+	    specie_it sit = selectParent(species.begin(), species.end(), rfit);
 
-	    if (sp == NULL) {
+	    if (sit == species.end()) {
 		cerr<<"Something wrong with specie selection..."<<endl;
 		--nextGenPop;
 		continue;
 	    }
 
 	    //Now choose both parents from this species
+	    SpecieP sp = *sit;
+	    genome_it p1t, p2t;
 	    rfit = sp->fitness * rand_double();
-	    p1 = selectParent(sp->members, rfit);
-	
+	    p1t = selectParent(sp->members.begin(), sp->members.end(), rfit);
+	    	
 	    rfit = sp->fitness * rand_double();
-	    p2 = selectParent(sp->members, rfit);
+	    p2t = selectParent(sp->members.begin(), sp->members.end(), rfit);
+	    
+	    if (p1t == sp->members.end() or p2t == sp->members.end()) {
+		cerr<<"Something wrong with selection of parents..."<<endl;
+		--nextGenPop;
+		continue;
+	    }
+	    p1 = *p1t;
+	    p2 = *p2t;
 	} else {
 	    //Interspecies mating, go over entire population
 	    // although each members fitness scaled by species size
+	    genome_it p1t, p2t;
 	    double rfit = sumFit * rand_double();
-	    p1 = selectParent(population, rfit);
+	    p1t = selectParent(population.begin(), population.end(), rfit);
 	
 	    rfit = sumFit * rand_double();
-	    p2 = selectParent(population, rfit);
-	}
-	if (p1 == NULL or p2 == NULL) {
-	    cerr<<"Something wrong with selection of parents..."<<endl;
-	    --nextGenPop;
-	    continue;
+	    p2t = selectParent(population.begin(), population.end(), rfit);
+	    
+	    if (p1t == population.begin() or p2t == population.end()) {
+		cerr<<"Something wrong with selection of parents..."<<endl;
+		--nextGenPop;
+		continue;
+	    }
+	    
+	    p1 = *p1t;
+	    p2 = *p2t;
 	}
 
 	#ifdef _DEBUG_PRINT
@@ -241,20 +254,16 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     return maxFit;
 }
 
-template<class FitnessFunction> template<class FitnessStore>
-FitnessStore GeneticAlgorithm<FitnessFunction>::
-    selectParent(const vector<FitnessStore> &pop, double rfit)
+template<class FitnessFunction> 
+template<class FitnessIt>
+FitnessIt GeneticAlgorithm<FitnessFunction>::
+    selectParent(FitnessIt first, FitnessIt last, double rfit)
 {
-    typedef vector<FitnessStore> fitVec;
-    for (typename fitVec::const_iterator pi = pop.begin(); 
-	 pi != pop.end(); ++pi) 
-    {
-	if (rfit < (*pi)->fitness) 
-	    return *pi;
-	
-	rfit -= (*pi)->fitness;
+    while (first != last && rfit > (*first)->fitness) {
+	rfit -= (*first)->fitness;
+	first++;
     }
-    return FitnessStore();
+    return first;
 }
 
 template <class FitnessFunction>
@@ -275,12 +284,8 @@ void GeneticAlgorithm<FitnessFunction>::
 
     //Print out number of species, and for each species give stats
     cerr<<"\t"<<species.size();
-    for (int i = 0; i<species.size(); ++i) {
-	//For each species print number of members, mean fitness, max fitness
-	cerr<<"\t"<<species[i]->members.size()
-	    <<"\t"<<species[i]->fitness
-	    <<"\t"<<species[i]->maxFitness();
-    }
+    for_each(species.begin(), species.end(), 
+	     boost::mem_fn(&Specie::print_statistics));
+    
     cerr<<endl;
-}
-	
+}	
