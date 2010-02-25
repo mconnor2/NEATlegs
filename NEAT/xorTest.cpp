@@ -164,7 +164,7 @@ int main (int argc, char **argv) {
     for (int gen = 0; gen < 1000; gen++) {
 	//Each generation will receive a different input, so network
 	// can't just memorize pattern
-	fit.regenerate();
+	//fit.regenerate();
 
 	curMaxFit = GA.nextGeneration();
 	if (curMaxFit > maxFit) maxFit = curMaxFit;
@@ -179,3 +179,4 @@ int main (int argc, char **argv) {
     }
     return 0;
 }
+
