@@ -13,6 +13,9 @@
 
 using namespace std;
 
+const int Width  = 640;
+const int Height = 320;
+
 /**
  * Single Pole balancing experiment.  Physics test of NEAT to evolve
  * motion controller.  Code taken from Ken Stanley's original NEAT
@@ -100,6 +103,8 @@ class poleBalance : public unary_function<const GenomeP, double> {
 		   display_cart(x,theta,screen);
 		   SDL_Flip(screen);
 
+		   HandleEvent();
+
 		   SDL_framerateDelay(&fpsm);
 	       }
 
@@ -162,9 +167,40 @@ class poleBalance : public unary_function<const GenomeP, double> {
 
 	};
 
+	/**
+	 * Draw display balance cart, 
+	 *
+	 *  Convert 640 to 320 into [-3.2 : 3.2], [0 : 3.2] for display
+	 *  purposes.
+	 */
 	void display_cart(float x, float theta, SDL_Surface *screen) {
-	
+	    const int zeroX = Width>>1;
+	    const int zeroY = Height-1;
+    
+	    int bx = x*100 + zeroX, by = zeroY;
+	    int tx = bx + sin(theta)*100;
+	    int ty = by - cos(theta)*100;
+
+	    //cout<<bx<<", "<<by<<" - "<<tx<<", "<<ty<<endl;
+
+	    lineColor(screen, bx, by, tx, ty, 0x00FF00FF);
 	};
+
+	void HandleEvent()
+	{
+	    SDL_Event event; 
+
+	    /* Check for events */
+	    while ( SDL_PollEvent(&event) ) {
+		switch (event.type) {
+		    case SDL_KEYDOWN:
+		    case SDL_QUIT:
+			exit(0);
+			break;
+		}
+	    }
+	}
+
 
 	void ClearScreen(SDL_Surface *screen)
 	{
@@ -220,8 +256,6 @@ int main (int argc, char **argv) {
 	    
 	Uint32 video_flags;
 
-	const int Width = 640;
-	const int Height = 480;
 	const int desired_bpp = 32;
 	video_flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
 
