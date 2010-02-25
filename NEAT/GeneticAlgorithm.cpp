@@ -180,7 +180,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    p2t = selectParent(sp->members.begin(), sp->members.end(), rfit);
 	    
 	    if (p1t == sp->members.end() or p2t == sp->members.end()) {
-		cerr<<"Something wrong with selection of parents..."<<endl;
+		cerr<<"Something wrong with specie selection of parents..."<<endl;
 		continue;
 	    }
 	    p1 = *p1t;
@@ -196,7 +196,7 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
 	    p2t = selectParent(population.begin(), population.end(), rfit);
 	    
 	    if (p1t == population.begin() or p2t == population.end()) {
-		cerr<<"Something wrong with selection of parents..."<<endl;
+		cerr<<"Something wrong with population selection of parents..."<<endl;
 		continue;
 	    }
 	    
