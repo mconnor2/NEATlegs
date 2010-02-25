@@ -46,8 +46,12 @@ class poleBalance : public unary_function<const GenomeP, double> {
 		 theta,			/* pole angle, radians */
 		 theta_dot;		/* pole angular velocity */
 	   int steps=0,y;
-
+	    
+	#ifdef ALLIN
 	   double in[5];  //Input loading array
+	#else
+	   double in[3];
+	#endif
 	   double out[2] = {0,0}; //Output, L or R
 
 	   double one_degree= 0.0174532;	/* 2pi/360 */
@@ -81,11 +85,18 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	       
 	       /*-- setup the input layer based on the four iputs --*/
 	       in[0]=1.0;  //Bias
+	       
+	    #ifdef ALLIN
 	       in[1]=(x + 2.4) / 4.8;;
 	       in[2]=(x_dot + .75) / 1.5;
 	       in[3]=(theta + twelve_degrees) / .41;
 	       in[4]=(theta_dot + 1.0) / 2.0;
-	      
+	    #else
+		//Just X position and angle, no velocity
+	       in[1]=(x + 2.4) / 4.8;;
+	       in[2]=(theta + twelve_degrees) / .41;
+	    #endif
+
 	       //Run input through network
 	       N->run(in, out);
 
@@ -288,7 +299,11 @@ int main (int argc, char **argv) {
     P.popSize = 100;
     
     //5 inputs, 2 outputs that fight to determine left or right
+    #ifdef ALLIN
     P.nInput = 5; P.nOutput = 2;
+    #else
+    P.nInput = 3; P.nOutput = 2;
+    #endif
 
     //Mating probabilities:
     P.inheritAllLinks = false;
