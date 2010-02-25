@@ -70,7 +70,7 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	   FPSmanager fpsm;
 
 	   if (screen) {
-	     int rate = static_cast<int>(1.0/TAU);
+	     int rate = static_cast<int>(2.0/TAU);
 	     SDL_initFramerate(&fpsm);
 	     SDL_setFramerate(&fpsm,rate);
 	   }
