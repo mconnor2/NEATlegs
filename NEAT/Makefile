@@ -8,21 +8,28 @@ BOX_LIBS = -L/home/mconnor/local/lib -lBox2D
 
 CXX = g++ 
 
-TARGET = xorTest
-SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp Sepecie.cpp xorTest.cpp
-OBJS = random.o Network.o InnovationStore.o Genome.o Specie.o xorTest.o
+TARGETS = xorTest poleBalance
+SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp Sepecie.cpp
+OBJS = random.o Network.o InnovationStore.o Genome.o Specie.o
 
 TESTS = maxTest.cpp
 
 
 .SUFFIXES: .cpp
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+xorTest: $(OBJS) xorTest.o
+	$(CXX) $(CFLAGS) -o xorTest $(OBJS) xorTest.o $(LIBS)
+
+poleBalance: $(OBJS) poleBalance.o
+	$(CXX) $(CFLAGS) -o poleBalance $(OBJS) poleBalance.o $(LIBS) $(SDL_LIBS)
+
+#$(TARGET): $(OBJS)
+#	$(CXX) $(CFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+
 clean:
 	rm -f *~ $(OBJS) $(TARGET)
 
 .cpp.o:
-	$(CXX) $(CFLAGS) $(INC) -c $*.cpp
+	$(CXX) $(CFLAGS) $(INC) $(SDL_INC) -c $*.cpp
