@@ -149,9 +149,9 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	  
 	  const float GRAVITY=9.8;
 	  const float MASSCART=1.0;
-	  const float MASSPOLE=0.1;
+	  const float MASSPOLE=0.2;
 	  const float TOTAL_MASS=(MASSPOLE + MASSCART);
-	  const float LENGTH=0.5;	  /* actually half the pole's length */
+	  const float LENGTH=1.0;	  /* actually half the pole's length */
 	  const float POLEMASS_LENGTH=(MASSPOLE * LENGTH);
 	  const float FORCE_MAG=10.0;
 	  const float FOURTHIRDS=1.3333333333333;
@@ -190,8 +190,8 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	    const int zeroY = Height-1;
     
 	    int bx = x*100 + zeroX, by = zeroY;
-	    int tx = bx + sin(theta)*100;
-	    int ty = by - cos(theta)*100;
+	    int tx = bx + sin(theta)*200;
+	    int ty = by - cos(theta)*200;
 
 	    //Give a progress bar of sorts near the top
 	    lineColor(screen, 0,0, Width*((float)steps)/MAX_STEPS,0,0xFF0000FF);
