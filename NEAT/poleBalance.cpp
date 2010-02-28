@@ -111,10 +111,10 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	       
 	       if (screen) {
 		   ClearScreen(screen);
-		   display_cart(x,theta,screen);
+		   display_cart(steps,x,theta,screen);
 		   SDL_Flip(screen);
 
-		   HandleEvent();
+		   if (HandleEvent()) break;
 
 		   SDL_framerateDelay(&fpsm);
 	       }
@@ -184,7 +184,8 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	 *  Convert 640 to 320 into [-3.2 : 3.2], [0 : 3.2] for display
 	 *  purposes.
 	 */
-	void display_cart(float x, float theta, SDL_Surface *screen) {
+	void display_cart(int steps, float x, float theta, SDL_Surface *screen)
+	{
 	    const int zeroX = Width>>1;
 	    const int zeroY = Height-1;
     
@@ -192,12 +193,22 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	    int tx = bx + sin(theta)*100;
 	    int ty = by - cos(theta)*100;
 
+	    //Give a progress bar of sorts near the top
+	    lineColor(screen, 0,0, Width*((float)steps)/MAX_STEPS,0,0xFF0000FF);
+
+	    //Display edges of the board
+	    // Center
+	    lineColor(screen, zeroX, zeroY, zeroX, zeroY-10, 0xFF0000FF);
+	    // Edges
+	    lineColor(screen, zeroX-240,zeroY, zeroX-240,zeroY-10, 0x0000FFFF);
+	    lineColor(screen, zeroX+240,zeroY, zeroX+240,zeroY-10, 0x0000FFFF);
+
 	    //cout<<bx<<", "<<by<<" - "<<tx<<", "<<ty<<endl;
 
 	    lineColor(screen, bx, by, tx, ty, 0x00FF00FF);
 	};
 
-	void HandleEvent()
+	bool HandleEvent()
 	{
 	    SDL_Event event; 
 
@@ -210,6 +221,7 @@ class poleBalance : public unary_function<const GenomeP, double> {
 			break;
 		}
 	    }
+	    return false;
 	}
 
 
@@ -326,7 +338,7 @@ int main (int argc, char **argv) {
 
     P.oldAge = 5;
 
-    poleBalance fit(100000, 0.01);
+    poleBalance fit(10000, 0.01);
     
     GeneticAlgorithm<poleBalance> GA(&P, &fit);
 
