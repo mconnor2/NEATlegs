@@ -2,7 +2,7 @@ CFLAGS = -g
 #CFLAGS += -D_DEBUG_PRINT
 #SDL_INC = -I/usr/include -I/usr/include/SDL -I/usr/local/include/SDL
 SDL_INC = `sdl-config --cflags`
-SDL_LIBS = -L/usr/lib -lSDL -lSDL_gfx -lpthread
+SDL_LIBS = -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 
 BOX_INC = -I/home/mconnor/projects/physics/Box2D_v1.4.3/Box2D/Include
 BOX_LIBS = -L/home/mconnor/local/lib -lBox2D

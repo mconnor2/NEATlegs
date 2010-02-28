@@ -10,11 +10,14 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_gfxPrimitives.h>
 #include <SDL/SDL_framerate.h>
+#include <SDL/SDL_ttf.h>
 
 using namespace std;
 
 const int Width  = 640;
 const int Height = 320;
+
+TTF_Font *fnt;
 
 /**
  * Single Pole balancing experiment.  Physics test of NEAT to evolve
@@ -38,7 +41,8 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	    MAX_STEPS(max_steps), TAU(_tau), random_start(_random_start) 
 	{ }
 
-	double operator()(const GenomeP &g, SDL_Surface *screen = NULL) {
+	double operator()(const GenomeP &g, 
+			  int Generation = 0, SDL_Surface *screen = NULL) {
 	    auto_ptr<Network> N(g->createNewNetwork());
 	
 	   float x,			/* cart position, meters */
@@ -73,10 +77,24 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	     
 	   FPSmanager fpsm;
 
+	   SDL_Surface *text_surf = NULL;
+
+	   SDL_Rect text_loc;
+	   text_loc.x = 10;
+	   text_loc.y = 10;
+
 	   if (screen) {
 	     int rate = static_cast<int>(2.0/TAU);
 	     SDL_initFramerate(&fpsm);
 	     SDL_setFramerate(&fpsm,rate);
+
+	     if (fnt) {
+		SDL_Color fgColor={255,255,255};
+
+		char num[16];
+		snprintf(num,16,"%d",Generation);
+		text_surf = TTF_RenderText_Blended(fnt,num,fgColor);
+	     }
 	   }
 	   
 	   /*--- Iterate through the action-learn loop. ---*/
@@ -110,13 +128,18 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	       cart_pole(y, &x, &x_dot, &theta, &theta_dot);
 	       
 	       if (screen) {
-		   ClearScreen(screen);
-		   display_cart(steps,x,theta,screen);
-		   SDL_Flip(screen);
+		    ClearScreen(screen);
 
-		   if (HandleEvent()) break;
+		    if (text_surf) {
+			SDL_BlitSurface(text_surf,NULL,screen,&text_loc);
+		    }
 
-		   SDL_framerateDelay(&fpsm);
+		    display_cart(steps,x,theta,screen);
+		    SDL_Flip(screen);
+
+		    if (HandleEvent()) break;
+
+		    SDL_framerateDelay(&fpsm);
 	       }
 
 	       /*--- Check for failure.  If so, return steps ---*/
@@ -124,6 +147,9 @@ class poleBalance : public unary_function<const GenomeP, double> {
 		   theta > twelve_degrees) 
 		   break;
 	     }
+
+	     if (text_surf)
+		 SDL_FreeSurface(text_surf);
 
 //	cout<<"Made it "<<steps<<" steps..."
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
@@ -244,6 +270,7 @@ class poleBalance : public unary_function<const GenomeP, double> {
 };
 
 void exitingfunc () {
+   TTF_Quit();
    SDL_Quit();
 }
 
@@ -299,6 +326,15 @@ int main (int argc, char **argv) {
 	/* Check for double buffering */
 	if ( screen->flags & SDL_DOUBLEBUF ) {
 	    printf("Double-buffering enabled - good!\n");
+	}
+
+	TTF_Init();
+
+	//Hardcode font location
+	fnt = TTF_OpenFont("ProggyClean.ttf",12);
+	if (!fnt) {
+	    printf("TTF_OpenFont: %s\n", TTF_GetError());
+	    fnt = NULL;
 	}
 
 	/* Set the window manager title bar */
@@ -358,7 +394,7 @@ int main (int argc, char **argv) {
 	cout<<"========================================================="<<endl;
 
 	if (drawGen)
-	    fit(GA.bestIndiv(), screen);
+	    fit(GA.bestIndiv(), gen, screen);
 
 	//cout<<"Generation "<<gen+1<<endl;
 	//GA.printPopulation();
