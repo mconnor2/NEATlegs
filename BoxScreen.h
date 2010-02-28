@@ -18,7 +18,7 @@ class BoxScreen {
 		   float BoxOriginX = 320.0f, float BoxOriginY = 479.0f);
 
 	void drawBody (Body *b);
-	void drawShape (const Shape *s);
+	void drawShape (const Body *b, const Shape *s);
 
 	void worldLine (const Vec2 &p1B, const Vec2 &p2B, Color c);
 

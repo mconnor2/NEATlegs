@@ -332,6 +332,54 @@ Generating next generation:
     Find fitness function of all population, 
 	-Go by species of last generation, finding sum of that species
 	 fitness
-    
+
+02/20/10
+
+Lets impliment my own idea of speciation, because its pretty hacked together as it is, so whatever I come up with through experimentation will be fine.
+
+The goal is to break the population into species based on compatability to some fixed member (first, or most fit... not sure).  Now when generating a new generation, with some probability match two members of one species, or else across species.  When doing one species, select the specie based on average fitness, other wise use the fitness of each individual divided by size of the species it is in.
+
+Procedure:
+
+-Find fitness for each individual in population
+-I should probably store species per generation
+    -For each species, put together average fitness, divide individuals by size
+-Now when selecting new parents:
+    -Each specie keeps its fittest individual
+    -With prob p select species by average fitness
+	select two parents from this species
+    -Otherwise select two parents from overall population based on
+	fitness/specie size
+    *Generate new individual
+    -With new individual check each specie and find the first that it is compatible with (the representative or most fit member)
+	*Start with parent specie, thats probably most likely
+
+
+02/22/10
+
+So I have species reasonably working, or a basic implimentation of it, 
+    -No adaptive thresholding
+    -No culling of weak or empty species
+    -etc etc, I am sure there are other improvements.
+
+What I need to do before playing with these and other parameters is to get better logging built in, so I can track what is actually going on during any one run.  Something like: max fitness, mean fitness per generation, number of species
+    -For each specie: max/min/mean fitness, #individuals, information about link structure?
+
+Is there a better way of outputting this other than just tab delimited, one line per generation?  This is easiest to graph with say gnuplot...  Can I put together a simple logging class that will store the numbers and print them in a smart way, or give options for different style of printing?
+
+Looks like I do need to kill species, a couple of them get to be only 1 member at some point.
+
+02/23/10
+
+Improvements:
+    -Kill stagnating species
+	-Let young species survive
+    -Cull weak individuals from each species?
+    -Copy over pole balancing experiments, start to play with graphics and saving networks for replay, etc.
+
+Deleting species/individuals from species
+    -Do I need to remove from overall population?
+	-is it enough to set fitness to 0 and remove from total fitness?
+	    *This should ensure it doesn't propogate
 
 

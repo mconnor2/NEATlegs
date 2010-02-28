@@ -10,46 +10,54 @@ Creature::Creature (World *w) {
 
     float height = 50.0f + (10.0-20.0*(float)rand()/(RAND_MAX+1.0f));
 
-    b2BoxDef shinBoneDef;
-    shinBoneDef.extents.Set(0.5f,3.0f);
+    b2PolygonDef shinBoneDef;
+    shinBoneDef.SetAsBox(0.5f,3.0f);
     shinBoneDef.density = 1.0f;
-    shinBoneDef.groupIndex = -1;
+    shinBoneDef.filter.groupIndex = -1;
 
     b2CircleDef footBallDef;
     footBallDef.radius = 0.5f;
     footBallDef.density = 1.0f;
     footBallDef.localPosition.Set(0.0f, -3.0f);
-    footBallDef.groupIndex = -1;
+    footBallDef.filter.groupIndex = -1;
     footBallDef.friction = 0.6f;
 
     b2BodyDef shinBone;
-    shinBone.AddShape(&shinBoneDef);
-    shinBone.AddShape(&footBallDef);
+    //shinBone.AddShape(&shinBoneDef);
+    //shinBone.AddShape(&footBallDef);
     shinBone.position.Set(0.0f, height+10.00f);
-    shinBone.rotation = 0.00;
+    shinBone.angle = 0.00;
     shinBone.angularDamping = 0.01f;
 
     Body *shin = w->createBody(&shinBone);
+    shin->CreateShape(&shinBoneDef);
+    shin->CreateShape(&footBallDef);
+    shin->SetMassFromShapes();
+
     parts.push_back(shin);
 
-    b2BoxDef thighBoneDef;
-    thighBoneDef.extents.Set(0.5f,2.0f);
+    b2PolygonDef thighBoneDef;
+    thighBoneDef.SetAsBox(0.5f,2.0f);
     thighBoneDef.density = 1.0f;
-    thighBoneDef.groupIndex = -1;
+    thighBoneDef.filter.groupIndex = -1;
 
     b2BodyDef thighBone;
-    thighBone.AddShape(&thighBoneDef);
+    //thighBone.AddShape(&thighBoneDef);
     thighBone.position.Set(0.0f,height+15.00f);
-    thighBone.rotation = -0.00;
+    thighBone.angle = -0.00;
     thighBone.angularDamping = 0.01f;
 
     Body *thigh = w->createBody(&thighBone);
+    thigh->CreateShape(&thighBoneDef);
+    thigh->SetMassFromShapes();
+
     parts.push_back(thigh);
 
     b2RevoluteJointDef kneeDef;
-    kneeDef.body1 = thigh;
-    kneeDef.body2 = shin;
-    kneeDef.anchorPoint.Set(0.0f, height+13.0f);
+    kneeDef.Initialize(thigh, shin, Vec2(0.0f, height+13.0f));
+    //kneeDef.body1 = thigh;
+    //kneeDef.body2 = shin;
+    //kneeDef.anchorPoint.Set(0.0f, height+13.0f);
     kneeDef.lowerAngle = -b2_pi;
     kneeDef.upperAngle = 0.001f;
     kneeDef.enableLimit = true;
@@ -59,31 +67,39 @@ Creature::Creature (World *w) {
     //Create muscle between thigh and shin:
     muscles.push_back(new Muscle(shin,  Vec2(-0.5f,1.5f),
 				 thigh, Vec2(-0.5f,1.0f),
-				 4000.0f, 3.5f));
+				 6000.0f, 3.5f));
     
     b2BodyDef LshinBone;
-    LshinBone.AddShape(&shinBoneDef);
-    LshinBone.AddShape(&footBallDef);
+    //LshinBone.AddShape(&shinBoneDef);
+    //LshinBone.AddShape(&footBallDef);
     LshinBone.position.Set(0.0f, height+10.00f);
-    LshinBone.rotation = 0.00;
+    LshinBone.angle = 0.00;
     LshinBone.angularDamping = 0.01f;
 
     Body *Lshin = w->createBody(&LshinBone);
+    Lshin->CreateShape(&shinBoneDef);
+    Lshin->CreateShape(&footBallDef);
+    Lshin->SetMassFromShapes();
+
     parts.push_back(Lshin);
 
     b2BodyDef LthighBone;
-    LthighBone.AddShape(&thighBoneDef);
+    //LthighBone.AddShape(&thighBoneDef);
     LthighBone.position.Set(0.0f,height+15.00f);
-    LthighBone.rotation = -0.00;
+    LthighBone.angle = -0.00;
     LthighBone.angularDamping = 0.01f;
 
     Body *Lthigh = w->createBody(&LthighBone);
+    Lthigh->CreateShape(&thighBoneDef);
+    Lthigh->SetMassFromShapes();
+
     parts.push_back(Lthigh);
 
     b2RevoluteJointDef LkneeDef;
-    LkneeDef.body1 = Lthigh;
-    LkneeDef.body2 = Lshin;
-    LkneeDef.anchorPoint.Set(0.0f, height+13.0f);
+    LkneeDef.Initialize(Lthigh,Lshin, Vec2(0.0f, height+13.0f));
+    //LkneeDef.body1 = Lthigh;
+    //LkneeDef.body2 = Lshin;
+    //LkneeDef.anchorPoint.Set(0.0f, height+13.0f);
     LkneeDef.lowerAngle = -0.001f;
     LkneeDef.upperAngle = b2_pi;
     LkneeDef.enableLimit = true;
@@ -93,10 +109,10 @@ Creature::Creature (World *w) {
     //Create muscle between thigh and shin:
     muscles.push_back(new Muscle(Lshin,  Vec2(0.5f,1.5f),
 				 Lthigh, Vec2(0.5f,1.0f),
-				 4000.0f, 3.5f));
+				 6000.0f, 3.5f));
 
-    b2BoxDef backBoneDef;
-    backBoneDef.extents.Set(0.5f,3.0f);
+    b2PolygonDef backBoneDef;
+    backBoneDef.SetAsBox(0.5f,3.0f);
     backBoneDef.density = 1.0f;
     //backBoneDef.groupIndex = -1;
 
@@ -107,19 +123,24 @@ Creature::Creature (World *w) {
     //headBallDef.groupIndex = -1;
 
     b2BodyDef backBone;
-    backBone.AddShape(&backBoneDef);
-    backBone.AddShape(&headBallDef);
+    //backBone.AddShape(&backBoneDef);
+    //backBone.AddShape(&headBallDef);
     backBone.position.Set(0.0f, height+20.00f);
-    backBone.rotation = 0.00;
+    backBone.angle = 0.00;
     backBone.angularDamping = 0.01f;
 
     Body *back = w->createBody(&backBone);
+    back->CreateShape(&backBoneDef);
+    back->CreateShape(&headBallDef);
+    back->SetMassFromShapes();
+
     parts.push_back(back);
 
     b2RevoluteJointDef hipDef;
-    hipDef.body1 = back;
-    hipDef.body2 = thigh;
-    hipDef.anchorPoint.Set(0.0f, height+17.0f);
+    hipDef.Initialize(back, thigh, Vec2(0.0f, height+17.0f));
+    //hipDef.body1 = back;
+    //hipDef.body2 = thigh;
+    //hipDef.anchorPoint.Set(0.0f, height+17.0f);
 
     //Right leg hip starts at 0, can rotate (CCW) b2_pi
     hipDef.lowerAngle = -0.001f;
@@ -130,13 +151,14 @@ Creature::Creature (World *w) {
     
     //Create muscle between thigh and back:
     muscles.push_back(new Muscle(thigh, Vec2(0.5f,-1.0f),
-				 back,  Vec2(0.5f,-4.0f),
-				 6000.0f, 3.7f));
+				 back,  Vec2(0.5f,-2.0f),
+				 7000.0f, 3.3f));
     
     b2RevoluteJointDef LhipDef;
-    LhipDef.body1 = back;
-    LhipDef.body2 = Lthigh;
-    LhipDef.anchorPoint.Set(0.0f, height+17.0f);
+    LhipDef.Initialize(back, Lthigh, Vec2(0.0f, height+17.0f));
+    //LhipDef.body1 = back;
+    //LhipDef.body2 = Lthigh;
+    //LhipDef.anchorPoint.Set(0.0f, height+17.0f);
     
     //Left leg hip starts at 0, can rotate (CW) -b2_pi
     LhipDef.lowerAngle = -b2_pi;
@@ -147,8 +169,8 @@ Creature::Creature (World *w) {
     
     //Create muscle between thigh and back:
     muscles.push_back(new Muscle(Lthigh, Vec2(-0.5f,-1.0f),
-				 back,  Vec2(-0.5f,-4.0f),
-				 6000.0f, 3.7f));
+				 back,  Vec2(-0.5f,-2.0f),
+				 7000.0f, 3.3f));
 
     w->addCreature(this);
 }

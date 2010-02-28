@@ -16,43 +16,42 @@ BoxScreen::BoxScreen (SDL_Surface *s, float _pM,
 }
 	
 void BoxScreen::drawBody (Body *b) {
-    for (Shape *s = b->GetShapeList(); s; s = s->m_next) {
-	drawShape ( s);
+    for (Shape *s = b->GetShapeList(); s; s = s->GetNext()) {
+	drawShape (b,s);
     }
 }
 
-void BoxScreen::drawShape (const Shape *s) {
+void BoxScreen::drawShape (const Body *b, const Shape *s) {
+
     switch(s->GetType()) {
 	case e_circleShape:
 	{
-	    const b2CircleShape* circle = (const b2CircleShape*)s;
+	    const b2CircleShape* circle = dynamic_cast<const b2CircleShape*>(s);
 	    b2Vec2 xP;
-	    box2pixel(circle->m_position, xP);
-	    float32 rP = pM * circle->m_radius;
+	    box2pixel(b->GetWorldPoint(circle->GetLocalPosition()), xP);
+	    float32 rP = pM * circle->GetRadius();
 	    //Draw a red circle with SDL_gfx
 	    circleColor(screen, (int)xP.x, (int)xP.y, (int)rP, 0xFF0000FF);
 //	    cout<<"CIRCLE: "<<xP.x<<", "<<xP.y<<" radius: "<<rP<<endl;
 	}
 	break;
-	case e_boxShape:
-	case e_polyShape:
+	case e_polygonShape:
 	{
-	  const b2PolyShape* poly = (const b2PolyShape*)s;
+	  const b2PolygonShape* poly = dynamic_cast<const b2PolygonShape*>(s);
           
-	  if (poly->m_vertexCount > 1) {
+	  if (poly->GetVertexCount() > 1) {
 	      //glBegin(GL_LINE_LOOP);
+	      const b2Vec2 *locVertices = poly->GetVertices();
+
 	      b2Vec2 v1P, v2P;
-	      b2Vec2 firstP, v = poly->m_position + 
-			         b2Mul(poly->m_R, poly->m_vertices[0]);
-	      box2pixel(v,firstP);
+	      b2Vec2 firstP;
+	      box2pixel(b->GetWorldPoint(locVertices[0]),firstP);
 	      v1P = firstP;
 //	      cout<<"POLYGON: ";
-	      for (int32 i = 1; i < poly->m_vertexCount; ++i)
+	      for (int32 i = 1; i < poly->GetVertexCount(); ++i)
 	      {
 //		  cout<<"("<<v1P.x<<", "<<v1P.y<<") ";
-		  v = poly->m_position + 
-		      b2Mul(poly->m_R, poly->m_vertices[i]);
-		  box2pixel(v,v2P);
+		  box2pixel(b->GetWorldPoint(locVertices[i]),v2P);
 
 		  //Draw a green polygon with SDL_gfx
 		  lineColor(screen, 
@@ -71,9 +70,7 @@ void BoxScreen::drawShape (const Shape *s) {
 	  }
 	}
 	break;
-	case e_meshShape:
-	    cerr<<"drawShape: Don't know how to draw this shape yet!"<<endl;
-	break;
+	
 	case e_unknownShape:
 	default:
 	    cerr<<"drawShape: unknown shape."<<endl;

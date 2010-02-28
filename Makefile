@@ -1,9 +1,9 @@
 CFLAGS = -O3 -g 
-SDL_INC = -I/usr/include -I/usr/include/SDL -I/usr/local/include/SDL
-SDL_LIBS = -L/usr/lib -L/usr/local/lib64 -lSDL -lSDL_gfx -lpthread
+SDL_INC = -I/usr/include -I/usr/include/SDL 
+SDL_LIBS = -L/usr/lib -lSDL -lSDL_gfx -lpthread
 
-INC = -I/home/mconnor/projects/physics/Box2D_v1.4.3/Box2D/Include
-LIBS = -L/home/mconnor/local/lib -lBox2D
+INC = -I/home/mconnor/projects/physics/Box2D_v2.0.1/Box2D/Include
+LIBS = -L/home/mconnor/projects/physics/Box2D_v2.0.1/Box2D/Source/Gen/float -lbox2d
 
 CXX = g++ 
 

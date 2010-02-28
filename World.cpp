@@ -5,8 +5,8 @@ World::World (float _hz, int _iterations) :
 {
     //Code taken basically straight from Box2D user manual
     b2AABB worldAABB;
-    worldAABB.minVertex.Set(-100.0f, -100.0f);
-    worldAABB.maxVertex.Set(150.0f, 150.0f);
+    worldAABB.lowerBound.Set(-100.0f, -100.0f);
+    worldAABB.upperBound.Set(150.0f, 150.0f);
 
     //Set gravity pointing downward
     b2Vec2 gravity(0.0f, -10.0f);
@@ -16,17 +16,18 @@ World::World (float _hz, int _iterations) :
     b2W = new b2World(worldAABB, gravity, doSleep);
 
     //Create ground
-    b2BoxDef groundBoxDef;
-    groundBoxDef.extents.Set(50.0f, 10.0f);
+    b2BodyDef groundBodyDef;
+    groundBodyDef.position.Set(0.0f, -10.0f);
+    //groundBodyDef.AddShape(&groundBoxDef);
+
+    ground = b2W->CreateBody(&groundBodyDef);
+    
+    b2PolygonDef groundBoxDef;
+    groundBoxDef.SetAsBox(50.0f, 10.0f);
     groundBoxDef.density = 0.0f;
     groundBoxDef.friction = 1.0f;
 
-    b2BodyDef groundBodyDef;
-    groundBodyDef.position.Set(0.0f, -10.0f);
-    groundBodyDef.AddShape(&groundBoxDef);
-    
-
-    ground = b2W->CreateBody(&groundBodyDef);
+    ground->CreateShape(&groundBoxDef);
 }
 
 World::~World () {
