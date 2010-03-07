@@ -2,6 +2,7 @@
 #define __BOX_TYPE_H__
 
 #include <Box2D.h>
+#include <string>
 #include <vector>
 #include <map>
 
@@ -18,6 +19,7 @@ typedef b2Shape Shape;
 typedef b2Body Body;
 typedef boost::shared_ptr<Body> BodyP;
 typedef std::vector<BodyP> bodyList;
+typedef std::map<std::string, BodyP> bodyMap;
 
 typedef b2Joint Joint;
 typedef boost::shared_ptr<Joint> JointP;

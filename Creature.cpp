@@ -37,6 +37,7 @@ Creature::Creature (World *w) {
     shin->SetMassFromShapes();
 
     parts.push_back(shin);
+    limbs.insert(make_pair("shin",shin));
 
     b2PolygonDef thighBoneDef;
     thighBoneDef.SetAsBox(0.5f,2.0f);
@@ -54,6 +55,7 @@ Creature::Creature (World *w) {
     thigh->SetMassFromShapes();
 
     parts.push_back(thigh);
+    limbs.insert(make_pair("thigh",thigh));
 
     b2RevoluteJointDef kneeDef;
     kneeDef.Initialize(thigh.get(), shin.get(), Vec2(0.0f, height+13.0f));
@@ -141,6 +143,7 @@ Creature::Creature (World *w) {
     back->SetMassFromShapes();
 
     parts.push_back(back);
+    limbs.insert(make_pair("back", back));
 
     b2RevoluteJointDef hipDef;
     hipDef.Initialize(back.get(), thigh.get(), Vec2(0.0f, height+17.0f));
@@ -187,7 +190,21 @@ Creature::Creature (World *w) {
 }
 
 void Creature::reset () {
-    
+    Vec2 zero(0, 0);
+    BodyP back = limbs["back"];
+    back->SetXForm(Vec2(0.0f, 14.0f), 0);
+    back->SetLinearVelocity(zero);
+    back->SetAngularVelocity(0);
+
+    BodyP thigh = limbs["thigh"];
+    thigh->SetXForm(Vec2(0.0f, 9.0f), 0);
+    thigh->SetLinearVelocity(zero);
+    thigh->SetAngularVelocity(0);
+
+    BodyP shin = limbs["shin"];
+    shin->SetXForm(Vec2(0.0f, 4.0f), 0);
+    shin->SetLinearVelocity(zero);
+    shin->SetAngularVelocity(0);
 }
     
 void Creature::wake () {

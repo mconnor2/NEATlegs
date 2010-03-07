@@ -22,19 +22,26 @@ const int Height = 480;
 
 const double Pi = 3.14159265358979323;
 
-void HandleEvent()
+int HandleEvent()
 {
-	SDL_Event event; 
+    SDL_Event event; 
+    int status = 0;
 
-	/* Check for events */
-        while ( SDL_PollEvent(&event) ) {
-                        switch (event.type) {
-			 case SDL_KEYDOWN:
-			 case SDL_QUIT:
-                                        exit(0);
-                                        break;
-			}
+    /* Check for events */
+    while ( SDL_PollEvent(&event) ) {
+	switch (event.type) {
+	    case SDL_KEYDOWN:
+		switch(event.key.keysym.sym){
+		    case SDLK_SPACE:
+			return 1;
+			break;
+		}
+	    case SDL_QUIT:
+                exit(0);
+                break;
 	}
+    }
+    return status;
 }
 
 void ClearScreen(SDL_Surface *screen)
@@ -55,7 +62,7 @@ void ClearScreen(SDL_Surface *screen)
 	}
 }
 
-void runSimulation (SDL_Surface *screen, World *world) {
+void runSimulation (SDL_Surface *screen, World *world, Creature *C) {
     FPSmanager fpsm;
 
     BoxScreen s(screen);
@@ -76,7 +83,9 @@ void runSimulation (SDL_Surface *screen, World *world) {
 	world->step();
 
 	//Check for exit
-	HandleEvent();
+	if (HandleEvent()) {
+	    C->reset();
+	}
 
 	//Flip
 	SDL_Flip(screen);
@@ -157,6 +166,6 @@ int main (int argc, char **argv) {
     //Create a creature that is added to the world
     Creature walker(&w);
     
-    runSimulation(screen, &w);
+    runSimulation(screen, &w, &walker);
     
 }

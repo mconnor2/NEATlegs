@@ -33,6 +33,9 @@ class Creature {
     /* Bodies and joints specifying the creature */
     bodyList parts;
     jointList joints;
+   
+    // If we want to access some body parts by name
+    bodyMap limbs;
 
     /* Muscles necessary controlling creature */
     muscleList muscles;
