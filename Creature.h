@@ -3,7 +3,9 @@
 
 #include <Box2D.h>
 #include <vector>
+#include <map>
 
+#include "boxTypes.h"
 #include "BoxScreen.h"
 #include "World.h"
 
@@ -12,18 +14,6 @@ class Creature;
 class Muscle;
 
 using namespace std;
-
-typedef b2Shape Shape;
-
-typedef b2Body Body;
-typedef vector<Body *> bodyList;
-
-typedef b2Vec2 Vec2;
-
-typedef b2RevoluteJoint RevoluteJoint;
-typedef vector<RevoluteJoint *> jointList;
-
-typedef vector<Muscle *> muscleList;
 
 class Creature {
     public:
@@ -34,7 +24,9 @@ class Creature {
     void wake ();	//make sure all the bodies are awake
     void update ();
 
-    void draw (BoxScreen *screen);
+    void draw (BoxScreen *screen) const;
+
+    void reset ();
 
     private:
 
@@ -50,8 +42,8 @@ class Creature {
 
 class Muscle {
     public:
-	Muscle (Body *b1, Vec2 l1, 
-		Body *b2, Vec2 l2,
+	Muscle (const BodyP &b1, const Vec2 &l1, 
+		const BodyP &b2, const Vec2 &l2,
 		float _k, float _eq) :
 		body1(b1), end1L(l1), body2(b2), end2L(l2),
 		k(_k), eq(_eq) 
@@ -59,13 +51,13 @@ class Muscle {
 
 	float update ();
 
-	void draw (BoxScreen *screen);
+	void draw (BoxScreen *screen) const;
     
     private:
 	float k;		//Hook's constant
 	float eq;		//Spring's equilibrium distance
 
-	Body *body1, *body2;	//Bodies muscle connects
+	BodyP body1, body2;	//Bodies muscle connects
 	Vec2 end1L, end2L;	//Local point of contact (fixed)
 };
 

@@ -15,13 +15,13 @@ BoxScreen::BoxScreen (SDL_Surface *s, float _pM,
 
 }
 	
-void BoxScreen::drawBody (Body *b) {
+void BoxScreen::drawBody (const BodyP &b) {
     for (Shape *s = b->GetShapeList(); s; s = s->GetNext()) {
 	drawShape (b,s);
     }
 }
 
-void BoxScreen::drawShape (const Body *b, const Shape *s) {
+void BoxScreen::drawShape (const BodyP &b, const Shape *s) {
 
     switch(s->GetType()) {
 	case e_circleShape:

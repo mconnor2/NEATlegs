@@ -6,9 +6,7 @@
 #include <Box2D.h>
 #include <SDL/SDL.h>
 
-typedef b2Body Body;
-typedef b2Shape Shape;
-typedef b2Vec2 Vec2;
+#include "boxTypes.h"
 
 typedef Uint32 Color;
 
@@ -17,8 +15,7 @@ class BoxScreen {
 	BoxScreen (SDL_Surface *s, float _pM = 10.0f,
 		   float BoxOriginX = 320.0f, float BoxOriginY = 479.0f);
 
-	void drawBody (Body *b);
-	void drawShape (const Body *b, const Shape *s);
+	void drawBody (const BodyP &b);
 
 	void worldLine (const Vec2 &p1B, const Vec2 &p2B, Color c);
 
@@ -26,6 +23,8 @@ class BoxScreen {
     private:
 	float pM;		//pixels/meter
 	Vec2 BoxOriginP;	//location of box origin in pixel space
+	
+	void drawShape (const BodyP &b, const Shape *s);
 
 	SDL_Surface *screen;
 };

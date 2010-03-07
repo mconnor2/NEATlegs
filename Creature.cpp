@@ -3,6 +3,8 @@
 #include <iostream>
 #include <stdlib.h>
 
+#include <boost/shared_ptr.hpp>
+
 
 Creature::Creature (World *w) {
     //XXX Eventually will read geometry description from file
@@ -20,7 +22,7 @@ Creature::Creature (World *w) {
     footBallDef.density = 1.0f;
     footBallDef.localPosition.Set(0.0f, -3.0f);
     footBallDef.filter.groupIndex = -1;
-    footBallDef.friction = 0.6f;
+    footBallDef.friction = 1.6f;
 
     b2BodyDef shinBone;
     //shinBone.AddShape(&shinBoneDef);
@@ -29,7 +31,7 @@ Creature::Creature (World *w) {
     shinBone.angle = 0.00;
     shinBone.angularDamping = 0.01f;
 
-    Body *shin = w->createBody(&shinBone);
+    BodyP shin(w->createBody(&shinBone));
     shin->CreateShape(&shinBoneDef);
     shin->CreateShape(&footBallDef);
     shin->SetMassFromShapes();
@@ -47,28 +49,32 @@ Creature::Creature (World *w) {
     thighBone.angle = -0.00;
     thighBone.angularDamping = 0.01f;
 
-    Body *thigh = w->createBody(&thighBone);
+    BodyP thigh(w->createBody(&thighBone));
     thigh->CreateShape(&thighBoneDef);
     thigh->SetMassFromShapes();
 
     parts.push_back(thigh);
 
     b2RevoluteJointDef kneeDef;
-    kneeDef.Initialize(thigh, shin, Vec2(0.0f, height+13.0f));
+    kneeDef.Initialize(thigh.get(), shin.get(), Vec2(0.0f, height+13.0f));
     //kneeDef.body1 = thigh;
     //kneeDef.body2 = shin;
     //kneeDef.anchorPoint.Set(0.0f, height+13.0f);
-    kneeDef.lowerAngle = -b2_pi;
-    kneeDef.upperAngle = 0.001f;
+    kneeDef.lowerAngle = -b2_pi+0.01f;
+    kneeDef.upperAngle = 0.01f;
     kneeDef.enableLimit = true;
 
-    joints.push_back((RevoluteJoint*) w->createJoint(&kneeDef));
+    RevoluteJointP knee = boost::dynamic_pointer_cast<RevoluteJoint,Joint>
+						(w->createJoint(&kneeDef));
+    joints.push_back(knee);
 
     //Create muscle between thigh and shin:
-    muscles.push_back(new Muscle(shin,  Vec2(-0.5f,1.5f),
+    MuscleP hamstring(new Muscle(shin,  Vec2(-0.5f,1.5f),
 				 thigh, Vec2(-0.5f,1.0f),
-				 6000.0f, 3.5f));
-    
+				 7000.0f, 3.3f));
+    muscles.push_back(hamstring);
+
+/*
     b2BodyDef LshinBone;
     //LshinBone.AddShape(&shinBoneDef);
     //LshinBone.AddShape(&footBallDef);
@@ -109,8 +115,8 @@ Creature::Creature (World *w) {
     //Create muscle between thigh and shin:
     muscles.push_back(new Muscle(Lshin,  Vec2(0.5f,1.5f),
 				 Lthigh, Vec2(0.5f,1.0f),
-				 6000.0f, 3.5f));
-
+				 6500.0f, 3.3f));
+*/
     b2PolygonDef backBoneDef;
     backBoneDef.SetAsBox(0.5f,3.0f);
     backBoneDef.density = 1.0f;
@@ -129,7 +135,7 @@ Creature::Creature (World *w) {
     backBone.angle = 0.00;
     backBone.angularDamping = 0.01f;
 
-    Body *back = w->createBody(&backBone);
+    BodyP back(w->createBody(&backBone));
     back->CreateShape(&backBoneDef);
     back->CreateShape(&headBallDef);
     back->SetMassFromShapes();
@@ -137,23 +143,27 @@ Creature::Creature (World *w) {
     parts.push_back(back);
 
     b2RevoluteJointDef hipDef;
-    hipDef.Initialize(back, thigh, Vec2(0.0f, height+17.0f));
+    hipDef.Initialize(back.get(), thigh.get(), Vec2(0.0f, height+17.0f));
     //hipDef.body1 = back;
     //hipDef.body2 = thigh;
     //hipDef.anchorPoint.Set(0.0f, height+17.0f);
 
     //Right leg hip starts at 0, can rotate (CCW) b2_pi
-    hipDef.lowerAngle = -0.001f;
-    hipDef.upperAngle = b2_pi;
+    hipDef.lowerAngle = -0.01f;
+    hipDef.upperAngle = b2_pi-0.01f;
     hipDef.enableLimit = true;
 
-    joints.push_back((RevoluteJoint*) w->createJoint(&hipDef));
+    RevoluteJointP hip = boost::dynamic_pointer_cast<RevoluteJoint, Joint>
+						    (w->createJoint(&hipDef));
+    joints.push_back(hip);
     
     //Create muscle between thigh and back:
-    muscles.push_back(new Muscle(thigh, Vec2(0.5f,-1.0f),
-				 back,  Vec2(0.5f,-2.0f),
-				 7000.0f, 3.3f));
-    
+    MuscleP quad(new Muscle(thigh, Vec2(0.5f,-1.0f),
+			    back,  Vec2(0.5f,-1.5f),
+			    7000.0f, 3.4f));
+    muscles.push_back(quad);
+/*
+
     b2RevoluteJointDef LhipDef;
     LhipDef.Initialize(back, Lthigh, Vec2(0.0f, height+17.0f));
     //LhipDef.body1 = back;
@@ -169,10 +179,15 @@ Creature::Creature (World *w) {
     
     //Create muscle between thigh and back:
     muscles.push_back(new Muscle(Lthigh, Vec2(-0.5f,-1.0f),
-				 back,  Vec2(-0.5f,-2.0f),
-				 7000.0f, 3.3f));
+				 back,  Vec2(-0.0f,-2.0f),
+				 7000.0f, 3.4f));
+*/
 
     w->addCreature(this);
+}
+
+void Creature::reset () {
+    
 }
     
 void Creature::wake () {
@@ -184,17 +199,17 @@ void Creature::wake () {
 }
 
 
-void Creature::draw (BoxScreen *screen) {
+void Creature::draw (BoxScreen *screen) const {
     /* Really should change this to a for_all */
     //Draw body shapes
-    for (bodyList::iterator i = parts.begin();
+    for (bodyList::const_iterator i = parts.begin();
 	 i != parts.end(); ++i)
     {
 	screen->drawBody(*i);
     }
 
     //Draw musculature
-    for (muscleList::iterator i = muscles.begin();
+    for (muscleList::const_iterator i = muscles.begin();
 	 i != muscles.end(); ++i)
     {
 	(*i)->draw(screen);
@@ -243,7 +258,7 @@ float Muscle::update () {
     return force;
 }
 
-void Muscle::draw (BoxScreen *screen) {
+void Muscle::draw (BoxScreen *screen) const {
     //Just draw line representing spring
     Vec2 a1W = body1->GetWorldPoint(end1L);
     Vec2 a2W = body2->GetWorldPoint(end2L);

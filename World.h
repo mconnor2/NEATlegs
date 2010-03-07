@@ -4,6 +4,7 @@
 #include <Box2D.h>
 #include <vector>
 
+#include "boxTypes.h"
 #include "Creature.h"
 #include "BoxScreen.h"
 
@@ -23,19 +24,20 @@ class World {
     
 	void step ();
 	
-	void draw (BoxScreen *screen);
+	void draw (BoxScreen *screen) const;
 
-	b2Body *createBody (const b2BodyDef *def); 
-	b2Joint *createJoint (const b2JointDef *def); 
+	BodyP createBody (const b2BodyDef *def); 
+	JointP createJoint (const b2JointDef *def); 
 
 	int addCreature (Creature *c);
+	int addCreature (CreatureP &c);
 
     private:
 	b2World *b2W;
 
-	b2Body *ground;
+	BodyP ground;
 
-	vector<Creature *> beings; 
+	creatureList beings; 
 
 	float32 timeStep;
 	int32 iterations;

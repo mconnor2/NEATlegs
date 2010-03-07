@@ -1,5 +1,8 @@
 #include "World.h"
 
+#include <boost/mem_fn.hpp>
+#include <boost/bind.hpp>
+
 World::World (float _hz, int _iterations) : 
 	      timeStep(1.0f/_hz), iterations(_iterations) 
 {
@@ -20,7 +23,8 @@ World::World (float _hz, int _iterations) :
     groundBodyDef.position.Set(0.0f, -10.0f);
     //groundBodyDef.AddShape(&groundBoxDef);
 
-    ground = b2W->CreateBody(&groundBodyDef);
+    ground.reset(b2W->CreateBody(&groundBodyDef),
+		 boost::bind(&b2World::DestroyBody, b2W, _1));
     
     b2PolygonDef groundBoxDef;
     groundBoxDef.SetAsBox(50.0f, 10.0f);
@@ -34,15 +38,26 @@ World::~World () {
     delete b2W;
 }
 
-b2Body *World::createBody (const b2BodyDef *def) {
-    return b2W->CreateBody(def);
+BodyP World::createBody (const b2BodyDef *def) {
+    //Use Box2d world::DestroyBody for clean up
+    //  good chance this is a bad idea...
+    BodyP b(b2W->CreateBody(def), 
+	    boost::bind(&b2World::DestroyBody, b2W, _1));
+    return b;
 }
 
-b2Joint *World::createJoint (const b2JointDef *def) {
-    return b2W->CreateJoint(def);
+JointP World::createJoint (const b2JointDef *def) {
+    JointP j(b2W->CreateJoint(def),
+	     boost::bind(&b2World::DestroyJoint, b2W, _1));
+    return j;
+}
+
+int World::addCreature (Creature *c) {
+    CreatureP cp(c);
+    return addCreature(cp);
 }
 	
-int World::addCreature (Creature *c) {
+int World::addCreature (CreatureP &c) {
     int id = beings.size();
     beings.push_back(c);
     return id;
@@ -50,25 +65,18 @@ int World::addCreature (Creature *c) {
 
 void World::step () {
     //Update forces (muscles) on objects
-    for (vector<Creature *>::iterator ci = beings.begin();
-        ci != beings.end(); ++ci)
-    {
-	(*ci)->update();
-    }
+    for_each(beings.begin(), beings.end(),
+	     boost::mem_fn(&Creature::update));
 
     b2W->Step(timeStep, iterations);
 }
 
-void World::draw (BoxScreen *screen) {
+void World::draw (BoxScreen *screen) const {
     //Draw the ground, and the draw all the bodies.
     screen->drawBody(ground);
 
-    for (vector<Creature *>::iterator ci = beings.begin();
-        ci != beings.end(); ++ci)
-    {
-	Creature *c = *ci;
-	c->draw(screen);
-    }
-    
+    for_each(beings.begin(),beings.end(),
+    	     boost::bind(&Creature::draw, _1, screen));
+
 }
 	

@@ -383,3 +383,40 @@ Deleting species/individuals from species
 	    *This should ensure it doesn't propogate
 
 
+03/06/10
+
+Can I make hopper learning program?  Really shouldn't be too hard, can just connect pieces from various programs I have now.  Organization ideas:
+
+-Include fitness function inside creature definition?
+    -I think not, so that means I need to pass the network inputs/outputs
+     to the creature class to simulate a step...
+
+-Ideally I would have the creature class take in config file of its construction, but for now lets hard code it.  
+
+-Need to figure out how to reset its position...
+
+what will inputs and outputs be:
+
+output:
+-thigh muscle
+    length, strength
+-shin muscle
+    length, strength
+
+So 4 outputs
+
+input:
+-bias
+-knee angle
+-hip angle
+-head height
+-foot height
+-back angle to ground?
+
+Not sure how to normalize heights, but I guess put a cap above which can't estimate.  Either that or use some exponential squashing function, actually thats not a bad idea.
+
+So only 6 inputs for hopper?  I would also like to know the amount of force on the body parts, but not sure if that is easily attainable.
+
+Ok, how to reset positions...
+
+Thinking about generalizing creature, I need a way to store named body parts, so how about a map of string -> body 
