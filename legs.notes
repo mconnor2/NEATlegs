@@ -420,3 +420,7 @@ So only 6 inputs for hopper?  I would also like to know the amount of force on t
 Ok, how to reset positions...
 
 Thinking about generalizing creature, I need a way to store named body parts, so how about a map of string -> body 
+
+Ok, now when I define a creature, I need to specify the construction or parts, and an initial position that will be instigated in reset method (which will also set initial velocity of all parts to 0).
+
+

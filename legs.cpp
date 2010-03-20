@@ -108,7 +108,6 @@ void exitingfunc () {
 }
 
 int main (int argc, char **argv) {
-    
     srand(time(NULL));
 
     /* Process arguments */
@@ -150,8 +149,8 @@ int main (int argc, char **argv) {
     printf("Set %dx%dx%d mode\n",
 	    screen->w, screen->h, screen->format->BitsPerPixel);
     printf("Video surface located in %s memory.\n",
-	    (screen->flags&SDL_HWSURFACE) ? "video" : "system");
-	
+	   (screen->flags&SDL_HWSURFACE) ? "video" : "system");
+
     /* Check for double buffering */
     if ( screen->flags & SDL_DOUBLEBUF ) {
     	printf("Double-buffering enabled - good!\n");
@@ -159,13 +158,12 @@ int main (int argc, char **argv) {
 
     /* Set the window manager title bar */
     SDL_WM_SetCaption("Walkabout!", "Legs!");
-    
+
     /* Initialize the World, take default hz and iteration */
     World w;
-   
-    //Create a creature that is added to the world
+
+    // Create a creature that is added to the world
     Creature walker(&w);
-    
+
     runSimulation(screen, &w, &walker);
-    
 }
