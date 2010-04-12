@@ -139,7 +139,10 @@ Creature::Creature (World *w) {
 
     BodyP back(w->createBody(&backBone));
     back->CreateShape(&backBoneDef);
-    back->CreateShape(&headBallDef);
+
+    Shape *headShape = back->CreateShape(&headBallDef);
+    shapes.insert(make_pair("head", headShape));
+
     back->SetMassFromShapes();
 
     parts.push_back(back);
@@ -207,6 +210,40 @@ void Creature::reset () {
     shin->SetAngularVelocity(0);
 }
     
+bool getShapePosition(const string &name, Vec2 *p) const {
+    if (shapes.count(name) == 0) {
+	return false;
+    }
+
+    Shape *s = shapes[name];
+
+    Body *b = s->GetBody();
+
+    if (b == NULL)
+	return false;
+
+    switch (s->GetType()) {
+	case e_circleShape:
+	{
+	    const b2CircleShape* circle = dynamic_cast<const b2CircleShape*>(s);
+	    *p = b->GetWorldPoint(circle->GetLocalPosition());
+	    return true;
+	}
+	break;
+	case e_polygonShape:
+	{
+	    const b2PolygonShape* poly = dynamic_cast<const b2PolygonShape*>(s);
+	    *p = b->GetWorldPoint(poly->GetCentroid());
+	    return true;
+	}
+	break;
+	case e_unknownShape:
+	default:
+	    cerr<<"getShapePosition: unknown shape."<<endl;
+	    return false;
+    }
+}
+
 void Creature::wake () {
     for (bodyList::iterator i = parts.begin();
 	 i != parts.end(); ++i)

@@ -26,6 +26,8 @@ class Creature {
 
     void draw (BoxScreen *screen) const;
 
+    bool getShapePosition(const string &name, Vec2 *p) const;
+
     void reset ();
 
     private:
@@ -33,9 +35,12 @@ class Creature {
     /* Bodies and joints specifying the creature */
     bodyList parts;
     jointList joints;
-   
+
     // If we want to access some body parts by name
     bodyMap limbs;
+
+    // Likewise if we want to access parts of a limb by name
+    shapeMap shapes;
 
     /* Muscles necessary controlling creature */
     muscleList muscles;

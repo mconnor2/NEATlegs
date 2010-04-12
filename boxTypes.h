@@ -34,4 +34,6 @@ typedef std::vector<MuscleP> muscleList;
 typedef boost::shared_ptr<Creature> CreatureP;
 typedef std::vector<CreatureP> creatureList;
 
+typedef std::map<std::string, Shape*> shapeMap;
+
 #endif
