@@ -12,10 +12,16 @@
 #include "NEAT/Genome.h"
 #include "NEAT/GeneticAlgorithm.h"
 
+#include "BoxScreen.h"
+#include "World.h"
+#include "Creature.h"
+
 using namespace std;
 
 const int Width  = 640;
 const int Height = 320;
+
+const double Pi = 3.14159265358979323;
 
 TTF_Font *fnt;
 
@@ -32,10 +38,12 @@ TTF_Font *fnt;
 class hopper : public unary_function<const GenomeP, double> {
     public:
 	const int MAX_STEPS;
-	const bool random_start;
+	//const bool random_start;
+
+	const static double HEAD_FLOOR = 3.0;
 
 	hopper(int max_steps, World *_W, Creature *_C) :
-	    MAX_STEPS(max_steps), W(_W), random_start(_random_start) 
+	    MAX_STEPS(max_steps), W(_W), C(_C) //random_start(_random_start) 
 	{ }
 
 	double operator()(const GenomeP &g, 
@@ -44,8 +52,10 @@ class hopper : public unary_function<const GenomeP, double> {
 	
 	   int steps=0,y;
 	    
-	   double in[5];  //Input loading array
-	   double out[2] = {0,0}; //Output, L or R
+	   double in[6];  //Input loading array
+	   //Output: thigh muscle length(%max), k; shin muscle length(%max), k
+	   double out[4] = {0,0,0,0};
+	   int nMuscles = 2;
 
 	   FPSmanager fpsm;
 
@@ -54,13 +64,14 @@ class hopper : public unary_function<const GenomeP, double> {
 	   SDL_Rect text_loc;
 	   text_loc.x = 10;
 	   text_loc.y = 10;
+	     
+	   BoxScreen s(screen);
 
 	   if (screen) {
-	     int rate = static_cast<int>(2.0/TAU);
+	     int rate = 60; //static_cast<int>(2.0/TAU);
 	     SDL_initFramerate(&fpsm);
 	     SDL_setFramerate(&fpsm,rate);
     
-	     BoxScreen s(screen);
 
 	     if (fnt) {
 		SDL_Color fgColor={255,255,255};
@@ -71,6 +82,8 @@ class hopper : public unary_function<const GenomeP, double> {
 	     }
 	   }
 	   
+	   C->reset();
+
 	   /*--- Iterate through the action-learn loop. ---*/
 	   while (steps++ < MAX_STEPS)
 	     {
@@ -79,15 +92,36 @@ class hopper : public unary_function<const GenomeP, double> {
 	       in[0]=1.0;  //Bias
 	       
 	       //Get input from the creature
-	       in[1]=(x + 2.4) / 4.8;;
-	       in[2]=(x_dot + .75) / 1.5;
-	       in[3]=(theta + twelve_degrees) / .41;
-	       in[4]=(theta_dot + 1.0) / 2.0;
+	       //Knee angle (scale 0-1 by using upper and lower limit of joint)
+	       RevoluteJointP knee = C->joints["knee"];
+	       in[1] = limit_norm(knee->GetJointAngle(),
+				  knee->GetLowerLimit(), knee->GetUpperLimit());
+	       //hip angle
+	       RevoluteJointP hip = C->joints["hip"];
+	       in[2] = limit_norm(hip->GetJointAngle(),
+				  hip->GetLowerLimit(), hip->GetUpperLimit());
+	       //head height
+	       shapePos headPos = C->shapes["head"];
+	       Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
+	       in[3] = limit_norm(headV.y,0,20);
+
+	       //foot height
+	       shapePos footPos = C->shapes["foot"];
+	       Vec2 footV = footPos.b->GetWorldPoint(footPos.localPos);
+	       in[4] = limit_norm(footV.y,0,20);
+	       
+	       //absolute back angle?
+	       BodyP back = C->limbs["back"];
+	       in[5] = limit_norm(back->GetAngle(),0,2*Pi);
 
 	       //Run input through network
 	       N->run(in, out);
 
-	       //Update creature's muscles
+	       //Update creature's muscles based on output
+	       for (int m = 0; m<nMuscles; ++m) {
+		    C->muscles[m]->scaleStrength(out[m*2]);
+		    C->muscles[m]->scaleLength(out[m*2+1]);
+	       }
 
 	       /* Advance the world */
 	       W->step();
@@ -99,7 +133,7 @@ class hopper : public unary_function<const GenomeP, double> {
 			SDL_BlitSurface(text_surf,NULL,screen,&text_loc);
 		    }
 
-		    W->draw(s); 
+		    W->draw(&s); 
 		    SDL_Flip(screen);
 
 		    if (HandleEvent()) break;
@@ -110,7 +144,8 @@ class hopper : public unary_function<const GenomeP, double> {
 	       /*--- Check for failure.  If so, return steps ---*/
 	       // For hopper, failure is if creature's head drops below
 	       // some level.
-
+	       headV = headPos.b->GetWorldPoint(headPos.localPos);
+	       if (headV.y < HEAD_FLOOR) break;
 	     }
 
 	     if (text_surf)
@@ -132,6 +167,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	 *  Convert 640 to 320 into [-3.2 : 3.2], [0 : 3.2] for display
 	 *  purposes.
 	 */
+/*
 	void display_cart(int steps, float x, float theta, SDL_Surface *screen)
 	{
 	    const int zeroX = Width>>1;
@@ -151,10 +187,14 @@ class hopper : public unary_function<const GenomeP, double> {
 	    lineColor(screen, zeroX-240,zeroY, zeroX-240,zeroY-10, 0x0000FFFF);
 	    lineColor(screen, zeroX+240,zeroY, zeroX+240,zeroY-10, 0x0000FFFF);
 
-	    //cout<<bx<<", "<<by<<" - "<<tx<<", "<<ty<<endl;
-
-	    lineColor(screen, bx, by, tx, ty, 0x00FF00FF);
 	};
+*/
+
+	float32 limit_norm (float32 v, float32 min, float32 max) {
+	    if (v < min) v = min;
+	    if (v > max) v = max;
+	    return (v - min) / (max - min);
+	}
 
 	bool HandleEvent()
 	{
@@ -260,7 +300,7 @@ int main (int argc, char **argv) {
 	}
 
 	/* Set the window manager title bar */
-	SDL_WM_SetCaption("Single Pole Balance", "Single Pole Balance");
+	SDL_WM_SetCaption("Hopper Test", "Hopper Test");
     }
 
     ExpParameters P;

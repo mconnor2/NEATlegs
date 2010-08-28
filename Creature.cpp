@@ -23,7 +23,7 @@ Creature::Creature (World *w) {
     footBallDef.localPosition.Set(0.0f, -3.0f);
     footBallDef.filter.groupIndex = -1;
     footBallDef.friction = 1.6f;
-
+    
     b2BodyDef shinBone;
     //shinBone.AddShape(&shinBoneDef);
     //shinBone.AddShape(&footBallDef);
@@ -35,9 +35,14 @@ Creature::Creature (World *w) {
     shin->CreateShape(&shinBoneDef);
     shin->CreateShape(&footBallDef);
     shin->SetMassFromShapes();
-
+    
     parts.push_back(shin);
     limbs.insert(make_pair("shin",shin));
+    
+    shapePos foot;
+    foot.localPos.Set(0.0f, -3.0f);
+    foot.b = shin;
+    shapes.insert(make_pair("foot",foot));
 
     b2PolygonDef thighBoneDef;
     thighBoneDef.SetAsBox(0.5f,2.0f);
@@ -68,12 +73,14 @@ Creature::Creature (World *w) {
 
     RevoluteJointP knee = boost::dynamic_pointer_cast<RevoluteJoint,Joint>
 						(w->createJoint(&kneeDef));
-    joints.push_back(knee);
+    joints.insert(make_pair("knee",knee));
 
     //Create muscle between thigh and shin:
     MuscleP hamstring(new Muscle(shin,  Vec2(-0.5f,1.5f),
 				 thigh, Vec2(-0.5f,1.0f),
-				 7000.0f, 3.3f));
+				 //7000.0f, 3.3f
+				 3000.0f, 10000.0f, 
+				 1.0f, 5.0f));
     muscles.push_back(hamstring);
 
 /*
@@ -139,14 +146,16 @@ Creature::Creature (World *w) {
 
     BodyP back(w->createBody(&backBone));
     back->CreateShape(&backBoneDef);
-
-    Shape *headShape = back->CreateShape(&headBallDef);
-    shapes.insert(make_pair("head", headShape));
-
+    back->CreateShape(&headBallDef);
     back->SetMassFromShapes();
 
     parts.push_back(back);
     limbs.insert(make_pair("back", back));
+    
+    shapePos head;
+    head.localPos.Set(0.0f, 3.0f);
+    head.b = back;
+    shapes.insert(make_pair("head",head));
 
     b2RevoluteJointDef hipDef;
     hipDef.Initialize(back.get(), thigh.get(), Vec2(0.0f, height+17.0f));
@@ -161,12 +170,14 @@ Creature::Creature (World *w) {
 
     RevoluteJointP hip = boost::dynamic_pointer_cast<RevoluteJoint, Joint>
 						    (w->createJoint(&hipDef));
-    joints.push_back(hip);
+    joints.insert(make_pair("hip",hip));
     
     //Create muscle between thigh and back:
     MuscleP quad(new Muscle(thigh, Vec2(0.5f,-1.0f),
 			    back,  Vec2(0.5f,-1.5f),
-			    7000.0f, 3.4f));
+			    //7000.0f, 3.4f));
+			    3000.0f, 10000.0f,
+			    1.0f, 5.0f));
     muscles.push_back(quad);
 /*
 
@@ -209,8 +220,9 @@ void Creature::reset () {
     shin->SetLinearVelocity(zero);
     shin->SetAngularVelocity(0);
 }
-    
-bool getShapePosition(const string &name, Vec2 *p) const {
+
+/*
+bool Creature::getShapePosition(const string &name, Vec2 *p) const {
     if (shapes.count(name) == 0) {
 	return false;
     }
@@ -243,6 +255,7 @@ bool getShapePosition(const string &name, Vec2 *p) const {
 	    return false;
     }
 }
+*/
 
 void Creature::wake () {
     for (bodyList::iterator i = parts.begin();
@@ -318,4 +331,17 @@ void Muscle::draw (BoxScreen *screen) const {
     Vec2 a2W = body2->GetWorldPoint(end2L);
 
     screen->worldLine(a1W,a2W, 0xFF0000FF);
+}
+
+//Set length or strength of muscle to between min and max setting,
+// linearly according to sc (between 0 and 1)
+void Muscle::scaleLength (double sc) {
+    if (sc < 0) sc = 0;
+    if (sc > 1) sc = 1;
+    eq = minEq + sc * (maxEq - minEq);
+}
+void Muscle::scaleStrength (double sc) {
+    if (sc < 0) sc = 0;
+    if (sc > 1) sc = 1;
+    k = minK + sc * (maxK - minK);
 }

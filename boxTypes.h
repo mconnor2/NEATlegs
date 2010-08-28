@@ -14,12 +14,17 @@ class Muscle;
 
 typedef b2Vec2 Vec2;
 
-typedef b2Shape Shape;
-
 typedef b2Body Body;
 typedef boost::shared_ptr<Body> BodyP;
 typedef std::vector<BodyP> bodyList;
 typedef std::map<std::string, BodyP> bodyMap;
+
+typedef b2Shape Shape;
+struct shapePos {
+    Vec2 localPos;
+    BodyP b;
+};
+typedef std::map<std::string, shapePos> shapeMap;
 
 typedef b2Joint Joint;
 typedef boost::shared_ptr<Joint> JointP;
@@ -27,13 +32,12 @@ typedef boost::shared_ptr<Joint> JointP;
 typedef b2RevoluteJoint RevoluteJoint;
 typedef boost::shared_ptr<RevoluteJoint> RevoluteJointP;
 typedef std::vector<RevoluteJointP> jointList;
+typedef std::map<std::string, RevoluteJointP> jointMap;
 
 typedef boost::shared_ptr<Muscle> MuscleP;
 typedef std::vector<MuscleP> muscleList;
 
 typedef boost::shared_ptr<Creature> CreatureP;
 typedef std::vector<CreatureP> creatureList;
-
-typedef std::map<std::string, Shape*> shapeMap;
 
 #endif

@@ -423,4 +423,28 @@ Thinking about generalizing creature, I need a way to store named body parts, so
 
 Ok, now when I define a creature, I need to specify the construction or parts, and an initial position that will be instigated in reset method (which will also set initial velocity of all parts to 0).
 
+08/28/10
 
+So where did I leave off...  I copied pole balance code into a hopper class, with the plan of integrating hopping creature into hopper genome evaluation function.  
+
+So what I need to do for simulation is:
+
+-Create network (done)
+-Reset creature (done)
+-Simulation loop
+    -Get inputs of creature
+	*For now, hard code retrieval from body parts
+    -Run through network
+    -Set outputs of creature
+	*Put values into muscles
+    -Update creature
+    -Display if whatevs.
+    -Check for failure, add to score
+	*Get head height, if below some threshold stop, otherwise add square to score.
+
+
+Wow, thats not too bad, I think I can hard code much of this today.  THen I will need to think about generalizing this.
+
+Ok, should be easy to get knee and hip angle from those joints (instead of list, lets use name map to pull actual named joints), after double check that possible to get angle from joint in Box2D.
+
+So how should I get foot and head height?  These are shapes attached to bodies.  I can directly ask for the bodies position, but this will give back+head center of mass, or shin+foot center of mass.  When I create the head shape I set the body coordinate center, so I can recover the head position with two pieces of information: head relative position, body part it is attached to.  Then I can get world point from that local point and done?  So for specific body parts of interest I specify the name of the part (head), body it is attached (back), and its relative position (0,3)... 

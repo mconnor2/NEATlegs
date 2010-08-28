@@ -30,20 +30,18 @@ class Creature {
 
     void reset ();
 
-    private:
-
-    /* Bodies and joints specifying the creature */
-    bodyList parts;
-    jointList joints;
-
     // If we want to access some body parts by name
     bodyMap limbs;
-
-    // Likewise if we want to access parts of a limb by name
+    jointMap joints;
     shapeMap shapes;
 
     /* Muscles necessary controlling creature */
     muscleList muscles;
+    
+    private:
+
+    /* Bodies and joints specifying the creature */
+    bodyList parts;
 
     /* Brains controlling the muscles */
 };
@@ -52,18 +50,24 @@ class Muscle {
     public:
 	Muscle (const BodyP &b1, const Vec2 &l1, 
 		const BodyP &b2, const Vec2 &l2,
-		float _k, float _eq) :
+		float _minK, float _maxK, 
+		float _minEq, float _maxEq) :
 		body1(b1), end1L(l1), body2(b2), end2L(l2),
-		k(_k), eq(_eq) 
+		minK(_minK), maxK(_maxK), minEq(_minEq), maxEq(_maxEq),
+		k((_minK + _maxK) / 2.), eq((_minEq + _maxEq)/2.) 
 	{ }
 
 	float update ();
 
 	void draw (BoxScreen *screen) const;
-    
+
+	void scaleLength (double sc);
+
+	void scaleStrength (double sc);
+
     private:
-	float k;		//Hook's constant
-	float eq;		//Spring's equilibrium distance
+	float k, minK, maxK;	//Hook's constant
+	float eq, minEq, maxEq;	//Spring's equilibrium distance
 
 	BodyP body1, body2;	//Bodies muscle connects
 	Vec2 end1L, end2L;	//Local point of contact (fixed)
