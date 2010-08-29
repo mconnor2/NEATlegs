@@ -27,7 +27,7 @@ World::World (float _hz, int _iterations) :
 		 boost::bind(&b2World::DestroyBody, b2W, _1));
     
     b2PolygonDef groundBoxDef;
-    groundBoxDef.SetAsBox(50.0f, 10.0f);
+    groundBoxDef.SetAsBox(500.0f, 10.0f);
     groundBoxDef.density = 0.0f;
     groundBoxDef.friction = 1.0f;
 

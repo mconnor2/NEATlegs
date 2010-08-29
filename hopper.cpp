@@ -307,12 +307,8 @@ int main (int argc, char **argv) {
     // Keep population small so we can watch the results at first.
     P.popSize = 100;
     
-    //5 inputs, 2 outputs that fight to determine left or right
-    #ifdef ALLIN
-    P.nInput = 5; P.nOutput = 2;
-    #else
-    P.nInput = 3; P.nOutput = 2;
-    #endif
+    //6 inputs, 4 outputs for two muscles
+    P.nInput = 6; P.nOutput = 4;
 
     //Mating probabilities:
     P.inheritAllLinks = false;
