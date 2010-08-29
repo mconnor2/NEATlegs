@@ -42,83 +42,84 @@ class hopper : public unary_function<const GenomeP, double> {
 
 	double operator()(const GenomeP &g, 
 			  int Generation = 0, SDL_Surface *screen = NULL) {
-	   auto_ptr<Network> N(g->createNewNetwork());
+	    auto_ptr<Network> N(g->createNewNetwork());
 	
-	   int steps=0,y;
+	    int steps=0,y;
 	    
-	   double in[6];  //Input loading array
-	   //Output: thigh muscle length(%max), k; shin muscle length(%max), k
-	   double out[4] = {0,0,0,0};
-	   int nMuscles = 2;
+	    double in[6];  //Input loading array
+	    //Output: thigh muscle length(%max), k; shin muscle length(%max), k
+	    double out[4] = {0,0,0,0};
+	    int nMuscles = 2;
 
-	   FPSmanager fpsm;
+	    FPSmanager fpsm;
 
-	   SDL_Surface *text_surf = NULL;
+	    SDL_Surface *text_surf = NULL;
 
-	   SDL_Rect text_loc;
-	   text_loc.x = 10;
-	   text_loc.y = 10;
+	    SDL_Rect text_loc;
+	    text_loc.x = 10;
+	    text_loc.y = 10;
 	     
-	   BoxScreen s(screen);
+	    BoxScreen s(screen);
 
-	   if (screen) {
-	     int rate = 60; //static_cast<int>(2.0/TAU);
-	     SDL_initFramerate(&fpsm);
-	     SDL_setFramerate(&fpsm,rate);
+	    if (screen) {
+		int rate = 60; //static_cast<int>(2.0/TAU);
+		SDL_initFramerate(&fpsm);
+		SDL_setFramerate(&fpsm,rate);
     
-	     if (fnt) {
-		SDL_Color fgColor={255,255,255};
+		if (fnt) {
+		    SDL_Color fgColor={255,255,255};
 
-		char num[16];
-		snprintf(num,16,"%d",Generation);
-		text_surf = TTF_RenderText_Blended(fnt,num,fgColor);
-	     }
-	   }
+		    char num[16];
+		    snprintf(num,16,"%d",Generation);
+		    text_surf = TTF_RenderText_Blended(fnt,num,fgColor);
+		}
+	    }
 	   
-	   C->reset();
+	    C->reset();
 
-	   /*--- Iterate through the action-learn loop. ---*/
-	   while (steps++ < MAX_STEPS)
-	     {
-	       /*-- setup the input layer based on the four iputs --*/
-	       in[0]=1.0;  //Bias
+	    double score = 0;
+
+	    /*--- Iterate through the action-learn loop. ---*/
+	    while (steps++ < MAX_STEPS) {
+		/*-- setup the input layer based on the four iputs --*/
+		in[0]=1.0;  //Bias
 	       
-	       //Get input from the creature
-	       //Knee angle (scale 0-1 by using upper and lower limit of joint)
-	       RevoluteJointP knee = C->joints["knee"];
-	       in[1] = limit_norm(knee->GetJointAngle(),
-				  knee->GetLowerLimit(), knee->GetUpperLimit());
-	       //hip angle
-	       RevoluteJointP hip = C->joints["hip"];
-	       in[2] = limit_norm(hip->GetJointAngle(),
-				  hip->GetLowerLimit(), hip->GetUpperLimit());
-	       //head height
-	       shapePos headPos = C->shapes["head"];
-	       Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
-	       in[3] = limit_norm(headV.y,0,20);
+		//Get input from the creature
+		//Knee angle (scale 0-1 by using upper and lower limit of joint)
+		RevoluteJointP knee = C->joints["knee"];
+		in[1] = limit_norm(knee->GetJointAngle(),
+				   knee->GetLowerLimit(),knee->GetUpperLimit());
+		//hip angle
+		RevoluteJointP hip = C->joints["hip"];
+		in[2] = limit_norm(hip->GetJointAngle(),
+				   hip->GetLowerLimit(), hip->GetUpperLimit());
+	        //head height
+	        shapePos headPos = C->shapes["head"];
+	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
+	        in[3] = limit_norm(headV.y,0,20);
 
-	       //foot height
-	       shapePos footPos = C->shapes["foot"];
-	       Vec2 footV = footPos.b->GetWorldPoint(footPos.localPos);
-	       in[4] = limit_norm(footV.y,0,20);
+		//foot height
+		shapePos footPos = C->shapes["foot"];
+		Vec2 footV = footPos.b->GetWorldPoint(footPos.localPos);
+		in[4] = limit_norm(footV.y,0,20);
 	       
-	       //absolute back angle?
-	       BodyP back = C->limbs["back"];
-	       in[5] = limit_norm(back->GetAngle(),0,2*Pi);
+		//absolute back angle?
+		BodyP back = C->limbs["back"];
+		in[5] = limit_norm(back->GetAngle(),0,2*Pi);
 
-	       //Run input through network
-	       N->run(in, out);
+		//Run input through network
+		N->run(in, out);
 
-	       //Update creature's muscles based on output
-	       for (int m = 0; m<nMuscles; ++m) {
+		//Update creature's muscles based on output
+		for (int m = 0; m<nMuscles; ++m) {
 		    C->muscles[m]->scaleStrength(out[m*2]);
 		    C->muscles[m]->scaleLength(out[m*2+1]);
-	       }
+		}
 
-	       /* Advance the world */
-	       W->step();
+		/* Advance the world */
+		W->step();
 
-	       if (screen) {
+		if (screen) {
 		    ClearScreen(screen);
 
 		    if (text_surf) {
@@ -133,22 +134,24 @@ class hopper : public unary_function<const GenomeP, double> {
 		    if (HandleEvent()) break;
 
 		    SDL_framerateDelay(&fpsm);
-	       }
+		}
 
-	       /*--- Check for failure.  If so, return steps ---*/
-	       // For hopper, failure is if creature's head drops below
-	       // some level.
-	       headV = headPos.b->GetWorldPoint(headPos.localPos);
-	       if (headV.y < HEAD_FLOOR) break;
-	     }
+		/*--- Check for failure.  If so, return steps ---*/
+		// For hopper, failure is if creature's head drops below
+		// some level.
+		headV = headPos.b->GetWorldPoint(headPos.localPos);
+		if (headV.y < HEAD_FLOOR) break;
+		score += headV.y;
+	    }
 
-	     if (text_surf)
-		 SDL_FreeSurface(text_surf);
+	    if (text_surf)
+		SDL_FreeSurface(text_surf);
 
 //	cout<<"Made it "<<steps<<" steps..."
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
 
-	    return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
+	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
+	    return (g->fitness = score/(20.0 * MAX_STEPS));
 	};
 
     private:

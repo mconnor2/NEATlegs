@@ -133,7 +133,7 @@ Creature::Creature (World *w) {
 
     b2CircleDef headBallDef;
     headBallDef.radius = 0.5f;
-    headBallDef.density = 50.0f;
+    headBallDef.density = 5.0f;
     headBallDef.localPosition.Set(0.0f, 3.0f);
     //headBallDef.groupIndex = -1;
 
@@ -164,8 +164,8 @@ Creature::Creature (World *w) {
     //hipDef.anchorPoint.Set(0.0f, height+17.0f);
 
     //Right leg hip starts at 0, can rotate (CCW) b2_pi
-    hipDef.lowerAngle = -0.01f;
-    hipDef.upperAngle = b2_pi-0.01f;
+    hipDef.lowerAngle = -0.01f; 
+    hipDef.upperAngle = b2_pi * 3.0f/4.0f;
     hipDef.enableLimit = true;
 
     RevoluteJointP hip = boost::dynamic_pointer_cast<RevoluteJoint, Joint>
