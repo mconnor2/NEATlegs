@@ -19,7 +19,13 @@ class BoxScreen {
 
 	void worldLine (const Vec2 &p1B, const Vec2 &p2B, Color c);
 
+	void keepViewable (const Vec2 &pW);
+
 	inline void box2pixel (const Vec2 &boxV, Vec2 &screenV);
+
+	//Default pixel border for 640x480:
+	static const int LeftBorder = 32, RightBorder = 608,
+			 TopBorder = 32, BottomBorder = 448;
     private:
 	float pM;		//pixels/meter
 	Vec2 BoxOriginP;	//location of box origin in pixel space

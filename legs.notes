@@ -447,4 +447,22 @@ Wow, thats not too bad, I think I can hard code much of this today.  THen I will
 
 Ok, should be easy to get knee and hip angle from those joints (instead of list, lets use name map to pull actual named joints), after double check that possible to get angle from joint in Box2D.
 
-So how should I get foot and head height?  These are shapes attached to bodies.  I can directly ask for the bodies position, but this will give back+head center of mass, or shin+foot center of mass.  When I create the head shape I set the body coordinate center, so I can recover the head position with two pieces of information: head relative position, body part it is attached to.  Then I can get world point from that local point and done?  So for specific body parts of interest I specify the name of the part (head), body it is attached (back), and its relative position (0,3)... 
+So how should I get foot and head height?  These are shapes attached to bodies.
+I can directly ask for the bodies position, but this will give back+head center
+of mass, or shin+foot center of mass.  When I create the head shape I set the
+body coordinate center, so I can recover the head position with two pieces of
+information: head relative position, body part it is attached to.  Then I can
+get world point from that local point and done?  So for specific body parts of
+interest I specify the name of the part (head), body it is attached (back), and
+its relative position (0,3)...   Turns out I had a seperate method coded up on my laptop that used the body pointer in the shape itself, which also works and I will think about that... may make more sense.
+
+08/29/10
+
+ToDo:
+-Modify graphics to give horizontal distance and scrolling as the creature moves.
+-Use previously coded shape storage method.  Is it cleaner?
+-Look at XML again, is it necessary?  Find examples in other code, what libraries methods are used, what would XML format look like.
+
+Where to put graphics for marking distance... probably in boxScreen since it translates from world coordinates to screen coordinates.  I need to tell it the new location of the part to keep viewable (say head for now), and it will shift the origin accordingly.  After that I can add a helper function that draws grid, everything else drawn on top of that.
+
+

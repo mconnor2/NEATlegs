@@ -14,6 +14,24 @@ BoxScreen::BoxScreen (SDL_Surface *s, float _pM,
 {
 
 }
+
+/**
+ * Make sure that the world point passed is viewable in screen space.
+ * If not, shift origin accordingly.
+ */
+void BoxScreen::keepViewable (const Vec2 &pW) {
+    b2Vec2 xP;
+    box2pixel(pW, xP);
+
+    if (xP.x < LeftBorder)
+	BoxOriginP.x += LeftBorder - xP.x;
+    if (xP.x > RightBorder)
+	BoxOriginP.x -= xP.x - RightBorder;
+    if (xP.y > BottomBorder)
+	BoxOriginP.y += BottomBorder - xP.y;
+    if (xP.y < TopBorder)
+	BoxOriginP.y -= xP.y - TopBorder;
+}
 	
 void BoxScreen::drawBody (const BodyP &b) {
     for (Shape *s = b->GetShapeList(); s; s = s->GetNext()) {

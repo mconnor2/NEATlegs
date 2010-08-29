@@ -118,6 +118,8 @@ class hopper : public unary_function<const GenomeP, double> {
 
 		/* Advance the world */
 		W->step();
+		
+		headV = headPos.b->GetWorldPoint(headPos.localPos);
 
 		if (screen) {
 		    ClearScreen(screen);
@@ -127,7 +129,8 @@ class hopper : public unary_function<const GenomeP, double> {
 		    }
 
 //		    cout<<"Head height: "<<headV.x<<", "<<headV.y<<endl;
-
+		    
+		    s.keepViewable(headV);
 		    W->draw(&s);
 		    SDL_Flip(screen);
 
@@ -139,7 +142,6 @@ class hopper : public unary_function<const GenomeP, double> {
 		/*--- Check for failure.  If so, return steps ---*/
 		// For hopper, failure is if creature's head drops below
 		// some level.
-		headV = headPos.b->GetWorldPoint(headPos.localPos);
 		if (headV.y < HEAD_FLOOR) break;
 		score += headV.y;
 	    }
