@@ -19,20 +19,14 @@
 using namespace std;
 
 const int Width  = 640;
-const int Height = 320;
+const int Height = 480;
 
 const double Pi = 3.14159265358979323;
 
 TTF_Font *fnt;
 
 /**
- * Single Pole balancing experiment.  Physics test of NEAT to evolve
- * motion controller.  Code taken from Ken Stanley's original NEAT
- * implimentation, and he states:
-//     cart_and_pole() was take directly from the pole simulator written
-//     by Richard Sutton and Charles Anderson.
- *
- * Also use as a test for saving and displaying network behaviour.
+ * Test for creature hopping.  Most crap is hard coded at this point.
  *
  */
 class hopper : public unary_function<const GenomeP, double> {
@@ -40,7 +34,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	const int MAX_STEPS;
 	//const bool random_start;
 
-	const static double HEAD_FLOOR = 3.0;
+	const static double HEAD_FLOOR = 9.0;
 
 	hopper(int max_steps, World *_W, Creature *_C) :
 	    MAX_STEPS(max_steps), W(_W), C(_C) //random_start(_random_start) 
@@ -72,7 +66,6 @@ class hopper : public unary_function<const GenomeP, double> {
 	     SDL_initFramerate(&fpsm);
 	     SDL_setFramerate(&fpsm,rate);
     
-
 	     if (fnt) {
 		SDL_Color fgColor={255,255,255};
 
@@ -87,7 +80,6 @@ class hopper : public unary_function<const GenomeP, double> {
 	   /*--- Iterate through the action-learn loop. ---*/
 	   while (steps++ < MAX_STEPS)
 	     {
-	       
 	       /*-- setup the input layer based on the four iputs --*/
 	       in[0]=1.0;  //Bias
 	       
@@ -133,7 +125,9 @@ class hopper : public unary_function<const GenomeP, double> {
 			SDL_BlitSurface(text_surf,NULL,screen,&text_loc);
 		    }
 
-		    W->draw(&s); 
+//		    cout<<"Head height: "<<headV.x<<", "<<headV.y<<endl;
+
+		    W->draw(&s);
 		    SDL_Flip(screen);
 
 		    if (HandleEvent()) break;
@@ -342,7 +336,7 @@ int main (int argc, char **argv) {
     // Create a creature that is added to the world
     Creature hoppy(&w);
 
-    hopper fit(10000, &w, &hoppy);
+    hopper fit(1000, &w, &hoppy);
     
     GeneticAlgorithm<hopper> GA(&P, &fit);
 
@@ -361,7 +355,7 @@ int main (int argc, char **argv) {
 	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
 	cout<<"========================================================="<<endl;
 
-	if (drawGen)
+	if (gen%10 == 0 && drawGen)
 	    fit(GA.bestIndiv(), gen, screen);
 
 	//cout<<"Generation "<<gen+1<<endl;
