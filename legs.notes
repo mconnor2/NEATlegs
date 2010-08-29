@@ -467,4 +467,3 @@ Where to put graphics for marking distance... probably in boxScreen since it tra
 
 I was getting an error with speciation that I haven't tracked down yet, but I believe it comes from cases where we have 1 member per specie, which seems to make things quite unhappy quickly.  By playing with speciation threshold I was able to keep it from rearing its head, but I should probably try to figure out a real fix.
 
-

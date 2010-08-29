@@ -100,3 +100,27 @@ void BoxScreen::worldLine (const Vec2 &p1B, const Vec2 &p2B, Color c) {
     box2pixel(p1B,p1P); box2pixel(p2B,p2P);
     lineColor(screen, (int)p1P.x, (int)p1P.y, (int)p2P.x, (int)p2P.y, c);
 }
+
+/**
+ * Draw a grid of pixels, one every 10 meters starting from the origin.
+ *
+ * From the origin point, need to figure out where the minimum x,y coordinates
+ *  are that are in the screen space, then draw from there.
+ *
+ *  min_c o.x + c*10*pM >= 0
+ *        c >= -o.x / 10*pM
+ *        c = ceil(-o.x / 10*pM)
+ */
+void BoxScreen::drawGrid () {
+    float sx = BoxOriginP.x - floor((float)BoxOriginP.x / (10 * pM))*10*pM,
+	  sy = BoxOriginP.y - floor((float)BoxOriginP.y / (10 * pM))*10*pM;
+
+//    cout<<"Starting grid: "<<(float)sx<<", "<<(float)sy
+//	<<" with "<<10*pM<<" pixels / 10 meters"<<endl;
+
+    for (float y = sy; y<HEIGHT; y+=10*pM) {
+	for (float x = sx; x<WIDTH; x+=10*pM) {
+	    pixelColor(screen, (int)x, (int)y, 0xFF888888);
+	}
+    }
+}

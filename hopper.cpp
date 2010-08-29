@@ -34,7 +34,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	const int MAX_STEPS;
 	//const bool random_start;
 
-	const static double HEAD_FLOOR = 9.0;
+	const static double HEAD_FLOOR = 5.0;
 
 	hopper(int max_steps, World *_W, Creature *_C) :
 	    MAX_STEPS(max_steps), W(_W), C(_C) //random_start(_random_start) 
@@ -62,7 +62,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	    BoxScreen s(screen);
 
 	    if (screen) {
-		int rate = 60; //static_cast<int>(2.0/TAU);
+		int rate = 100; //static_cast<int>(2.0/TAU);
 		SDL_initFramerate(&fpsm);
 		SDL_setFramerate(&fpsm,rate);
     
@@ -132,6 +132,7 @@ class hopper : public unary_function<const GenomeP, double> {
 //		    cout<<"Head height: "<<headV.x<<", "<<headV.y<<endl;
 		    
 		    s.keepViewable(headV);
+		    s.drawGrid();
 		    W->draw(&s);
 		    SDL_Flip(screen);
 
