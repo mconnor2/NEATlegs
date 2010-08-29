@@ -67,8 +67,8 @@ Creature::Creature (World *w) {
     //kneeDef.body1 = thigh;
     //kneeDef.body2 = shin;
     //kneeDef.anchorPoint.Set(0.0f, height+13.0f);
-    kneeDef.lowerAngle = -b2_pi+0.01f;
-    kneeDef.upperAngle = 0.01f;
+    kneeDef.lowerAngle = -b2_pi+0.02f;
+    kneeDef.upperAngle = -0.02f;
     kneeDef.enableLimit = true;
 
     RevoluteJointP knee = boost::dynamic_pointer_cast<RevoluteJoint,Joint>
@@ -80,7 +80,7 @@ Creature::Creature (World *w) {
 				 thigh, Vec2(-0.5f,1.0f),
 				 //7000.0f, 3.3f
 				 3000.0f, 10000.0f, 
-				 1.0f, 5.0f));
+				 1.5f, 4.5f));
     muscles.push_back(hamstring);
 
 /*
@@ -177,7 +177,7 @@ Creature::Creature (World *w) {
 			    back,  Vec2(0.5f,-1.5f),
 			    //7000.0f, 3.4f));
 			    3000.0f, 10000.0f,
-			    1.0f, 5.0f));
+			    1.5f, 4.5f));
     muscles.push_back(quad);
 /*
 

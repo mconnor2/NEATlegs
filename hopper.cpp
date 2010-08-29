@@ -78,6 +78,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	    C->reset();
 
 	    double score = 0;
+	    double maxX = 0, maxY = 0;
 
 	    /*--- Iterate through the action-learn loop. ---*/
 	    while (steps++ < MAX_STEPS) {
@@ -143,7 +144,9 @@ class hopper : public unary_function<const GenomeP, double> {
 		// For hopper, failure is if creature's head drops below
 		// some level.
 		if (headV.y < HEAD_FLOOR) break;
-		score += headV.y;
+		score += headV.y*headV.y;
+		if (headV.x > maxX) maxX = headV.x;
+		if (headV.y > maxY) maxY = headV.y;
 	    }
 
 	    if (text_surf)
@@ -153,7 +156,9 @@ class hopper : public unary_function<const GenomeP, double> {
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
-	    return (g->fitness = score/(20.0 * MAX_STEPS));
+	    //return (g->fitness = score/MAX_STEPS);
+	    //return (g->fitness = maxX);
+	    return (g->fitness = maxY);
 	};
 
     private:
@@ -321,12 +326,12 @@ int main (int argc, char **argv) {
     P.weightPerturbUniform = 0.39;
     
     P.addLinkMutationRate = 0.3;
-    P.addNodeMutationRate = 0.01;
+    P.addNodeMutationRate = 0.05;
     
     P.compatGDiff = 1.0;
     P.compatWDiff = 0.4;
     
-    P.compatThresh = 3;
+    P.compatThresh = 7;
     P.specieMate = 0.99;
 
     P.oldAge = 5;

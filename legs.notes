@@ -465,4 +465,6 @@ ToDo:
 
 Where to put graphics for marking distance... probably in boxScreen since it translates from world coordinates to screen coordinates.  I need to tell it the new location of the part to keep viewable (say head for now), and it will shift the origin accordingly.  After that I can add a helper function that draws grid, everything else drawn on top of that.
 
+I was getting an error with speciation that I haven't tracked down yet, but I believe it comes from cases where we have 1 member per specie, which seems to make things quite unhappy quickly.  By playing with speciation threshold I was able to keep it from rearing its head, but I should probably try to figure out a real fix.
+
 
