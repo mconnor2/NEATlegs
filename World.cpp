@@ -9,7 +9,7 @@ World::World (float _hz, int _iterations) :
     //Code taken basically straight from Box2D user manual
     b2AABB worldAABB;
     worldAABB.lowerBound.Set(-100.0f, -100.0f);
-    worldAABB.upperBound.Set(150.0f, 150.0f);
+    worldAABB.upperBound.Set(500.0f, 500.0f);
 
     //Set gravity pointing downward
     b2Vec2 gravity(0.0f, -10.0f);
