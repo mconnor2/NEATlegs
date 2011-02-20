@@ -5,83 +5,256 @@
 
 #include <boost/shared_ptr.hpp>
 
+#include <libconfig.h++>
 
-Creature::Creature (World *w) {
-    //XXX Eventually will read geometry description from file
-    //    but for now lets just hard code some shape.
-
-    float height = 50.0f + (10.0-20.0*(float)rand()/(RAND_MAX+1.0f));
-
-    b2PolygonDef shinBoneDef;
-    shinBoneDef.SetAsBox(0.5f,3.0f);
-    shinBoneDef.density = 1.0f;
-    shinBoneDef.filter.groupIndex = -1;
-
-    b2CircleDef footBallDef;
-    footBallDef.radius = 0.5f;
-    footBallDef.density = 1.0f;
-    footBallDef.localPosition.Set(0.0f, -3.0f);
-    footBallDef.filter.groupIndex = -1;
-    footBallDef.friction = 1.6f;
+/**
+ * Load creature definition from config file.  
+ *
+ * Uses libconfig for parsing config file.
+ *
+ * return 1 on succes, 0 on error
+ */
+int Creature::initFromFile (const char* configFile, World *w) {
+    using namespace libconfig;
     
-    b2BodyDef shinBone;
-    //shinBone.AddShape(&shinBoneDef);
-    //shinBone.AddShape(&footBallDef);
-    shinBone.position.Set(0.0f, height+10.00f);
-    shinBone.angle = 0.00;
-    shinBone.angularDamping = 0.01f;
+    Config config;
+    try {
+	config.readFile(configFile);
+    } catch (ParseException pe) {
+	cerr<<"Creature::initFromFile parse error"<<endl;
+	cerr<<"   config file "<<configFile<<endl;
+	cerr<<"   line number "<<pe.getLine()<<endl;
+	cerr<<"   error: "<<pe.getError()<<endl;
 
-    BodyP shin(w->createBody(&shinBone));
-    shin->CreateShape(&shinBoneDef);
-    shin->CreateShape(&footBallDef);
-    shin->SetMassFromShapes();
+	return 0;
+    } catch (...) {
+	cerr<<"Creature::initFromFile error reading from file."<<endl;
+
+	return 0;
+    }
+    config.setAutoConvert(true);
+
+    //Config specifies limbs, joints, muscles and shapes
     
-    parts.push_back(shin);
-    limbs.insert(make_pair("shin",shin));
+    //Limbs specify:
+    // name
+    // position.{x,y} 
+    // angle
+    // angularDamping
+    // list of shapes:
+    //    each has type box or ball
+    //    for box: w, h
+    //    for ball: radius
+    //	  density
+    //    optional position
+    //	  optional friction
+    if (!config.exists("limbs")) {
+	cerr<<"Creature::initFromFile limbs member does not exist"<<endl;
+	return 0;
+    }
+    Setting &limbConfig = config.lookup("limbs");
+    int nLimbs = limbConfig.getLength();
+    for (int i = 0; i<nLimbs; ++i) {
+	try {
+	    Setting &curLimb = limbConfig[i];
+	    string name = curLimb["name"];
+	    float x = curLimb["position"]["x"], 
+		  y = curLimb["position"]["y"];
+	    
+	    b2BodyDef bone;
+	    bone.position.Set(x,y);
+	    curLimb.lookupValue("angle", bone.angle);
+	    curLimb.lookupValue("angularDamping", bone.angularDamping);
+	    
+	    BodyP limb(w->createBody(&bone));
+	    
+	    Setting &shapes = curLimb["shapes"];
+	    int nShapes = shapes.getLength();
+	    for (int j = 0; j<nShapes; ++j) {
+		Setting &curShape = shapes[j];
+		string type = curShape["type"];
+		auto_ptr<b2ShapeDef> shapeDefp;
+		if (type == "box") {
+		    float w = curShape["w"],
+			  h = curShape["h"];
+		    shapeDefp = auto_ptr<b2ShapeDef>(new b2PolygonDef);
+		    ((b2PolygonDef*)shapeDefp.get())->SetAsBox(w,h);
+		} else if (type == "ball") {
+		    shapeDefp = auto_ptr<b2ShapeDef>(new b2CircleDef);
+		    ((b2CircleDef*)shapeDefp.get())->radius = 
+			curShape["radius"];
+		    float x = curShape["position"]["x"],
+			  y = curShape["position"]["y"];
+		    ((b2CircleDef*)shapeDefp.get())->localPosition.Set(x,y); 
+		} else {
+		    cerr<<"Creature::initFromFile limb "<<name
+			<<", shape "<<j<<" type "<<type<<" unknown."<<endl;
+		    return 0;
+		}
+		shapeDefp->density = curShape["density"];
+		
+		curShape.lookupValue("friction", shapeDefp->friction);
+		curShape.lookupValue("groupIndex",
+				     (int&)(shapeDefp->filter.groupIndex)); 
+
+		limb->CreateShape(shapeDefp.get());
+	    }
+
+	    limb->SetMassFromShapes();
+
+	    parts.push_back(limb);
+	    limbs.insert(make_pair(name, limb));
+	} catch (SettingTypeException te) {
+	    cerr<<"Creature::initFromFile problem processing limb "<<i<<endl;
+	    cerr<<"    SettingTypeException: "<<((SettingException)te).what()
+		<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (SettingNotFoundException te) {
+	    cerr<<"Creature::initFromFile problem processing limb "<<i<<endl;
+	    cerr<<"    SettingNotFoundException: "
+		<<((SettingException)te).what()<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (...) {
+	    cerr<<"Creature::initFromFile problem processing limb "<<i<<endl;
+	    return 0;
+	}
+    }
+
+    //Joints: 
+    // name = "knee";
+    // type,  
+    // XXX so far only revolute
+    //    obj1
+    //    obj2
+    //    position.{x,y}
+    //    lowerAngle
+    //    upperAngle
+    if (!config.exists("joints")) {
+	cerr<<"Creature::initFromFile joints member does not exist"<<endl;
+	return 0;
+    }
+    Setting &jointConfig = config.lookup("joints");
+    int nJoints = jointConfig.getLength();
+    for (int i = 0; i<nJoints; ++i) {
+	try {
+	    Setting &curJoint = jointConfig[i];
+	    string name = curJoint["name"];
+	    string type = curJoint["type"];
+	    if (type == "revolute") {
+		string obj1 = curJoint["obj1"];
+		string obj2 = curJoint["obj2"];
+		float x = curJoint["position"]["x"],
+		      y = curJoint["position"]["y"];
+		b2RevoluteJointDef jointDef;
+		jointDef.Initialize(limbs[obj1].get(), limbs[obj2].get(),
+				    Vec2(x, y));
+		jointDef.lowerAngle = curJoint["lowerAngle"];
+		jointDef.upperAngle = curJoint["upperAngle"];
+		//XXX default to enableLimit true
+		jointDef.enableLimit = true;
+
+		RevoluteJointP joint = 
+		    boost::dynamic_pointer_cast<RevoluteJoint,Joint>
+			(w->createJoint(&jointDef));
+		joints.insert(make_pair(name, joint));
+
+	    } else {
+		cerr<<"Creature::initFromFile joint "<<i<<":"<<name
+		    <<", unknown type "<<type<<endl;
+		return 0;
+	    }
+	
+	} catch (SettingTypeException te) {
+	    cerr<<"Creature::initFromFile problem processing joint "<<i<<endl;
+	    cerr<<"    SettingTypeException: "<<((SettingException)te).what()
+		<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (SettingNotFoundException te) {
+	    cerr<<"Creature::initFromFile problem processing joint "<<i<<endl;
+	    cerr<<"    SettingNotFoundException: "
+		<<((SettingException)te).what()<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (...) {
+	    cerr<<"Creature::initFromFile problem processing joint "<<i<<endl;
+	    return 0;
+	}
+    }
     
-    shapePos foot;
-    foot.localPos.Set(0.0f, -3.0f);
-    foot.b = shin;
-    shapes.insert(make_pair("foot",foot));
+    //Muscles:
+    // name = "hamstring";
+    //  obj1 = "shin";
+    //  pos1 = { x = -0.5; y = 1.5; };
+    //  obj2 = "thigh";
+    //  pos2 = { x = -0.5; y = 1.0; };
+    //  minK = 3000.0;
+    //  maxK = 10000.0;
+    //  minEq = 1.5;
+    //  maxEq = 4.5;
+    if (!config.exists("muscles")) {
+	cerr<<"Creature::initFromFile muscles member does not exist"<<endl;
+	return 0;
+    }
+    Setting &muscleConfig = config.lookup("muscles");
+    int nMuscles = muscleConfig.getLength();
+    for (int i = 0; i<nMuscles; ++i) {
+	try {
+	    Setting &curMuscle = muscleConfig[i];
+	    string name = curMuscle["name"];
+	    string obj1 = curMuscle["obj1"],
+		   obj2 = curMuscle["obj2"];
+	    float x1 = curMuscle["pos1"]["x"],
+		  y1 = curMuscle["pos1"]["y"],
+		  x2 = curMuscle["pos2"]["x"],
+		  y2 = curMuscle["pos2"]["y"];
+	    MuscleP muscle(new Muscle(limbs[obj1], Vec2(x1, y1),
+				      limbs[obj2], Vec2(x2, y2),
+				      curMuscle["minK"],
+				      curMuscle["maxK"],
+				      curMuscle["minEq"],
+				      curMuscle["maxEq"]));
+	    muscles.push_back(muscle);
+	} catch (SettingTypeException te) {
+	    cerr<<"Creature::initFromFile problem processing muscle "<<i<<endl;
+	    cerr<<"    SettingTypeException: "<<((SettingException)te).what()
+		<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (SettingNotFoundException te) {
+	    cerr<<"Creature::initFromFile problem processing muscle "<<i<<endl;
+	    cerr<<"    SettingNotFoundException: "
+		<<((SettingException)te).what()<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (...) {
+	    cerr<<"Creature::initFromFile problem processing muscle "<<i<<endl;
+	    return 0;
+	}
+    }
+   
 
-    b2PolygonDef thighBoneDef;
-    thighBoneDef.SetAsBox(0.5f,2.0f);
-    thighBoneDef.density = 1.0f;
-    thighBoneDef.filter.groupIndex = -1;
-
-    b2BodyDef thighBone;
-    //thighBone.AddShape(&thighBoneDef);
-    thighBone.position.Set(0.0f,height+15.00f);
-    thighBone.angle = -0.00;
-    thighBone.angularDamping = 0.01f;
-
-    BodyP thigh(w->createBody(&thighBone));
-    thigh->CreateShape(&thighBoneDef);
-    thigh->SetMassFromShapes();
-
-    parts.push_back(thigh);
-    limbs.insert(make_pair("thigh",thigh));
-
-    b2RevoluteJointDef kneeDef;
-    kneeDef.Initialize(thigh.get(), shin.get(), Vec2(0.0f, height+13.0f));
-    //kneeDef.body1 = thigh;
-    //kneeDef.body2 = shin;
-    //kneeDef.anchorPoint.Set(0.0f, height+13.0f);
-    kneeDef.lowerAngle = -b2_pi+0.02f;
-    kneeDef.upperAngle = -0.02f;
-    kneeDef.enableLimit = true;
-
-    RevoluteJointP knee = boost::dynamic_pointer_cast<RevoluteJoint,Joint>
-						(w->createJoint(&kneeDef));
-    joints.insert(make_pair("knee",knee));
-
-    //Create muscle between thigh and shin:
-    MuscleP hamstring(new Muscle(shin,  Vec2(-0.5f,1.5f),
-				 thigh, Vec2(-0.5f,1.0f),
-				 //7000.0f, 3.3f
-				 3000.0f, 10000.0f, 
-				 1.5f, 4.5f));
-    muscles.push_back(hamstring);
+    //Shapes
+    // name = "foot";
+    //  body = "shin";
+    //  position = { x = 0.0; y = -3.0; };
+    if (config.exists("shapes")) {
+	Setting &shapeConfig = config.lookup("shapes");
+	int nShapes = shapeConfig.getLength();
+	for (int i = 0; i<nShapes; ++i) {
+	    try {
+		Setting &curShape = shapeConfig[i];
+		string name = curShape["name"],
+		       body = curShape["body"];
+		float x = curShape["position"]["x"],
+		      y = curShape["position"]["y"];
+		shapePos s;
+		s.localPos.Set(x,y);
+		s.b = limbs[body];
+		shapes.insert(make_pair(name, s));
+	    } catch (...) {
+		cerr<<"Creature::initFromFile problem processing shape "
+		    <<i<<endl;
+		return 0;
+	    }
+	}
+    }
 
 /*
     b2BodyDef LshinBone;
@@ -126,6 +299,7 @@ Creature::Creature (World *w) {
 				 Lthigh, Vec2(0.5f,1.0f),
 				 6500.0f, 3.3f));
 */
+/* XXX
     b2PolygonDef backBoneDef;
     backBoneDef.SetAsBox(0.5f,3.0f);
     backBoneDef.density = 1.0f;
@@ -180,7 +354,7 @@ Creature::Creature (World *w) {
 			    1.5f, 4.5f));
     muscles.push_back(quad);
     
-/*
+//.*
 
     b2RevoluteJointDef LhipDef;
     LhipDef.Initialize(back, Lthigh, Vec2(0.0f, height+17.0f));
@@ -202,6 +376,7 @@ Creature::Creature (World *w) {
 */
 
     w->addCreature(this);
+    return 1;
 }
 
 void Creature::reset () {

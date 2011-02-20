@@ -112,14 +112,23 @@ int main (int argc, char **argv) {
 
     /* Process arguments */
     int opt;
-    while ((opt = getopt(argc, argv, "N:h")) != -1) {
+    char *configFile = NULL;
+    while ((opt = getopt(argc, argv, "C:N:h")) != -1) {
 	switch(opt) {
 	    case 'N':
+	    break;
+	    case 'C':
+		configFile = optarg;
 	    break;
 	    default:
 		printf("Usage: legs [-N ?] [-h this?]\n");
 		exit(1);
 	}
+    }
+    
+    if (!configFile) {
+	fprintf(stderr, "Must specify config file.\n");
+	exit(1);
     }
 
     SDL_Surface *screen;
@@ -163,7 +172,12 @@ int main (int argc, char **argv) {
     World w;
 
     // Create a creature that is added to the world
-    Creature walker(&w);
+    Creature walker;
+
+    if (!walker.initFromFile(configFile, &w)) {
+	fprintf(stderr, "Couldn't init creature from file, exiting.\n");
+	exit(1);
+    }
 
     runSimulation(screen, &w, &walker);
 }

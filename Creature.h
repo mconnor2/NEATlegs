@@ -17,10 +17,10 @@ using namespace std;
 
 class Creature {
     public:
+    //Creature (World *w);	
     /* Create Creature's body and add it to the world */
-    //XXX Should take in file specifying geometry
-    Creature (World *w);	
-    
+    int initFromFile(const char *configFile, World *w);
+
     void wake ();	//make sure all the bodies are awake
     void update ();
 
@@ -35,7 +35,7 @@ class Creature {
     jointMap joints;
     shapeMap shapes;
 
-    /* Muscles necessary controlling creature */
+    /* Muscles necessary for controlling creature */
     muscleList muscles;
     
     private:

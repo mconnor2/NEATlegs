@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <boost/function.hpp>
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_gfxPrimitives.h>
 #include <SDL/SDL_framerate.h>
@@ -266,7 +268,7 @@ int main (int argc, char **argv) {
     }
     
     if (!configFile) {
-	printf("Must specify config file.\n");
+	fprintf(stderr, "Must specify config file.\n");
 	exit(1);
     }
 
@@ -328,7 +330,12 @@ int main (int argc, char **argv) {
     World w;
 
     // Create a creature that is added to the world
-    Creature hoppy(&w);
+    Creature hoppy;
+
+    if (!hoppy.initFromFile(configFile, &w)) {
+	cerr<<"Problem loading Creature, exiting."<<endl;
+	exit(1);
+    }
 
     hopper fit(1000, &w, &hoppy);
     boost::function<double (const GenomeP)> f = fit;
