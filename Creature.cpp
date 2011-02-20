@@ -179,6 +179,7 @@ Creature::Creature (World *w) {
 			    3000.0f, 10000.0f,
 			    1.5f, 4.5f));
     muscles.push_back(quad);
+    
 /*
 
     b2RevoluteJointDef LhipDef;

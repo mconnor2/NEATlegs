@@ -5,6 +5,9 @@ SDL_LIBS = -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 INC = -I../physics/Box2D_v2.0.1/Box2D/Include
 LIBS = -L../physics/Box2D_v2.0.1/Box2D/Source/Gen/float -lbox2d
 
+CFLAGS += `pkg-config --cflags libconfig++`
+LIBS += `pkg-config --libs libconfig++`
+
 CXX = g++ 
 
 TARGETS = legs hopper

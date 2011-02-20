@@ -467,3 +467,17 @@ Where to put graphics for marking distance... probably in boxScreen since it tra
 
 I was getting an error with speciation that I haven't tracked down yet, but I believe it comes from cases where we have 1 member per specie, which seems to make things quite unhappy quickly.  By playing with speciation threshold I was able to keep it from rearing its head, but I should probably try to figure out a real fix.
 
+02/19/11
+
+Looking at a couple of methods for reading in parameters from configuration file, and boy, sure appears to be a pain in the ass. 
+
+For global parameters, my options are basically:
+    -Big if statement
+    -parameters in a map, so do look up for each reference
+     (or parameter pointer in map, which requires ridiculous boilerplate)
+
+Also question of coupling, do I want to pass a file, property tree, or just a map to the global parameter object.  I think map would be fine, and then just fill variables and report if shit goes wrong.  This is the easiest and ugliest method.  Not even a map, array of key, value pairs is enough, just need to iterate over it.  But in that case, going to face issues with different types.  Boy, C++ is a pain, isn't it.
+
+Yeah, I was trying to think too hard instead of just get something working.  Lets pass around file name, then can load it with libconfig or whatever to read.
+
+

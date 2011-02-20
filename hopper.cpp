@@ -250,17 +250,26 @@ int main (int argc, char **argv) {
 
     /* Process arguments */
     int opt;
-    while ((opt = getopt(argc, argv, "Vh")) != -1) {
+    char *configFile = NULL;
+    while ((opt = getopt(argc, argv, "VC:h")) != -1) {
 	switch(opt) {
 	    case 'V':
 		drawGen = true;
 	    break;
+	    case 'C':
+		configFile = optarg;
+	    break;
 	    default:
-		printf("Usage: hopper [-V for video] [-h this]\n");
+		printf("Usage: hopper -C config file [-V for video] [-h this]\n");
 		exit(1);
 	}
     }
     
+    if (!configFile) {
+	printf("Must specify config file.\n");
+	exit(1);
+    }
+
     if (drawGen) {
 
 	/* Initialize SDL */
@@ -309,33 +318,11 @@ int main (int argc, char **argv) {
     }
 
     ExpParameters P;
-    //Setup experiment parameters:
-    // Keep population small so we can watch the results at first.
-    P.popSize = 100;
     
-    //6 inputs, 4 outputs for two muscles
-    P.nInput = 6; P.nOutput = 4;
-
-    //Mating probabilities:
-    P.inheritAllLinks = false;
-    P.inheritDominant = 0.9;
-    P.linkEnabledRate = 0.1;
-
-    P.weightMutationRate   = 0.2;
-    P.weightPerturbScale   = 0.1;
-    P.weightPerturbNormal  = 0.6;
-    P.weightPerturbUniform = 0.39;
-    
-    P.addLinkMutationRate = 0.3;
-    P.addNodeMutationRate = 0.05;
-    
-    P.compatGDiff = 1.0;
-    P.compatWDiff = 0.4;
-    
-    P.compatThresh = 7;
-    P.specieMate = 0.99;
-
-    P.oldAge = 5;
+    if (!P.loadFromFile(configFile)) {
+	cerr<<"Problem loading ExpParameters, exiting."<<endl;
+	exit(1);
+    }
     
     /* Initialize the World, take default hz and iteration */
     World w;

@@ -61,8 +61,11 @@ struct ExpParameters {
 
     int oldAge;				//Age after which young species are
 					// not safe from culling
+    
+    int loadFromFile (const char* configFile);
 };
 
+typedef unary_function<const GenomeP, double>* FitnessFunction;
 
 /**
  * NEAT Genetic Algorithm
@@ -71,10 +74,9 @@ struct ExpParameters {
  *   of individuals competing at this experiment
  *  -Divide individuals into species to try to foster innovations
  */
-template <class FitnessFunction>
 class GeneticAlgorithm {
     public:
-	GeneticAlgorithm(ExpParameters *P, FitnessFunction *f);
+	GeneticAlgorithm(ExpParameters *P, FitnessFunction f);
 	~GeneticAlgorithm();
 
 	// Produce one generation of the genetic algorithm, returning
@@ -89,7 +91,7 @@ class GeneticAlgorithm {
 
     private:
 	ExpParameters *P;
-	FitnessFunction *fitnessF;
+	FitnessFunction fitnessF;
 	int generation;
 	
 	InnovationStore *IS;
@@ -109,7 +111,5 @@ class GeneticAlgorithm {
 	GenomeP maxFitI;
 
 };
-
-#include "GeneticAlgorithm.cpp"
 
 #endif

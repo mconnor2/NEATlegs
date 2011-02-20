@@ -11,12 +11,74 @@
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
+#include <libconfig.h++>
+
+int ExpParameters::loadFromFile(const char* configFile) {
+    libconfig::Config config;
+    try {
+	config.readFile(configFile);
+    } catch (libconfig::ParseException pe) {
+	cerr<<"ExpParameters::loadFromFile parse error"<<endl;
+	cerr<<"   config file "<<configFile<<endl;
+	cerr<<"   line number "<<pe.getLine()<<endl;
+	cerr<<"   error: "<<pe.getError()<<endl;
+
+	return 0;
+    } catch (...) {
+	cerr<<"ExpParameters::loadFromFile error reading from file."<<endl;
+
+	return 0;
+    }
+
+    if (!config.exists("global")) {
+	cerr<<"ExpParameters::loadFromFile config file must have 'global' section."<<endl;
+
+	return 0;
+    }
+
+    //Hard code in reading of values
+    if (!(config.lookupValue("global.popSize", popSize)
+	  && config.lookupValue("global.nInput", nInput)
+	  && config.lookupValue("global.nOutput", nOutput)))
+    {
+	cerr<<"ExpParameters::loadFromFile missing one of popSize, nInput, nOutput"<<endl;
+	return 0;
+    }
+
+    try {
+	inheritAllLinks = config.lookup("global.inheritAllLinks");
+	inheritDominant = config.lookup("global.inheritDominant");
+	linkEnabledRate = config.lookup("global.linkEnabledRate");
+	weightMutationRate = config.lookup("global.weightMutationRate");
+	weightPerturbScale = config.lookup("global.weightPerturbScale");
+	weightPerturbNormal = config.lookup("global.weightPerturbNormal");
+	weightPerturbUniform = config.lookup("global.weightPerturbUniform");
+	addLinkMutationRate = config.lookup("global.addLinkMutationRate");
+	addNodeMutationRate = config.lookup("global.addNodeMutationRate");
+	compatGDiff = config.lookup("global.compatGDiff");
+	compatWDiff = config.lookup("global.compatWDiff");
+	compatThresh = config.lookup("global.compatThresh");
+	specieMate = config.lookup("global.specieMate");
+	oldAge = config.lookup("global.oldAge");
+    } catch (libconfig::SettingTypeException e) {
+	cerr<<"ExpParameters::loadFromFile SettingTypeException while loading parameters"<<endl;
+	return 0;
+    } catch (libconfig::SettingNotFoundException e) {
+	cerr<<"ExpParameters::loadFromFile SettingNotFoundException while loading parameters"<<endl;
+	return 0;
+    } catch (...) {
+	cerr<<"ExpParameters::loadFromFile some other exception while loading parameters"<<endl;
+	return 0;
+    }
+   
+    return 1;
+}
+
 /**
  * Initialize the population of genomes using the appropriate parameters
  */
-template <class FitnessFunction>
-GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
-    (ExpParameters *_P, FitnessFunction *_f) : P(_P), fitnessF(_f)
+GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction _f) : 
+				    P(_P), fitnessF(_f)
 {
     population.reserve(P->popSize);
     for (int i = 0; i<P->popSize; ++i) {
@@ -30,8 +92,7 @@ GeneticAlgorithm<FitnessFunction>::GeneticAlgorithm
     IS = new InnovationStore(P);
 }
 
-template <class FitnessFunction>
-GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
+GeneticAlgorithm::~GeneticAlgorithm() {
     //Must clean up the population of genomes
     /*
     for (genomeVec_it i = population.begin();
@@ -44,9 +105,7 @@ GeneticAlgorithm<FitnessFunction>::~GeneticAlgorithm() {
     delete IS;
 }
 
-template <class FitnessFunction>
-void GeneticAlgorithm<FitnessFunction>::speciate(const GenomeP& g, 
-						specieVec &sv) 
+void GeneticAlgorithm::speciate(const GenomeP& g, specieVec &sv) 
 {
     specie_it s;
     for (s = sv.begin(); s != sv.end(); ++s) {
@@ -80,8 +139,7 @@ void GeneticAlgorithm<FitnessFunction>::speciate(const GenomeP& g,
  *  	-Next generation is now current generation
  *  -Return max fitness
  */
-template <class FitnessFunction>
-double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
+double GeneticAlgorithm::nextGeneration() {
 
     //Just for fun, lets use for_each to find the fitness for
     // each individual, storing them in individual genome
@@ -244,10 +302,9 @@ double GeneticAlgorithm<FitnessFunction>::nextGeneration() {
     return maxFit;
 }
 
-template<class FitnessFunction> 
 template<class FitnessIt>
-FitnessIt GeneticAlgorithm<FitnessFunction>::
-    selectParent(FitnessIt first, FitnessIt last, double rfit)
+FitnessIt GeneticAlgorithm::selectParent(FitnessIt first, FitnessIt last, 
+					 double rfit)
 {
     while (first != last && rfit > (*first)->fitness) {
 	rfit -= (*first)->fitness;
@@ -256,8 +313,7 @@ FitnessIt GeneticAlgorithm<FitnessFunction>::
     return first;
 }
 
-template <class FitnessFunction>
-void GeneticAlgorithm<FitnessFunction>::printPopulation() const {
+void GeneticAlgorithm::printPopulation() const {
     cout<<"Population size: "<<population.size()<<endl;
     for (int i = 0; i<population.size(); ++i) {
 	cout<<"Member "<<i<<":"<<endl;
@@ -265,9 +321,8 @@ void GeneticAlgorithm<FitnessFunction>::printPopulation() const {
     }
 }
 
-template<class FitnessFunction> 
-void GeneticAlgorithm<FitnessFunction>::
-    print_statistics(int gen, double maxFit, double meanFit) const
+void GeneticAlgorithm::print_statistics(int gen, double maxFit, 
+					double meanFit) const
 {
     //Print out overall fitness statistics of current gen
     cerr<<gen<<"\t"<<meanFit<<"\t"<<maxFit;
@@ -278,4 +333,4 @@ void GeneticAlgorithm<FitnessFunction>::
 	     boost::mem_fn(&Specie::print_statistics));
     
     cerr<<endl;
-}	
+}
