@@ -7,7 +7,7 @@ CFLAGS += `pkg-config --cflags libconfig++`
 SDL_INC = `sdl-config --cflags`
 SDL_LIBS = -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 
-LIBS = `pkg-config --libs libconfig`
+LIBS = `pkg-config --libs libconfig++`
 
 BOX_INC = -I/home/mconnor/projects/physics/Box2D_v1.4.3/Box2D/Include
 BOX_LIBS = -L/home/mconnor/local/lib -lBox2D
@@ -15,8 +15,8 @@ BOX_LIBS = -L/home/mconnor/local/lib -lBox2D
 CXX = g++ 
 
 TARGETS = xorTest poleBalance
-SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp Sepecie.cpp
-OBJS = random.o Network.o InnovationStore.o Genome.o Specie.o
+SRCS = random.cpp Network.cpp InnovationStore.cpp Genome.cpp Sepecie.cpp GeneticAlgorithm.cpp
+OBJS = random.o Network.o InnovationStore.o Genome.o Specie.o GeneticAlgorithm.o
 
 TESTS = maxTest.cpp
 

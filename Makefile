@@ -14,7 +14,7 @@ TARGETS = legs hopper
 SRCS = BoxScreen.cpp World.cpp Creature.cpp
 OBJS = BoxScreen.o World.o Creature.o
 
-OBJS += NEAT/random.o NEAT/Network.o NEAT/InnovationStore.o NEAT/Genome.o NEAT/Specie.o
+OBJS += NEAT/random.o NEAT/Network.o NEAT/InnovationStore.o NEAT/Genome.o NEAT/Specie.o NEAT/GeneticAlgorithm.o
 
 .SUFFIXES: .cpp
 

@@ -4,8 +4,7 @@
 #include <functional>
 #include <vector>
 #include <boost/shared_ptr.hpp>
-
-using namespace std;
+#include <boost/function.hpp>
 
 //Really only need these for typedefs, can put those in one header to
 // keep in one place
@@ -13,7 +12,6 @@ using namespace std;
 #include "Specie.h"
 //class Genome;
 //class InnovationStore;
-
 
 /**
  * Paramters for running genetic algorithm experiment.  
@@ -65,7 +63,13 @@ struct ExpParameters {
     int loadFromFile (const char* configFile);
 };
 
-typedef unary_function<const GenomeP, double>* FitnessFunction;
+typedef boost::function<double (const GenomeP)> FitnessFunction;
+//typedef std::unary_function<const GenomeP, double> FitnessFunction;
+//typedef double FitnessFunction(const GenomeP);
+//class FitnessFunction : public std::unary_function<const GenomeP, double>{
+//    public:
+//	virtual double operator() (const GenomeP) = 0;
+//};
 
 /**
  * NEAT Genetic Algorithm
@@ -76,7 +80,7 @@ typedef unary_function<const GenomeP, double>* FitnessFunction;
  */
 class GeneticAlgorithm {
     public:
-	GeneticAlgorithm(ExpParameters *P, FitnessFunction f);
+	GeneticAlgorithm(ExpParameters *P, FitnessFunction* f);
 	~GeneticAlgorithm();
 
 	// Produce one generation of the genetic algorithm, returning
@@ -91,7 +95,7 @@ class GeneticAlgorithm {
 
     private:
 	ExpParameters *P;
-	FitnessFunction fitnessF;
+	FitnessFunction* fitnessF;
 	int generation;
 	
 	InnovationStore *IS;

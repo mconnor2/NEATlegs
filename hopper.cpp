@@ -331,8 +331,9 @@ int main (int argc, char **argv) {
     Creature hoppy(&w);
 
     hopper fit(1000, &w, &hoppy);
-    
-    GeneticAlgorithm<hopper> GA(&P, &fit);
+    boost::function<double (const GenomeP)> f = fit;
+
+    GeneticAlgorithm GA(&P, &f);
 
     double maxFit = -1e9, curMaxFit = 0;
     

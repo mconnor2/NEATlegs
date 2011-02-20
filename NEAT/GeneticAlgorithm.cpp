@@ -1,4 +1,4 @@
-//#include "GeneticAlgorithm.h"
+#include "GeneticAlgorithm.h"
 
 #include <algorithm>
 #include <iterator>
@@ -12,6 +12,8 @@
 #include <boost/bind.hpp>
 
 #include <libconfig.h++>
+
+using namespace std;
 
 int ExpParameters::loadFromFile(const char* configFile) {
     libconfig::Config config;
@@ -77,7 +79,7 @@ int ExpParameters::loadFromFile(const char* configFile) {
 /**
  * Initialize the population of genomes using the appropriate parameters
  */
-GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction _f) : 
+GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction* _f) : 
 				    P(_P), fitnessF(_f)
 {
     population.reserve(P->popSize);
