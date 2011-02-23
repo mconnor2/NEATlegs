@@ -516,6 +516,7 @@ void Muscle::scaleLength (double sc) {
     if (sc > 1) sc = 1;
     eq = minEq + sc * (maxEq - minEq);
 }
+
 void Muscle::scaleStrength (double sc) {
     if (sc < 0) sc = 0;
     if (sc > 1) sc = 1;

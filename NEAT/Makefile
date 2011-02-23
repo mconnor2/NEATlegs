@@ -11,11 +11,6 @@ SDL_LIBS := -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 
 LIBS += -lconfig++
 
-#INC  += -I/home/mconnor/projects/physics/Box2D_v1.4.3/Box2D/Include
-#BOX_LIBS := -L/home/mconnor/local/lib -lBox2D
-INC += -I../../physics/Box2D_v2.0.1/Box2D/Include
-BOX_LIBS := -L../../physics/Box2D_v2.0.1/Box2D/Source/Gen/float -lbox2d
-
 CXX = g++ 
 
 CXXFLAGS += $(INC)
@@ -38,7 +33,7 @@ xorTest: $(OBJS) xorTest.o
 	$(CXX) $(CFLAGS) -o xorTest $(OBJS) xorTest.o $(LIBS)
 
 poleBalance: $(OBJS) poleBalance.o
-	$(CXX) $(CFLAGS) -o poleBalance $(OBJS) poleBalance.o $(LIBS) $(BOX_LIBS) $(SDL_LIBS)
+	$(CXX) $(CFLAGS) -o poleBalance $(OBJS) poleBalance.o $(LIBS) $(SDL_LIBS)
 
 
 .PHONY: clean
