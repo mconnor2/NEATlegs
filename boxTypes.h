@@ -16,7 +16,12 @@ typedef b2Vec2 Vec2;
 
 typedef b2Body Body;
 typedef boost::shared_ptr<Body> BodyP;
-typedef std::vector<BodyP> bodyList;
+struct BodyPos {
+    Vec2 defaultPos;
+    float angle;
+    BodyP b;
+};
+typedef std::vector<BodyPos> bodyPosList;
 typedef std::map<std::string, BodyP> bodyMap;
 
 typedef b2Shape Shape;

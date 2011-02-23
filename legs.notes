@@ -480,4 +480,10 @@ Also question of coupling, do I want to pass a file, property tree, or just a ma
 
 Yeah, I was trying to think too hard instead of just get something working.  Lets pass around file name, then can load it with libconfig or whatever to read.
 
+02/23/11
+
+Moving to 2 legs, I see that I have to change code for how the brain wires to the leg.  Is there anyway I can encode this easily in the config file?
+
+I also neglected the default positioning, so I believe thats giving me some issues when I naively just changed the config.  OK, this is a bit more work than I was hoping, but pointing out how I should change things.
+
 

@@ -41,7 +41,7 @@ class Creature {
     private:
 
     /* Bodies and joints specifying the creature */
-    bodyList parts;
+    bodyPosList parts;
 
     /* Brains controlling the muscles */
 };

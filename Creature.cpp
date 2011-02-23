@@ -101,8 +101,12 @@ int Creature::initFromFile (const char* configFile, World *w) {
 	    }
 
 	    limb->SetMassFromShapes();
-
-	    parts.push_back(limb);
+	    
+	    BodyPos bp;
+	    bp.b = limb;
+	    bp.defaultPos.Set(x,y);
+	    bp.angle = bone.angle;
+	    parts.push_back(bp);
 	    limbs.insert(make_pair(name, limb));
 	} catch (SettingTypeException te) {
 	    cerr<<"Creature::initFromFile problem processing limb "<<i<<endl;
@@ -382,20 +386,13 @@ int Creature::initFromFile (const char* configFile, World *w) {
 
 void Creature::reset () {
     Vec2 zero(0, 0);
-    BodyP back = limbs["back"];
-    back->SetXForm(Vec2(0.0f, 14.0f), 0);
-    back->SetLinearVelocity(zero);
-    back->SetAngularVelocity(0);
-
-    BodyP thigh = limbs["thigh"];
-    thigh->SetXForm(Vec2(0.0f, 9.0f), 0);
-    thigh->SetLinearVelocity(zero);
-    thigh->SetAngularVelocity(0);
-
-    BodyP shin = limbs["shin"];
-    shin->SetXForm(Vec2(0.0f, 4.0f), 0);
-    shin->SetLinearVelocity(zero);
-    shin->SetAngularVelocity(0);
+    for (bodyPosList::iterator i = parts.begin();
+	 i != parts.end(); ++i)
+    {
+	i->b->SetXForm(i->defaultPos, i->angle);
+	i->b->SetLinearVelocity(zero);
+	i->b->SetAngularVelocity(0);
+    }
 }
 
 /*
@@ -435,10 +432,10 @@ bool Creature::getShapePosition(const string &name, Vec2 *p) const {
 */
 
 void Creature::wake () {
-    for (bodyList::iterator i = parts.begin();
+    for (bodyPosList::iterator i = parts.begin();
 	 i != parts.end(); ++i)
     {
-	(*i)->WakeUp();
+	i->b->WakeUp();
     }
 }
 
@@ -446,10 +443,10 @@ void Creature::wake () {
 void Creature::draw (BoxScreen *screen) const {
     /* Really should change this to a for_all */
     //Draw body shapes
-    for (bodyList::const_iterator i = parts.begin();
+    for (bodyPosList::const_iterator i = parts.begin();
 	 i != parts.end(); ++i)
     {
-	screen->drawBody(*i);
+	screen->drawBody(i->b);
     }
 
     //Draw musculature

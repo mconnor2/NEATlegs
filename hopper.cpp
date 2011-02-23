@@ -48,10 +48,11 @@ class hopper : public unary_function<const GenomeP, double> {
 	
 	    int steps=0,y;
 	    
-	    double in[6];  //Input loading array
+	    double in[9];  //Input loading array
 	    //Output: thigh muscle length(%max), k; shin muscle length(%max), k
-	    double out[4] = {0,0,0,0};
-	    int nMuscles = 2;
+	    double out[8] = {0,0,0,0,
+			     0,0,0,0};
+	    int nMuscles = 4;
 
 	    FPSmanager fpsm;
 
@@ -89,26 +90,41 @@ class hopper : public unary_function<const GenomeP, double> {
 	       
 		//Get input from the creature
 		//Knee angle (scale 0-1 by using upper and lower limit of joint)
-		RevoluteJointP knee = C->joints["knee"];
+		RevoluteJointP knee = C->joints["kneeL"];
 		in[1] = limit_norm(knee->GetJointAngle(),
 				   knee->GetLowerLimit(),knee->GetUpperLimit());
 		//hip angle
-		RevoluteJointP hip = C->joints["hip"];
+		RevoluteJointP hip = C->joints["hipL"];
 		in[2] = limit_norm(hip->GetJointAngle(),
 				   hip->GetLowerLimit(), hip->GetUpperLimit());
+		//Knee angle (scale 0-1 by using upper and lower limit of joint)
+		RevoluteJointP knee2 = C->joints["kneeR"];
+		in[3] = limit_norm(knee2->GetJointAngle(),
+				   knee2->GetLowerLimit(),
+				   knee2->GetUpperLimit());
+		//hip angle
+		RevoluteJointP hip2 = C->joints["hipR"];
+		in[4] = limit_norm(hip2->GetJointAngle(),
+				   hip2->GetLowerLimit(), 
+				   hip2->GetUpperLimit());
 	        //head height
 	        shapePos headPos = C->shapes["head"];
 	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
-	        in[3] = limit_norm(headV.y,0,20);
+	        in[5] = limit_norm(headV.y,0,20);
 
 		//foot height
-		shapePos footPos = C->shapes["foot"];
+		shapePos footPos = C->shapes["footL"];
 		Vec2 footV = footPos.b->GetWorldPoint(footPos.localPos);
-		in[4] = limit_norm(footV.y,0,20);
+		in[6] = limit_norm(footV.y,0,20);
+	       
+		//foot height
+		shapePos footPos2 = C->shapes["footR"];
+		footV = footPos2.b->GetWorldPoint(footPos2.localPos);
+		in[7] = limit_norm(footV.y,0,20);
 	       
 		//absolute back angle?
 		BodyP back = C->limbs["back"];
-		in[5] = limit_norm(back->GetAngle(),0,2*Pi);
+		in[8] = limit_norm(back->GetAngle(),0,2*Pi);
 
 		//Run input through network
 		N->run(in, out);
@@ -346,6 +362,8 @@ int main (int argc, char **argv) {
     
     //cout<<"Generation 0"<<endl;
     //GA->printPopulation();
+
+    cout<<"Initialized.  Starting simulation."<<endl;
 
     for (int gen = 0; gen < 1000; gen++) {
 	//Each generation will receive a different input, so network
