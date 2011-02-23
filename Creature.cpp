@@ -211,7 +211,8 @@ int Creature::initFromFile (const char* configFile, World *w) {
 				      curMuscle["minK"],
 				      curMuscle["maxK"],
 				      curMuscle["minEq"],
-				      curMuscle["maxEq"]));
+				      curMuscle["maxEq"],
+				      curMuscle["kd"]));
 	    muscles.push_back(muscle);
 	} catch (SettingTypeException te) {
 	    cerr<<"Creature::initFromFile problem processing muscle "<<i<<endl;
@@ -481,13 +482,19 @@ float Muscle::update () {
     Vec2 a2W = body2->GetWorldPoint(end2L);
 
     Vec2 diff = a1W - a2W;
-    float length = diff.Length();
+    float length = diff.Normalize();
     //XXX check if length == 0?
     //diff now normalized, points from a2->a1
-    diff *= 1.0f/length;
+    //diff *= 1.0f/length;
     
     //Now find how far we are from equilibrium to determine spring force
     float force = k*(eq-length);
+
+    //Also apply dampening
+    // find relative velocity of two points
+    Vec2 vel = body1->GetLinearVelocityFromLocalPoint(end1L) - 
+	       body2->GetLinearVelocityFromLocalPoint(end2L);
+    force -= kd * b2Dot(vel, diff);
 
     diff *= force;
 

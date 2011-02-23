@@ -51,10 +51,11 @@ class Muscle {
 	Muscle (const BodyP &b1, const Vec2 &l1, 
 		const BodyP &b2, const Vec2 &l2,
 		float _minK, float _maxK, 
-		float _minEq, float _maxEq) :
+		float _minEq, float _maxEq,
+		float _kd) :
 		body1(b1), end1L(l1), body2(b2), end2L(l2),
 		minK(_minK), maxK(_maxK), minEq(_minEq), maxEq(_maxEq),
-		k((_minK + _maxK) / 2.), eq((_minEq + _maxEq)/2.) 
+		k((_minK + _maxK) / 2.), eq((_minEq + _maxEq)/2.), kd(_kd) 
 	{ }
 
 	float update ();
@@ -67,6 +68,7 @@ class Muscle {
 
     private:
 	float k, minK, maxK;	//Hook's constant
+	float kd;		//Spring dampening
 	float eq, minEq, maxEq;	//Spring's equilibrium distance
 
 	BodyP body1, body2;	//Bodies muscle connects
