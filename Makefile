@@ -1,36 +1,46 @@
-CFLAGS = -O3 -g 
-SDL_INC = -I/usr/include -I/usr/include/SDL 
-SDL_LIBS = -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
-
-INC = -I../physics/Box2D_v2.0.1/Box2D/Include
-LIBS = -L../physics/Box2D_v2.0.1/Box2D/Source/Gen/float -lbox2d
-
-CFLAGS += `pkg-config --cflags libconfig++`
-LIBS += `pkg-config --libs libconfig++`
-
 CXX = g++ 
+CXXFLAGS := -O3 -g 
 
-TARGETS = legs hopper
-SRCS = BoxScreen.cpp World.cpp Creature.cpp
-OBJS = BoxScreen.o World.o Creature.o
+INC := -I/usr/include -I/usr/include/SDL 
+LIBS := -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 
-OBJS += NEAT/random.o NEAT/Network.o NEAT/InnovationStore.o NEAT/Genome.o NEAT/Specie.o NEAT/GeneticAlgorithm.o
+INC += -I../physics/Box2D_v2.0.1/Box2D/Include
+LIBS += -L../physics/Box2D_v2.0.1/Box2D/Source/Gen/float -lbox2d
 
-.SUFFIXES: .cpp
+#CXXFLAGS += `pkg-config --cflags libconfig++`
+LIBS += -lconfig++ #`pkg-config --libs libconfig++`
 
+TARGETS := legs hopper
+
+SRCS := BoxScreen.cpp World.cpp Creature.cpp
+
+PHYS_OBJS := $(patsubst %.cpp,%.o, $(filter %.cpp,$(SRCS)))
+
+include NEAT/Rules.mk
+
+OBJS := $(patsubst %.cpp,%.o, $(filter %.cpp,$(SRCS)))
+
+CXXFLAGS += $(INC)
+
+.SUFFIXES: .cpp 
+
+.PHONY: all
 all: $(TARGETS)
 
-legs: $(OBJS) legs.o
-	$(CXX) $(CFLAGS) -o legs $(OBJS) legs.o $(SDL_LIBS) $(LIBS)
+legs: $(PHYS_OBJS) legs.o
+	$(CXX) $(CXXFLAGS) -o legs $(PHYS_OBJS) legs.o $(LIBS)
 
 hopper: $(OBJS) hopper.o
-	$(CXX) $(CFLAGS) -o hopper $(OBJS) hopper.o $(SDL_LIBS) $(LIBS)
+	$(CXX) $(CFLAGS) -o hopper $(OBJS) hopper.o $(LIBS)
 
-#$(TARGET): $(OBJS)
-#	$(CXX) $(CFLAGS) -o $(TARGET) $(OBJS) $(SDL_LIBS) $(LIBS)
 
+.PHONY: clean
 clean:
-	rm -f *~ $(OBJS) $(TARGETS)
+	-rm $(OBJS) $(TARGETS)
 
-.cpp.o:
-	$(CXX) $(CFLAGS) $(SDL_INC) $(INC) -c $*.cpp
+#Obviously taken from 'Recursive Make Considered Harmful'
+
+include $(OBJS:.o=.d)
+
+%.d: %.cpp
+	./depend.sh `dirname $*.cpp` $(CXXFLAGS) $*.cpp > $@

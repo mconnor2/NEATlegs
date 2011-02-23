@@ -4,6 +4,7 @@
 #include <iterator>
 #include <iostream>
 
+#include "Specie.h"
 #include "Genome.h"
 #include "InnovationStore.h"
 #include "random.h"
