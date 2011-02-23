@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <boost/function.hpp>
+
 #include "random.h"
 #include "Network.h"
 #include "Genome.h"
@@ -153,8 +155,9 @@ int main (int argc, char **argv) {
     P.oldAge = 5;
 
     xorTest fit(30);
+    boost::function<double (const GenomeP)> f = fit;
 
-    GeneticAlgorithm<xorTest> GA(&P, &fit);
+    GeneticAlgorithm GA(&P, &f);
 
     double maxFit = -1e9, curMaxFit = 0;
     

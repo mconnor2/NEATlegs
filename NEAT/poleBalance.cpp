@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <boost/function.hpp>
+
 #include "random.h"
 #include "Network.h"
 #include "Genome.h"
@@ -375,8 +377,9 @@ int main (int argc, char **argv) {
     P.oldAge = 5;
 
     poleBalance fit(10000, 0.01);
-    
-    GeneticAlgorithm<poleBalance> GA(&P, &fit);
+    boost::function<double (const GenomeP)> f = fit;
+
+    GeneticAlgorithm GA(&P, &f);
 
     double maxFit = -1e9, curMaxFit = 0;
     
