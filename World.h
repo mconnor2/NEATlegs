@@ -31,6 +31,8 @@ class World {
 
 	int addCreature (Creature *c);
 	int addCreature (CreatureP &c);
+	
+	static const float fGravity = 100.0f;
 
     private:
 	b2World *b2W;

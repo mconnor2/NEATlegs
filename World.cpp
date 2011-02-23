@@ -12,7 +12,7 @@ World::World (float _hz, int _iterations) :
     worldAABB.upperBound.Set(500.0f, 500.0f);
 
     //Set gravity pointing downward
-    b2Vec2 gravity(0.0f, -10.0f);
+    b2Vec2 gravity(0.0f, -fGravity);
     bool doSleep = true;
 
     //Create world
