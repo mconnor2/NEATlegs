@@ -492,4 +492,18 @@ hopper: Dynamics/b2World.cpp:676: void b2World::SolveTOI(const b2TimeStep&): Ass
 
 Now this, not sure where this is coming from.
 
+02/24/11
+
+ToDo:
+-Track down Dynamics bug
+-Crashes on exit.  Some memory bug, trying to free something twice, who knows...
+    -Looks like its a problem with destroying bodies, maybe question of order with destroying world?
+
+-Port to Box2d 2.1
+-Fix speciation error at beginning, why do all but 1 species die in 5th round
+-Allow specification of sensors and actuators in config file, so can move from
+ one to two legs.
+-Play with genetic algorithm parameters, adaptive species distance, preserving best (without mutation), culling weak, etc etc.
+-Symmetric inputs/outputs, can we exploit that structure (check literature, I am sure someone has tried this, other than ridiculous hyperneat).
+-Profile
 

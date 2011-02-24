@@ -3,6 +3,8 @@
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
+const float World::fGravity = 100.0;
+
 World::World (float _hz, int _iterations) : 
 	      timeStep(1.0f/_hz), iterations(_iterations) 
 {

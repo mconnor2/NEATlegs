@@ -1,5 +1,7 @@
 CXX = g++ 
-CXXFLAGS := -O3 -g 
+#CXXFLAGS := -O3 
+CXXFLAGS += -g 
+#CXXFLAGS += -pg
 
 INC := -I/usr/include -I/usr/include/SDL 
 LIBS := -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
@@ -31,7 +33,7 @@ legs: $(PHYS_OBJS) legs.o
 	$(CXX) $(CXXFLAGS) -o legs $(PHYS_OBJS) legs.o $(LIBS)
 
 hopper: $(OBJS) hopper.o
-	$(CXX) $(CFLAGS) -o hopper $(OBJS) hopper.o $(LIBS)
+	$(CXX) $(CXXFLAGS) -o hopper $(OBJS) hopper.o $(LIBS)
 
 
 .PHONY: clean
