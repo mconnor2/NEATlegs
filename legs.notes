@@ -486,4 +486,10 @@ Moving to 2 legs, I see that I have to change code for how the brain wires to th
 
 I also neglected the default positioning, so I believe thats giving me some issues when I naively just changed the config.  OK, this is a bit more work than I was hoping, but pointing out how I should change things.
 
+I believe I know the error.  Must have to do with when I prune species or stagnant members from species, I bet I leave some empty species around, or else 0 fitness.
+
+hopper: Dynamics/b2World.cpp:676: void b2World::SolveTOI(const b2TimeStep&): Assertion `subStep.dt > 1.19209290e-7F' failed.
+
+Now this, not sure where this is coming from.
+
 

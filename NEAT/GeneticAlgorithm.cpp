@@ -256,7 +256,7 @@ double GeneticAlgorithm::nextGeneration() {
 	    rfit = sumFit * rand_double();
 	    p2t = selectParent(population.begin(), population.end(), rfit);
 	    
-	    if (p1t == population.begin() or p2t == population.end()) {
+	    if (p1t == population.end() or p2t == population.end()) {
 		cerr<<"Something wrong with population selection of parents..."<<endl;
 		continue;
 	    }

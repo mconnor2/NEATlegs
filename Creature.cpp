@@ -67,6 +67,10 @@ int Creature::initFromFile (const char* configFile, World *w) {
 	    curLimb.lookupValue("angularDamping", bone.angularDamping);
 	    
 	    BodyP limb(w->createBody(&bone));
+	    BodyPos bp;
+	    bp.b = limb;
+	    bp.defaultPos.Set(x,y);
+	    bp.angle = bone.angle;
 	    
 	    Setting &shapes = curLimb["shapes"];
 	    int nShapes = shapes.getLength();
@@ -102,10 +106,6 @@ int Creature::initFromFile (const char* configFile, World *w) {
 
 	    limb->SetMassFromShapes();
 	    
-	    BodyPos bp;
-	    bp.b = limb;
-	    bp.defaultPos.Set(x,y);
-	    bp.angle = bone.angle;
 	    parts.push_back(bp);
 	    limbs.insert(make_pair(name, limb));
 	} catch (SettingTypeException te) {
