@@ -365,7 +365,7 @@ int main (int argc, char **argv) {
 
     cout<<"Initialized.  Starting simulation."<<endl;
 
-    for (int gen = 0; gen < 10; gen++) {
+    for (int gen = 0; gen < 1000; gen++) {
 	//Each generation will receive a different input, so network
 	// can't just memorize pattern
 	//fit.regenerate();

@@ -503,7 +503,34 @@ ToDo:
 -Fix speciation error at beginning, why do all but 1 species die in 5th round
 -Allow specification of sensors and actuators in config file, so can move from
  one to two legs.
+-More sensors (foot force, etc), and consider sensors already there (how to scale to 0-1)
 -Play with genetic algorithm parameters, adaptive species distance, preserving best (without mutation), culling weak, etc etc.
 -Symmetric inputs/outputs, can we exploit that structure (check literature, I am sure someone has tried this, other than ridiculous hyperneat).
--Profile
+-Convert creature creation to factory style, pass world a config file, it returns shared pointer.
+-Display more information regarding muscles, forces
+    *Options for different colored limbs?
+-Save best network from each generation, be able to read in and replay networks
+-Add display window and world configuration
+
+*Profile:
+    *Appears that all the time is being taken in physics, as expected.  Not too much I can do other than simplify geometry:
+
+hopper.gprof:
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  ms/call  ms/call  name
+ 26.75     22.29    22.29                             b2RevoluteJoint::SolveVelocityConstraints(b2TimeStep const&)
+ 23.78     42.10    19.81                             b2ContactSolver::SolveVelocityConstraints()
+  5.53     46.71     4.61                             b2RevoluteJoint::SolvePositionConstraints()
+  4.51     50.47     3.76    10000     0.38     0.67  hopper::operator()(boost::shared_ptr<Genome> const&, int, SDL_Surface*)
+  4.09     53.87     3.41                             b2CircleShape::ComputeSweptAABB(b2AABB*, b2XForm const&, b2XForm const&) const
+  3.30     56.62     2.75                             DistancePC(b2Vec2*, b2Vec2*, b2PolygonShape const*, b2XForm const&, b2CircleShape const*, b2XForm const&)
+  2.99     59.11     2.49                             b2ContactSolver::SolvePositionConstraints(float)
+
+So unless I were to break into Box, not much I can do from my end.
+
+I think for the memory issues, the problem is I should have the world create bodies, factory style...
+
 

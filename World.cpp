@@ -1,9 +1,18 @@
 #include "World.h"
 
+#include <iostream>
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
 const float World::fGravity = 100.0;
+
+void bodyDestroy(Body *p) {
+    cerr<<"Destroying a body, but not really."<<endl;
+}
+
+void jointDestroy(Joint *j) {
+    cerr<<"Destroying a joint, but not really."<<endl;
+}
 
 World::World (float _hz, int _iterations) : 
 	      timeStep(1.0f/_hz), iterations(_iterations) 
@@ -26,7 +35,8 @@ World::World (float _hz, int _iterations) :
     //groundBodyDef.AddShape(&groundBoxDef);
 
     ground.reset(b2W->CreateBody(&groundBodyDef),
-		 boost::bind(&b2World::DestroyBody, b2W, _1));
+		 bodyDestroy);
+		 //boost::bind(&b2World::DestroyBody, b2W, _1));
     
     b2PolygonDef groundBoxDef;
     groundBoxDef.SetAsBox(500.0f, 10.0f);
@@ -43,28 +53,33 @@ World::~World () {
 BodyP World::createBody (const b2BodyDef *def) {
     //Use Box2d world::DestroyBody for clean up
     //  good chance this is a bad idea...
-    BodyP b(b2W->CreateBody(def), 
-	    boost::bind(&b2World::DestroyBody, b2W, _1));
+    BodyP b(b2W->CreateBody(def),
+	    bodyDestroy);
+	    //boost::bind(&b2World::DestroyBody, b2W, _1));
     return b;
 }
 
 JointP World::createJoint (const b2JointDef *def) {
     JointP j(b2W->CreateJoint(def),
-	     boost::bind(&b2World::DestroyJoint, b2W, _1));
+	     jointDestroy);
+	     //boost::bind(&b2World::DestroyJoint, b2W, _1));
     return j;
 }
 
 int World::addCreature (Creature *c) {
-    CreatureP cp(c);
-    return addCreature(cp);
+//    CreatureP cp(c);
+//    return addCreature(cp);
+    int id = beings.size();
+    beings.push_back(c);
+    return id;
 }
-	
+/*	
 int World::addCreature (CreatureP &c) {
     int id = beings.size();
     beings.push_back(c);
     return id;
 }
-
+*/
 void World::step () {
     //Update forces (muscles) on objects
     for_each(beings.begin(), beings.end(),

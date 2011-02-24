@@ -29,8 +29,8 @@ class World {
 	BodyP createBody (const b2BodyDef *def); 
 	JointP createJoint (const b2JointDef *def); 
 
-	int addCreature (Creature *c);
-	int addCreature (CreatureP &c);
+	int addCreature (Creature *cp);
+	//int addCreature (CreatureP &c);
 	
 	static const float fGravity;
 
