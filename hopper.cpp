@@ -65,7 +65,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	    BoxScreen s(screen);
 
 	    if (screen) {
-		int rate = 120; //static_cast<int>(2.0/TAU);
+		int rate = 100; //static_cast<int>(2.0/TAU);
 		SDL_initFramerate(&fpsm);
 		SDL_setFramerate(&fpsm,rate);
     
@@ -176,8 +176,8 @@ class hopper : public unary_function<const GenomeP, double> {
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
 	    //return (g->fitness = score/MAX_STEPS);
-	    return (g->fitness = maxX);
-	    //return (g->fitness = maxY);
+	    //return (g->fitness = maxX);
+	    return (g->fitness = maxY);
 	};
 
     private:

@@ -18,7 +18,7 @@ class Creature;
  */
 class World {
     public:
-	World (float _hz = 120.0f, int _iterations = 20);
+	World (float _hz = 100.0f, int _iterations = 20);
 
 	~World ();
     
