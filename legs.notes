@@ -511,6 +511,8 @@ ToDo:
     *Options for different colored limbs?
 -Save best network from each generation, be able to read in and replay networks
 -Add display window and world configuration
+-Parallelize
+    *This mostly means evaluating each generation, but still, do that.
 
 *Profile:
     *Appears that all the time is being taken in physics, as expected.  Not too much I can do other than simplify geometry:
