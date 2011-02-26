@@ -59,7 +59,14 @@ struct ExpParameters {
 
     int oldAge;				//Age after which young species are
 					// not safe from culling
+   
+    //double championFitnessRate;	//A species champion will continue to
+					// next generation only if its fitness
+					// is within this percent of max fit
     
+    double startPopulationPercent;	//How many members to start with, as
+					// percent of total desired population
+
     int loadFromFile (const char* configFile);
 };
 

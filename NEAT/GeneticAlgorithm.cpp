@@ -63,6 +63,7 @@ int ExpParameters::loadFromFile(const char* configFile) {
 	compatThresh = config.lookup("global.compatThresh");
 	specieMate = config.lookup("global.specieMate");
 	oldAge = config.lookup("global.oldAge");
+	startPopulationPercent = config.lookup("global.startPopulationPercent");
     } catch (libconfig::SettingTypeException e) {
 	cerr<<"ExpParameters::loadFromFile SettingTypeException while loading parameters"<<endl;
 	return 0;
@@ -83,8 +84,9 @@ int ExpParameters::loadFromFile(const char* configFile) {
 GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction* _f) : 
 				    P(_P), fitnessF(_f)
 {
-    population.reserve(P->popSize);
-    for (int i = 0; i<P->popSize; ++i) {
+    int initialPopulation = P->startPopulationPercent * P->popSize;
+    population.reserve(initialPopulation);
+    for (int i = 0; i<initialPopulation; ++i) {
 	GenomeP g(new Genome(P));
 	population.push_back(g);
 	
@@ -150,14 +152,14 @@ double GeneticAlgorithm::nextGeneration() {
 
     //Find true mean and max fitness of population, ignoring species size
     double maxFit = -1e20, sumFit = 0;
-    for (int i = 0; i<P->popSize; ++i) {
-	sumFit += population[i]->fitness;
-	if (population[i]->fitness > maxFit) {
-	    maxFit = population[i]->fitness;
-	    maxFitI = population[i];
+    for (genome_it gi = population.begin(); gi != population.end(); ++gi) {
+	sumFit += (*gi)->fitness;
+	if ((*gi)->fitness > maxFit) {
+	    maxFit = (*gi)->fitness;
+	    maxFitI = *gi;
 	}
     }
-    double avgFit = sumFit / (double)P->popSize;
+    double avgFit = sumFit / (double)population.size();
     
     //Sum fitness of each species, and divide individuals by size of group
     for_each(species.begin(), species.end(), 
@@ -169,8 +171,8 @@ double GeneticAlgorithm::nextGeneration() {
     //XXX May be (slightly?) faster to sum over fewer species than entire
     //    population.  Sum should be the same
     sumFit = 0;
-    for (int i = 0; i<P->popSize; ++i)
-	sumFit += population[i]->fitness;
+    for (genome_it gi = population.begin(); gi != population.end(); ++gi) 
+	sumFit += (*gi)->fitness;
     
     species.remove_if(boost::bind(&Specie::cull, _1, 
 				  P->oldAge, boost::ref(sumFit)));
@@ -179,8 +181,8 @@ double GeneticAlgorithm::nextGeneration() {
 
     #ifdef _DEBUG_PRINT
 	cout<<"Fitness values: ";
-	for (int i = 0; i<P->popSize; ++i) {
-	    cout<<fitVals[i]<<", ";
+	for (genome_it gi = population.begin(); gi != population.end(); ++gi) {
+	    cout<<(*gi)->fitness<<", ";
 	}
 	cout<<endl;
     #endif
