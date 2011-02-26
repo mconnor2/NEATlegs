@@ -29,7 +29,7 @@ class BoxScreen {
 	inline void box2pixel (const Vec2 &boxV, Vec2 &screenV);
 
 	//Default pixel border for 640x480:
-	static const int LeftBorder = 32, RightBorder = WIDTH-32,
+	static const int LeftBorder = 300, RightBorder = WIDTH-300,
 			 TopBorder = 32, BottomBorder = HEIGHT-32;
     private:
 	float pM;		//pixels/meter
