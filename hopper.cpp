@@ -38,7 +38,7 @@ class hopper : public unary_function<const GenomeP, double> {
 
 	const static double HEAD_FLOOR = 5.0;
 
-	hopper(int max_steps, World *_W, Creature *_C) :
+	hopper(int max_steps, World *_W, CreatureP _C) :
 	    MAX_STEPS(max_steps), W(_W), C(_C) //random_start(_random_start) 
 	{ }
 
@@ -181,7 +181,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	};
 
     private:
-	Creature *C;
+	CreatureP C;
 	World *W;
 
 	/**
@@ -346,14 +346,14 @@ int main (int argc, char **argv) {
     World w;
 
     // Create a creature that is added to the world
-    Creature hoppy;
+    CreatureP hoppy = w.createCreature(configFile);
 
-    if (!hoppy.initFromFile(configFile, &w)) {
+    if (!hoppy) {
 	cerr<<"Problem loading Creature, exiting."<<endl;
 	exit(1);
     }
 
-    hopper fit(1000, &w, &hoppy);
+    hopper fit(1000, &w, hoppy);
     boost::function<double (const GenomeP)> f = fit;
 
     GeneticAlgorithm GA(&P, &f);

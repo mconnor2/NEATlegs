@@ -542,3 +542,9 @@ Fixing speciation problem at the beginning.  The problem is, when I start out ea
 1. Start with fewer than desired population.  At first mating they will fill up total population size according to initial allocation of fitness.  Hopefully there will be species with more than 1 member at this point.  This is easy to impliment, and fairly automatic.  An issue is that its initial random distribution will cover less of the possible search space than the full population might.  Finding the best 20 of 100 starting points is probably better than just finding 20 random starting points.  Well, its hard to say.
 
 2. Only pass on champion for those species in top X percent if fitness, or possibly whose fitness is within X percent of max fitness... Now loser species will continue to propogate only through chance, while the best will have their champion sticking around...
+
+02/28/11
+
+If I make the world a creature factory, ie add createCreature(config) to World, I probably don't need to expose createBody or createJoint, except to Creature.  This means friend, right?
+
+

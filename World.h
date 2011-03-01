@@ -5,11 +5,12 @@
 #include <vector>
 
 #include "boxTypes.h"
-#include "Creature.h"
-#include "BoxScreen.h"
+//#include "Creature.h"
+//#include "BoxScreen.h"
 
 using namespace std;
 
+class BoxScreen;
 class Creature;
 
 /**
@@ -26,16 +27,18 @@ class World {
 	
 	void draw (BoxScreen *screen) const;
 
-	BodyP createBody (const b2BodyDef *def); 
-	JointP createJoint (const b2JointDef *def); 
-
-	int addCreature (Creature *cp);
+	CreatureP createCreature (const char* creatureConfig);
 	//int addCreature (CreatureP &c);
 	
 	static const float fGravity;
 
+	friend class Creature;
+
     private:
 	b2World *b2W;
+	
+	BodyP createBody (const b2BodyDef *def); 
+	JointP createJoint (const b2JointDef *def); 
 
 	BodyP ground;
 

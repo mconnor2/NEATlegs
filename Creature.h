@@ -6,12 +6,13 @@
 #include <map>
 
 #include "boxTypes.h"
-#include "BoxScreen.h"
-#include "World.h"
+//#include "BoxScreen.h"
+//#include "World.h"
 
 class World;
 class Creature;
 class Muscle;
+class BoxScreen;
 
 using namespace std;
 

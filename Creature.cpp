@@ -1,4 +1,6 @@
 #include "Creature.h"
+#include "World.h"
+#include "BoxScreen.h"
 
 #include <iostream>
 #include <stdlib.h>
@@ -379,8 +381,6 @@ int Creature::initFromFile (const char* configFile, World *w) {
 				 back,  Vec2(-0.0f,-2.0f),
 				 7000.0f, 3.4f));
 */
-
-    w->addCreature(this);
     return 1;
 }
 

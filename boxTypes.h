@@ -42,8 +42,7 @@ typedef std::map<std::string, RevoluteJointP> jointMap;
 typedef boost::shared_ptr<Muscle> MuscleP;
 typedef std::vector<MuscleP> muscleList;
 
-//typedef boost::shared_ptr<Creature> CreatureP;
-//typedef boost::shared_ptr<Creature> CreatureP;
-typedef std::vector<Creature *> creatureList;
+typedef boost::shared_ptr<Creature> CreatureP;
+typedef std::vector<CreatureP> creatureList;
 
 #endif

@@ -1,4 +1,6 @@
 #include "World.h"
+#include "Creature.h"
+#include "BoxScreen.h"
 
 #include <iostream>
 #include <boost/mem_fn.hpp>
@@ -66,12 +68,16 @@ JointP World::createJoint (const b2JointDef *def) {
     return j;
 }
 
-int World::addCreature (Creature *c) {
-//    CreatureP cp(c);
-//    return addCreature(cp);
+CreatureP World::createCreature (const char* creatureConfig) {
+    CreatureP cp(new Creature());
+    if (!cp->initFromFile(creatureConfig, this)) {
+	//Problem with initialization, so return empty CreatureP
+	return CreatureP();
+    }
+    
     int id = beings.size();
-    beings.push_back(c);
-    return id;
+    beings.push_back(cp);
+    return cp;
 }
 /*	
 int World::addCreature (CreatureP &c) {
