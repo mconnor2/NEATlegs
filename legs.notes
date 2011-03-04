@@ -547,4 +547,16 @@ Fixing speciation problem at the beginning.  The problem is, when I start out ea
 
 If I make the world a creature factory, ie add createCreature(config) to World, I probably don't need to expose createBody or createJoint, except to Creature.  This means friend, right?
 
+03/04/11
+
+Ok, whats next on the ToDo that seems doable.
+
+-Adaptable species threshold to try to create a fixed number of species.
+    *Add desired # species and threshold change size
+    *After populating new species, if more than desired, decrease threshold,
+     less than desired, increase, or vice versa.
+-Play with relative sizes, may have to adapt drawing function to scale physical to pixel space.
+
+-This weekend, add ability to encode sensors into configuration, and set # of output according to number of muscles.  Goal will be to be able to add feet to walker, and try out alternate walking configurations (squirrel)
+
 

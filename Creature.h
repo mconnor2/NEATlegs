@@ -27,8 +27,6 @@ class Creature {
 
     void draw (BoxScreen *screen) const;
 
-    bool getShapePosition(const string &name, Vec2 *p) const;
-
     void reset ();
 
     // If we want to access some body parts by name
