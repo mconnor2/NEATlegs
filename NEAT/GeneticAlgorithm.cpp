@@ -161,6 +161,16 @@ void GeneticAlgorithm::adaptSpeciesThresh(const int curSpecieSize) {
     }
 }
 
+template<class FitnessIt>
+FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
+    while (first != last && rfit > (*first)->fitness) {
+	rfit -= (*first)->fitness;
+	first++;
+    }
+    return first;
+}
+
+
 /**
  * Run one iteration of genetic algorithm, creating new generation and
  *  deleting previous.
@@ -341,17 +351,6 @@ double GeneticAlgorithm::nextGeneration() {
     ++generation;
 
     return maxFit;
-}
-
-template<class FitnessIt>
-FitnessIt GeneticAlgorithm::selectParent(FitnessIt first, FitnessIt last, 
-					 double rfit)
-{
-    while (first != last && rfit > (*first)->fitness) {
-	rfit -= (*first)->fitness;
-	first++;
-    }
-    return first;
 }
 
 void GeneticAlgorithm::printPopulation() const {

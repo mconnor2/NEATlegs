@@ -113,10 +113,6 @@ class GeneticAlgorithm {
 	
 	InnovationStore *IS;
 
-	template<class FitnessIt>
-	FitnessIt selectParent(FitnessIt first, FitnessIt last, 
-			       double rfit);
-        
 	void speciate(const GenomeP& g, specieVec &sv);
 	void adaptSpeciesThresh(const int specieSize);
 
