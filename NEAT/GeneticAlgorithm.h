@@ -6,10 +6,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
 
-//Really only need these for typedefs, can put those in one header to
-// keep in one place
-#include "Genome.h"
-#include "Specie.h"
+#include "NEATtypes.h"
 //class Genome;
 //class InnovationStore;
 

@@ -1,4 +1,5 @@
 #include "Specie.h"
+#include "Genome.h"
 
 #include <iostream>
 
@@ -16,6 +17,11 @@ double Specie::calculateFitness() {
 
     //Make sure the representative member is the most fit
     members[0].swap(maxFit);
+}
+    
+double Specie::maxFitness() const {
+    //Representative is the most fit individual, per generation
+    return members[0]->fitness;
 }
 
 /**
@@ -40,7 +46,7 @@ bool Specie::cull(const int oldAge, double &totalFitness) {
     return false;
 }
 
-void Specie::print_statistics () {
+void Specie::print_statistics () const {
     std::cerr<<"\t"<<members.size()
 	     <<"\t"<<fitness
 	     <<"\t"<<maxFitness();

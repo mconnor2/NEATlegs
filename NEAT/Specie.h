@@ -1,9 +1,8 @@
 #ifndef __SPECIE_H
 #define __SPECIE_H
 
-#include <list>
-#include "Genome.h"
-#include <boost/shared_ptr.hpp>
+//#include "Genome.h"
+#include "NEATtypes.h"
 
 struct Specie {
     int nMembers;
@@ -20,21 +19,15 @@ struct Specie {
 	nMembers++;
     };
 
-    double maxFitness() {
-	//Representative is the most fit individual, per generation
-	return members[0]->fitness;
-    }
     
     double calculateFitness();
 
+    double maxFitness() const;
+
     bool cull(const int oldAge, double &totalFitness);
 
-    void print_statistics ();
+    void print_statistics () const;
 };
 
-typedef boost::shared_ptr<Specie> SpecieP;
-typedef std::list<SpecieP> specieVec;
-typedef specieVec::iterator specie_it;
-typedef specieVec::const_iterator specie_cit;
 
 #endif
