@@ -23,8 +23,8 @@ ExpParameters::ExpParameters() :
     weightMutationRate(0.2), weightPerturbScale(0.1), weightPerturbNormal(0.6),
     weightPerturbUniform(0.39), addLinkMutationRate(0.2),
     addNodeMutationRate(0.1), compatGDiff(1.0), compatWDiff(0.4),
-    compatThresh(7.0), specieMate(0.99), oldAge(5),
-    startPopulationPercent(0.5)
+    compatThresh(7.0), targetSpecies(-1), threshAdapt(0.1), specieMate(0.99), 
+    oldAge(5), startPopulationPercent(0.5)
 { }
 
 int ExpParameters::loadFromFile(const char* configFile) {
@@ -72,6 +72,8 @@ int ExpParameters::loadFromFile(const char* configFile) {
 	config.lookupValue("global.compatGDiff",compatGDiff);
 	config.lookupValue("global.compatWDiff",compatWDiff);
 	config.lookupValue("global.compatThresh",compatThresh);
+	config.lookupValue("global.targetSpecies",targetSpecies);
+	config.lookupValue("global.threshAdapt",threshAdapt);
 	config.lookupValue("global.specieMate",specieMate);
 	config.lookupValue("global.oldAge",oldAge);
 	config.lookupValue("global.startPopulationPercent",
@@ -106,6 +108,8 @@ GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction* _f) :
     }
     generation = 0;
 
+    if (P->targetSpecies > 0) adaptSpeciesThresh(species.size());
+
     IS = new InnovationStore(P);
 }
 
@@ -136,6 +140,24 @@ void GeneticAlgorithm::speciate(const GenomeP& g, specieVec &sv)
 	SpecieP ns(new Specie());
 	sv.push_back(ns);
 	sv.back()->addMember(g);
+    }
+}
+
+void GeneticAlgorithm::adaptSpeciesThresh(const int curSpecieSize) {
+    #ifdef _DEBUG_PRINT
+	cerr<<"Adapting with "<<curSpecieSize<<" original speices."<<endl;
+	cerr<<"   target species "<<P->targetSpecies<<endl;
+    #endif
+    if (curSpecieSize < P->targetSpecies) {
+	P->compatThresh -= P->threshAdapt;
+	#ifdef _DEBUG_PRINT
+	    cout<<"  compat thresh now "<<P->compatThresh<<endl;
+	#endif
+    } else if (curSpecieSize > P->targetSpecies) {
+	P->compatThresh += P->threshAdapt;
+	#ifdef _DEBUG_PRINT
+	    cout<<"  compat thresh now "<<P->compatThresh<<endl;
+	#endif
     }
 }
 
@@ -313,6 +335,8 @@ double GeneticAlgorithm::nextGeneration() {
     population.swap(nextGen);
 
     species.swap(nextGenSpecies);
+    
+    if (P->targetSpecies > 0) adaptSpeciesThresh(species.size());
 
     ++generation;
 

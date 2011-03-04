@@ -341,7 +341,9 @@ int main (int argc, char **argv) {
 	cerr<<"Problem loading ExpParameters, exiting."<<endl;
 	exit(1);
     }
-    
+   
+    cout<<"Generating pop size of "<<P.popSize<<endl;
+
     /* Initialize the World, take default hz and iteration */
     World w;
 

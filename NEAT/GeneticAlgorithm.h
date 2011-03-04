@@ -54,6 +54,11 @@ struct ExpParameters {
     double compatThresh;		//Compatability threshold for members
 					// of the same specie
 
+    int targetSpecies;			//Desired number of species for
+					// adaptation, -1 turn off adaptation
+    double threshAdapt;			//Amount to change compatThresh with
+					// specie number adaptation
+    
     double specieMate;			//Number of children whose parents
 					// are selected from one specie
 
@@ -113,6 +118,7 @@ class GeneticAlgorithm {
 			       double rfit);
         
 	void speciate(const GenomeP& g, specieVec &sv);
+	void adaptSpeciesThresh(const int specieSize);
 
 	void print_statistics(int gen, double maxFit, double meanFit) const;
 
