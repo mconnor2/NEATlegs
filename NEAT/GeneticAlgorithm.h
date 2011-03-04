@@ -68,6 +68,7 @@ struct ExpParameters {
 					// percent of total desired population
 
     int loadFromFile (const char* configFile);
+    ExpParameters();
 };
 
 typedef boost::function<double (const GenomeP)> FitnessFunction;

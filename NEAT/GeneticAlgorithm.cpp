@@ -16,6 +16,17 @@
 
 using namespace std;
 
+//Default parameters, but -1 population size
+ExpParameters::ExpParameters() :
+    popSize(-1), nInput(0), nOutput(0),
+    inheritAllLinks(false), inheritDominant(0.9), linkEnabledRate(0.1),
+    weightMutationRate(0.2), weightPerturbScale(0.1), weightPerturbNormal(0.6),
+    weightPerturbUniform(0.39), addLinkMutationRate(0.2),
+    addNodeMutationRate(0.1), compatGDiff(1.0), compatWDiff(0.4),
+    compatThresh(7.0), specieMate(0.99), oldAge(5),
+    startPopulationPercent(0.5)
+{ }
+
 int ExpParameters::loadFromFile(const char* configFile) {
     libconfig::Config config;
     try {
@@ -49,21 +60,22 @@ int ExpParameters::loadFromFile(const char* configFile) {
     }
 
     try {
-	inheritAllLinks = config.lookup("global.inheritAllLinks");
-	inheritDominant = config.lookup("global.inheritDominant");
-	linkEnabledRate = config.lookup("global.linkEnabledRate");
-	weightMutationRate = config.lookup("global.weightMutationRate");
-	weightPerturbScale = config.lookup("global.weightPerturbScale");
-	weightPerturbNormal = config.lookup("global.weightPerturbNormal");
-	weightPerturbUniform = config.lookup("global.weightPerturbUniform");
-	addLinkMutationRate = config.lookup("global.addLinkMutationRate");
-	addNodeMutationRate = config.lookup("global.addNodeMutationRate");
-	compatGDiff = config.lookup("global.compatGDiff");
-	compatWDiff = config.lookup("global.compatWDiff");
-	compatThresh = config.lookup("global.compatThresh");
-	specieMate = config.lookup("global.specieMate");
-	oldAge = config.lookup("global.oldAge");
-	startPopulationPercent = config.lookup("global.startPopulationPercent");
+	config.lookupValue("global.inheritAllLinks",inheritAllLinks);
+	config.lookupValue("global.inheritDominant",inheritDominant);
+	config.lookupValue("global.linkEnabledRate",linkEnabledRate);
+	config.lookupValue("global.weightMutationRate",weightMutationRate);
+	config.lookupValue("global.weightPerturbScale",weightPerturbScale);
+	config.lookupValue("global.weightPerturbNormal",weightPerturbNormal);
+	config.lookupValue("global.weightPerturbUniform",weightPerturbUniform);
+	config.lookupValue("global.addLinkMutationRate",addLinkMutationRate);
+	config.lookupValue("global.addNodeMutationRate",addNodeMutationRate);
+	config.lookupValue("global.compatGDiff",compatGDiff);
+	config.lookupValue("global.compatWDiff",compatWDiff);
+	config.lookupValue("global.compatThresh",compatThresh);
+	config.lookupValue("global.specieMate",specieMate);
+	config.lookupValue("global.oldAge",oldAge);
+	config.lookupValue("global.startPopulationPercent",
+			    startPopulationPercent);
     } catch (libconfig::SettingTypeException e) {
 	cerr<<"ExpParameters::loadFromFile SettingTypeException while loading parameters"<<endl;
 	return 0;
