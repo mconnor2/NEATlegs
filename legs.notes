@@ -559,4 +559,9 @@ Ok, whats next on the ToDo that seems doable.
 
 -This weekend, add ability to encode sensors into configuration, and set # of output according to number of muscles.  Goal will be to be able to add feet to walker, and try out alternate walking configurations (squirrel)
 
+-Need to make background movement more obvious, 2 ideas
+    *Give ground some texture (diagnal lines, marks at 10 m, whatever)
+    *Mario clouds, or some other paralax background
+*Can integrate the above with modification of sizing (zooming?) and potentially Box2d 2.1 upgrade.
+
 
