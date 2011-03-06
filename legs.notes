@@ -564,4 +564,26 @@ Ok, whats next on the ToDo that seems doable.
     *Mario clouds, or some other paralax background
 *Can integrate the above with modification of sizing (zooming?) and potentially Box2d 2.1 upgrade.
 
+03/05/11
+
+Sensors... this is an interesting one.  Its rather easy to specify in the config file, just need to figure out how to encode them...  Break them into different types, so lets think about joint angle first.
+
+Joint Angle Sensor:
+-pointer to joint (or name of joint)
+-returns the limit_norm( joint.angle, lower limit, upper limit)
+
+so I view this as working like this:
+
+Sensor network, 
+    -stores vector of individual sensors
+    -also name and part type for each individual sensor
+    -Able to read in Sensor config file
+
+Before simulation initialize sensor network with Creature
+    -Go through sensor vector and for each sensor, give proper joint/shapePos/body pointer
+
+During simulation, initialize in[] array with values from each sensor
+
+Alternatively I can put the sensor network into the creature, that way the target is set once, and if I create multiple creatures they will have their own sensors...  That does make more sense.
+
 

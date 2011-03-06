@@ -38,8 +38,8 @@ class hopper : public unary_function<const GenomeP, double> {
 
 	const static double HEAD_FLOOR = 5.0;
 
-	hopper(int max_steps, World *_W, CreatureP _C) :
-	    MAX_STEPS(max_steps), W(_W), C(_C) //random_start(_random_start) 
+	hopper(int max_steps, World *_W, CreatureP _C, ExpParameters *_P) :
+	    MAX_STEPS(max_steps), C(_C), W(_W), P(_P) 
 	{ }
 
 	double operator()(const GenomeP &g, 
@@ -48,11 +48,12 @@ class hopper : public unary_function<const GenomeP, double> {
 	
 	    int steps=0,y;
 	    
-	    double in[9];  //Input loading array
+	    double *in = new double[P->nInput];  //Input loading array
 	    //Output: thigh muscle length(%max), k; shin muscle length(%max), k
-	    double out[8] = {0,0,0,0,
-			     0,0,0,0};
-	    int nMuscles = 4;
+	    double *out = new double[P->nOutput];
+	    int nMuscles = C->muscles.size();
+	    
+	    for (int i = 0; i<P->nOutput; ++i) out[i] = 0.0;
 
 	    FPSmanager fpsm;
 
@@ -85,47 +86,18 @@ class hopper : public unary_function<const GenomeP, double> {
 
 	    /*--- Iterate through the action-learn loop. ---*/
 	    while (steps++ < MAX_STEPS) {
-		/*-- setup the input layer based on the four iputs --*/
-		in[0]=1.0;  //Bias
-	       
-		//Get input from the creature
-		//Knee angle (scale 0-1 by using upper and lower limit of joint)
-		RevoluteJointP knee = C->joints["kneeL"];
-		in[1] = limit_norm(knee->GetJointAngle(),
-				   knee->GetLowerLimit(),knee->GetUpperLimit());
-		//hip angle
-		RevoluteJointP hip = C->joints["hipL"];
-		in[2] = limit_norm(hip->GetJointAngle(),
-				   hip->GetLowerLimit(), hip->GetUpperLimit());
-		//Knee angle (scale 0-1 by using upper and lower limit of joint)
-		RevoluteJointP knee2 = C->joints["kneeR"];
-		in[3] = limit_norm(knee2->GetJointAngle(),
-				   knee2->GetLowerLimit(),
-				   knee2->GetUpperLimit());
-		//hip angle
-		RevoluteJointP hip2 = C->joints["hipR"];
-		in[4] = limit_norm(hip2->GetJointAngle(),
-				   hip2->GetLowerLimit(), 
-				   hip2->GetUpperLimit());
-	        //head height
-	        shapePos headPos = C->shapes["head"];
-	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
-	        in[5] = limit_norm(headV.y,0,20);
+			
+		/* Read input from Creature's Sensors */
+		C->setInput(in);
 
-		//foot height
-		shapePos footPos = C->shapes["footL"];
-		Vec2 footV = footPos.b->GetWorldPoint(footPos.localPos);
-		in[6] = limit_norm(footV.y,0,20);
-	       
-		//foot height
-		shapePos footPos2 = C->shapes["footR"];
-		footV = footPos2.b->GetWorldPoint(footPos2.localPos);
-		in[7] = limit_norm(footV.y,0,20);
-	       
-		//absolute back angle?
-		BodyP back = C->limbs["back"];
-		in[8] = limit_norm(back->GetAngle(),0,2*Pi);
-
+/*
+		if (screen) {
+		    for (int i = 0; i<P->nInput; ++i) {
+			cout<<in[i]<<" ";
+		    }
+		    cout<<endl;
+		}
+*/
 		//Run input through network
 		N->run(in, out);
 
@@ -138,7 +110,8 @@ class hopper : public unary_function<const GenomeP, double> {
 		/* Advance the world */
 		W->step();
 		
-		headV = headPos.b->GetWorldPoint(headPos.localPos);
+	        shapePos headPos = C->shapes["head"];
+	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
 
 		if (screen) {
 		    ClearScreen(screen);
@@ -171,6 +144,9 @@ class hopper : public unary_function<const GenomeP, double> {
 	    if (text_surf)
 		SDL_FreeSurface(text_surf);
 
+	    delete [] in;
+	    delete [] out;
+
 //	cout<<"Made it "<<steps<<" steps..."
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
 
@@ -183,6 +159,7 @@ class hopper : public unary_function<const GenomeP, double> {
     private:
 	CreatureP C;
 	World *W;
+	const ExpParameters *P;
 
 	/**
 	 * Draw display balance cart, 
@@ -212,12 +189,6 @@ class hopper : public unary_function<const GenomeP, double> {
 
 	};
 */
-
-	float32 limit_norm (float32 v, float32 min, float32 max) {
-	    if (v < min) v = min;
-	    if (v > max) v = max;
-	    return (v - min) / (max - min);
-	}
 
 	bool HandleEvent()
 	{
@@ -354,8 +325,11 @@ int main (int argc, char **argv) {
 	cerr<<"Problem loading Creature, exiting."<<endl;
 	exit(1);
     }
+    
+    P.nInput = hoppy->numSensors();
+    P.nOutput = hoppy->muscles.size()*2;
 
-    hopper fit(1000, &w, hoppy);
+    hopper fit(1000, &w, hoppy, &P);
     boost::function<double (const GenomeP)> f = fit;
 
     GeneticAlgorithm GA(&P, &f);

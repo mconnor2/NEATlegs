@@ -11,6 +11,57 @@
     
 using namespace libconfig;
 
+inline double limit_norm (double v, const double min, const double max) {
+    if (v < min) v = min;
+    if (v > max) v = max;
+    return (v - min) / (max - min);
+}
+
+class Sensor {
+    public:
+	virtual double read() = 0;
+};
+
+class JointSensor : public Sensor {
+    public:
+	JointSensor (const RevoluteJointP &j) : joint(j) { }
+	double read() {
+	    return limit_norm(joint->GetJointAngle(),
+			      joint->GetLowerLimit(),
+			      joint->GetUpperLimit());
+	}
+    private:
+	const RevoluteJointP joint;
+};
+
+class HeightSensor : public Sensor {
+    public:
+	HeightSensor(const shapePos &_t, 
+		     const double _minH, const double _maxH) : 
+	    t(_t), minH(_minH), maxH(_maxH) { }
+	double read() {
+	    Vec2 v = t.b->GetWorldPoint(t.localPos);
+	    return limit_norm(v.y,minH,maxH);
+	}
+    private:
+	const shapePos t;
+	const double minH, maxH;
+};
+		
+class BodyAngleSensor : public Sensor {
+    public:
+	BodyAngleSensor(const BodyP &_t, 
+			const double _minA, const double _maxA) :
+	    t(_t), minA(_minA), maxA(_maxA) { }
+	
+	double read() {
+	    return limit_norm(t->GetAngle(),minA,maxA);
+	}
+    private:
+	const BodyP t;
+	const double minA, maxA;
+};
+
 int readLimbs(Setting &limbConfig, bodyMap &limbs, bodyPosList &parts,
 	      World *w) 
 { 
@@ -236,6 +287,61 @@ int readShapes(Setting &shapeConfig, shapeMap &shapes, bodyMap &limbs)
     return 1;
 }
 
+
+int readSensors (Setting &sensorConfig, sensorList &sensors, 
+		 bodyMap &limbs, jointMap &joints, shapeMap &shapes)
+{ 
+    //Sensors:
+    // type = {JointSensor, HeightSensor, BodyAngleSensor
+    // target
+    //   for HeightSensor: minH, maxH
+    //   for BodyAngleSensor: minA, maxA
+    int nSensors = sensorConfig.getLength();
+    for (int i = 0; i<nSensors; ++i) {
+	try {
+	    Setting &curSensor = sensorConfig[i];
+	    string type = curSensor["type"];
+	    string target = curSensor["target"];
+	    
+	    if (type == "JointSensor") {
+		SensorP s(new JointSensor(joints[target]));
+		sensors.push_back(s);
+	    } else if (type == "HeightSensor") {
+		double minH = curSensor["minH"],
+		       maxH = curSensor["maxH"];
+		SensorP s(new HeightSensor(shapes[target], minH, maxH));
+		sensors.push_back(s);
+	    } else if (type == "BodyAngleSensor") {
+		double minA = curSensor["minA"],
+		       maxA = curSensor["maxA"];
+		SensorP s(new BodyAngleSensor(limbs[target], minA, maxA));
+		sensors.push_back(s);
+	    } else {
+		cerr<<"Creature::readSensors sensor "<<i
+		    <<", unknown type: "<<type<<endl;
+		return 0;
+	    }
+	} catch (SettingTypeException te) {
+	    cerr<<"Creature::readSensors problem processing sensor "
+		<<i<<endl;
+	    cerr<<"    SettingTypeException: "<<((SettingException)te).what()
+		<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (SettingNotFoundException te) {
+	    cerr<<"Creature::readSensors problem processing sensor "
+		<<i<<endl;
+	    cerr<<"    SettingNotFoundException: "
+		<<((SettingException)te).what()<<", "<<te.getPath()<<endl;
+	    return 0;
+	} catch (...) {
+	    cerr<<"Creature::readSensors problem processing limb "
+		<<i<<endl;
+	    return 0;
+	}
+    }
+    return 1;
+}
+
 /**
  * Load creature definition from config file.  
  *
@@ -294,14 +400,18 @@ int Creature::initFromFile (const char* configFile, World *w) {
 	return 0;
     }
 
-    //Shapes
-    // name = "foot";
-    //  body = "shin";
-    //  position = { x = 0.0; y = -3.0; };
     if (config.exists("shapes") && 
 	!readShapes(config.lookup("shapes"),shapes, limbs)) 
     {
 	cerr<<"Creature::initFromFile problem reading shapes"<<endl;
+	return 0;
+    }
+    
+    if (config.exists("sensors") &&
+	!readSensors(config.lookup("sensors"), sensors, 
+		     limbs, joints, shapes)) 
+    {
+	cerr<<"Creature::initFromFile problem reading sensors"<<endl;
 	return 0;
     }
 
@@ -356,6 +466,18 @@ void Creature::update () {
 	(*i)->update();
     }
 }
+
+void Creature::setInput(double *input) const {
+    if (useBias) {
+	*input++ = 1.0;
+    }
+    for (sensorList::const_iterator i = sensors.begin(); 
+	 i != sensors.end(); ++i) 
+    {
+	*input++ = (*i)->read();
+    }
+}
+
 
 /**
  * Find and apply the force between the two bodies muscle is attached to.

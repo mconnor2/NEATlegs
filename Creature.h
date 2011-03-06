@@ -16,9 +16,14 @@ class BoxScreen;
 
 using namespace std;
 
+class Sensor;
+typedef boost::shared_ptr<Sensor> SensorP;
+typedef vector<SensorP> sensorList;
+
 class Creature {
     public:
-    //Creature (World *w);	
+    Creature (bool _useBias = true) : useBias(_useBias) { }
+
     /* Create Creature's body and add it to the world */
     int initFromFile(const char *configFile, World *w);
 
@@ -28,6 +33,12 @@ class Creature {
     void draw (BoxScreen *screen) const;
 
     void reset ();
+	
+    inline int numSensors() const {
+	return (sensors.size() + (useBias ? 1 : 0));
+    }
+
+    void setInput(double *input) const;
 
     // If we want to access some body parts by name
     bodyMap limbs;
@@ -42,7 +53,9 @@ class Creature {
     /* Bodies and joints specifying the creature */
     bodyPosList parts;
 
-    /* Brains controlling the muscles */
+    /* Sensors that translate input to the brain */
+    sensorList sensors;
+    const bool useBias;
 };
 
 class Muscle {
