@@ -30,16 +30,14 @@ class World {
 	CreatureP createCreature (const char* creatureConfig);
 	//int addCreature (CreatureP &c);
 	
+	BodyP createBody (const b2BodyDef *def); 
+	JointP createJoint (const b2JointDef *def); 
+	
 	static const float fGravity;
-
-	friend class Creature;
 
     private:
 	b2World *b2W;
 	
-	BodyP createBody (const b2BodyDef *def); 
-	JointP createJoint (const b2JointDef *def); 
-
 	BodyP ground;
 
 	creatureList beings; 
