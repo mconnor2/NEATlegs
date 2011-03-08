@@ -36,7 +36,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	const int MAX_STEPS;
 	//const bool random_start;
 
-	const static double HEAD_FLOOR = 0.5;
+	const static double HEAD_FLOOR = 0.75;
 
 	hopper(int max_steps, World *_W, CreatureP _C, ExpParameters *_P) :
 	    MAX_STEPS(max_steps), C(_C), W(_W), P(_P) 
@@ -81,12 +81,12 @@ class hopper : public unary_function<const GenomeP, double> {
 	    }
 	   
 	    C->reset();
-	    {
+/*	    {
 		shapePos headPos = C->shapes["head"];
 	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
 		cout<<"Head position: "<<headV.x<<", "<<headV.y<<endl;
 	    }
-
+*/
 	    double score = 0;
 	    double maxX = 0, maxY = 0;
 

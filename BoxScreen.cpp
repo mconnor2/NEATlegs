@@ -112,14 +112,14 @@ void BoxScreen::worldLine (const Vec2 &p1B, const Vec2 &p2B, Color c) {
  *        c = ceil(-o.x / 10*pM)
  */
 void BoxScreen::drawGrid () {
-    float sx = BoxOriginP.x - floor((float)BoxOriginP.x / (10 * pM))*10*pM,
-	  sy = BoxOriginP.y - floor((float)BoxOriginP.y / (10 * pM))*10*pM;
+    float sx = BoxOriginP.x - floor((float)BoxOriginP.x / (1.0f * pM))*1.0f*pM,
+	  sy = BoxOriginP.y - floor((float)BoxOriginP.y / (1.0f * pM))*1.0f*pM;
 
 //    cout<<"Starting grid: "<<(float)sx<<", "<<(float)sy
 //	<<" with "<<10*pM<<" pixels / 10 meters"<<endl;
 
-    for (float y = sy; y<HEIGHT; y+=10*pM) {
-	for (float x = sx; x<WIDTH; x+=10*pM) {
+    for (float y = sy; y<HEIGHT; y+=1.0f*pM) {
+	for (float x = sx; x<WIDTH; x+=1.0f*pM) {
 	    pixelColor(screen, (int)x, (int)y, 0xFF888888);
 	}
     }
