@@ -36,7 +36,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	const int MAX_STEPS;
 	//const bool random_start;
 
-	const static double HEAD_FLOOR = 5.0;
+	const static double HEAD_FLOOR = 0.5;
 
 	hopper(int max_steps, World *_W, CreatureP _C, ExpParameters *_P) :
 	    MAX_STEPS(max_steps), C(_C), W(_W), P(_P) 
@@ -62,8 +62,9 @@ class hopper : public unary_function<const GenomeP, double> {
 	    SDL_Rect text_loc;
 	    text_loc.x = 10;
 	    text_loc.y = 10;
-	     
-	    BoxScreen s(screen);
+	    
+	    // 100 pixels a meter
+	    BoxScreen s(screen, 100.0f);
 
 	    if (screen) {
 		int rate = 100; //static_cast<int>(2.0/TAU);
@@ -80,6 +81,11 @@ class hopper : public unary_function<const GenomeP, double> {
 	    }
 	   
 	    C->reset();
+	    {
+		shapePos headPos = C->shapes["head"];
+	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
+		cout<<"Head position: "<<headV.x<<", "<<headV.y<<endl;
+	    }
 
 	    double score = 0;
 	    double maxX = 0, maxY = 0;
@@ -89,7 +95,6 @@ class hopper : public unary_function<const GenomeP, double> {
 			
 		/* Read input from Creature's Sensors */
 		C->setInput(in);
-
 /*
 		if (screen) {
 		    for (int i = 0; i<P->nInput; ++i) {

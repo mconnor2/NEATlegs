@@ -6,7 +6,7 @@
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
-const float World::fGravity = 100.0;
+const float World::fGravity = 10.0;
 
 void bodyDestroy(Body *p) {
     cerr<<"Destroying a body, but not really."<<endl;
@@ -22,7 +22,7 @@ World::World (float _hz, int _iterations) :
     //Code taken basically straight from Box2D user manual
     b2AABB worldAABB;
     worldAABB.lowerBound.Set(-100.0f, -100.0f);
-    worldAABB.upperBound.Set(500.0f, 500.0f);
+    worldAABB.upperBound.Set(100.0f, 100.0f);
 
     //Set gravity pointing downward
     b2Vec2 gravity(0.0f, -fGravity);
@@ -41,7 +41,7 @@ World::World (float _hz, int _iterations) :
 		 //boost::bind(&b2World::DestroyBody, b2W, _1));
     
     b2PolygonDef groundBoxDef;
-    groundBoxDef.SetAsBox(500.0f, 10.0f);
+    groundBoxDef.SetAsBox(100.0f, 10.0f);
     groundBoxDef.density = 0.0f;
     groundBoxDef.friction = 1.0f;
 
