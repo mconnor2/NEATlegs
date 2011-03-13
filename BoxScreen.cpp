@@ -34,42 +34,41 @@ void BoxScreen::keepViewable (const Vec2 &pW) {
 }
 	
 void BoxScreen::drawBody (const BodyP &b) {
-    for (Shape *s = b->GetShapeList(); s; s = s->GetNext()) {
-	drawShape (b,s);
+    for (Fixture *f = b->GetFixtureList(); f; f = f->GetNext()) {
+	drawShape (b,f->GetShape());
     }
 }
 
 void BoxScreen::drawShape (const BodyP &b, const Shape *s) {
 
     switch(s->GetType()) {
-	case e_circleShape:
+	case b2Shape::e_circle:
 	{
 	    const b2CircleShape* circle = dynamic_cast<const b2CircleShape*>(s);
 	    b2Vec2 xP;
-	    box2pixel(b->GetWorldPoint(circle->GetLocalPosition()), xP);
-	    float32 rP = pM * circle->GetRadius();
+	    box2pixel(b->GetWorldPoint(circle->m_p), xP);
+	    float32 rP = pM * circle->m_radius;
 	    //Draw a red circle with SDL_gfx
 	    circleColor(screen, (int)xP.x, (int)xP.y, (int)rP, 0xFF0000FF);
 //	    cout<<"CIRCLE: "<<xP.x<<", "<<xP.y<<" radius: "<<rP<<endl;
 	}
 	break;
-	case e_polygonShape:
+	case b2Shape::e_polygon:
 	{
 	  const b2PolygonShape* poly = dynamic_cast<const b2PolygonShape*>(s);
           
 	  if (poly->GetVertexCount() > 1) {
 	      //glBegin(GL_LINE_LOOP);
-	      const b2Vec2 *locVertices = poly->GetVertices();
 
 	      b2Vec2 v1P, v2P;
 	      b2Vec2 firstP;
-	      box2pixel(b->GetWorldPoint(locVertices[0]),firstP);
+	      box2pixel(b->GetWorldPoint(poly->GetVertex(0)),firstP);
 	      v1P = firstP;
 //	      cout<<"POLYGON: ";
 	      for (int32 i = 1; i < poly->GetVertexCount(); ++i)
 	      {
 //		  cout<<"("<<v1P.x<<", "<<v1P.y<<") ";
-		  box2pixel(b->GetWorldPoint(locVertices[i]),v2P);
+		  box2pixel(b->GetWorldPoint(poly->GetVertex(i)),v2P);
 
 		  //Draw a green polygon with SDL_gfx
 		  lineColor(screen, 
@@ -89,7 +88,7 @@ void BoxScreen::drawShape (const BodyP &b, const Shape *s) {
 	}
 	break;
 	
-	case e_unknownShape:
+	case b2Shape::e_unknown:
 	default:
 	    cerr<<"drawShape: unknown shape."<<endl;
     }
@@ -120,7 +119,11 @@ void BoxScreen::drawGrid () {
 
     for (float y = sy; y<HEIGHT; y+=1.0f*pM) {
 	for (float x = sx; x<WIDTH; x+=1.0f*pM) {
-	    pixelColor(screen, (int)x, (int)y, 0xFF888888);
+	    pixelColor(screen, (int)x-1, (int)y, 0x00888888);
+	    pixelColor(screen, (int)x+1, (int)y, 0x00888888);
+	    pixelColor(screen, (int)x, (int)y-1, 0x00888888);
+	    pixelColor(screen, (int)x, (int)y+1, 0x00888888);
+	    pixelColor(screen, (int)x, (int)y, 0x00888888);
 	}
     }
 }

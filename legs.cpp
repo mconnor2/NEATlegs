@@ -169,7 +169,7 @@ int main (int argc, char **argv) {
     SDL_WM_SetCaption("Walkabout!", "Legs!");
 
     /* Initialize the World, take default hz and iteration */
-    World w;
+    World w(60.0f,10,10);
 
     // Create a creature that is added to the world
     Creature walker;

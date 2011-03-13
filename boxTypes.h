@@ -31,6 +31,8 @@ struct shapePos {
 };
 typedef std::map<std::string, shapePos> shapeMap;
 
+typedef b2Fixture Fixture;
+
 typedef b2Joint Joint;
 typedef boost::shared_ptr<Joint> JointP;
 

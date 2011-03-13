@@ -86,6 +86,7 @@ int readLimbs(Setting &limbConfig, bodyMap &limbs, bodyPosList &parts,
 		  y = curLimb["position"]["y"];
 	    
 	    b2BodyDef bone;
+	    bone.type = b2_dynamicBody;
 	    bone.position.Set(x,y);
 	    curLimb.lookupValue("angle", bone.angle);
 	    curLimb.lookupValue("angularDamping", bone.angularDamping);
@@ -101,35 +102,35 @@ int readLimbs(Setting &limbConfig, bodyMap &limbs, bodyPosList &parts,
 	    for (int j = 0; j<nShapes; ++j) {
 		Setting &curShape = shapes[j];
 		string type = curShape["type"];
-		auto_ptr<b2ShapeDef> shapeDefp;
+		b2FixtureDef fixtureDef;
+		
+		fixtureDef.density = curShape["density"];
+		
+		curShape.lookupValue("friction", fixtureDef.friction);
+		curShape.lookupValue("groupIndex",
+				     (int&)(fixtureDef.filter.groupIndex)); 
 		if (type == "box") {
 		    float w = curShape["w"],
 			  h = curShape["h"];
-		    shapeDefp = auto_ptr<b2ShapeDef>(new b2PolygonDef);
-		    ((b2PolygonDef*)shapeDefp.get())->SetAsBox(w,h);
+		    b2PolygonShape box;
+		    box.SetAsBox(w,h);
+		    fixtureDef.shape = &box;
+		    limb->CreateFixture(&fixtureDef);
 		} else if (type == "ball") {
-		    shapeDefp = auto_ptr<b2ShapeDef>(new b2CircleDef);
-		    ((b2CircleDef*)shapeDefp.get())->radius = 
-			curShape["radius"];
+		    b2CircleShape ball;
+		    ball.m_radius = curShape["radius"];
 		    float x = curShape["position"]["x"],
 			  y = curShape["position"]["y"];
-		    ((b2CircleDef*)shapeDefp.get())->localPosition.Set(x,y); 
+		    ball.m_p.Set(x,y);
+		    fixtureDef.shape = &ball;
+		    limb->CreateFixture(&fixtureDef);
 		} else {
 		    cerr<<"Creature::initFromFile limb "<<name
 			<<", shape "<<j<<" type "<<type<<" unknown."<<endl;
 		    return 0;
 		}
-		shapeDefp->density = curShape["density"];
-		
-		curShape.lookupValue("friction", shapeDefp->friction);
-		curShape.lookupValue("groupIndex",
-				     (int&)(shapeDefp->filter.groupIndex)); 
-
-		limb->CreateShape(shapeDefp.get());
 	    }
 
-	    limb->SetMassFromShapes();
-	    
 	    parts.push_back(bp);
 	    limbs.insert(make_pair(name, limb));
 	} catch (SettingTypeException te) {
@@ -423,20 +424,11 @@ void Creature::reset () {
     for (bodyPosList::iterator i = parts.begin();
 	 i != parts.end(); ++i)
     {
-	i->b->SetXForm(i->defaultPos, i->angle);
+	i->b->SetTransform(i->defaultPos, i->angle);
 	i->b->SetLinearVelocity(zero);
 	i->b->SetAngularVelocity(0);
     }
 }
-
-void Creature::wake () {
-    for (bodyPosList::iterator i = parts.begin();
-	 i != parts.end(); ++i)
-    {
-	i->b->WakeUp();
-    }
-}
-
 
 void Creature::draw (BoxScreen *screen) const {
     /* Really should change this to a for_all */

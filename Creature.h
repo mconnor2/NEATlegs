@@ -27,7 +27,6 @@ class Creature {
     /* Create Creature's body and add it to the world */
     int initFromFile(const char *configFile, World *w);
 
-    void wake ();	//make sure all the bodies are awake
     void update ();
 
     void draw (BoxScreen *screen) const;

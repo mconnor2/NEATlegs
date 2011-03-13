@@ -5,13 +5,10 @@
 #include <vector>
 
 #include "boxTypes.h"
-//#include "Creature.h"
-//#include "BoxScreen.h"
 
 using namespace std;
 
 class BoxScreen;
-class Creature;
 
 /**
  * World management class.  Stores pointer to world, handles overall
@@ -19,7 +16,7 @@ class Creature;
  */
 class World {
     public:
-	World (float _hz = 100.0f, int _iterations = 20);
+	World (float _hz = 60.0f, int _Viterations = 10, int _Piterations = 10);
 
 	~World ();
     
@@ -43,7 +40,7 @@ class World {
 	creatureList beings; 
 
 	float32 timeStep;
-	int32 iterations;
+	int32 velocityIterations, positionIterations;
 };
 
 #endif

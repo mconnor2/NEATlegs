@@ -67,7 +67,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	    BoxScreen s(screen, 100.0f);
 
 	    if (screen) {
-		int rate = 100; //static_cast<int>(2.0/TAU);
+		int rate = 60; //static_cast<int>(2.0/TAU);
 		SDL_initFramerate(&fpsm);
 		SDL_setFramerate(&fpsm,rate);
     
@@ -321,7 +321,7 @@ int main (int argc, char **argv) {
     cout<<"Generating pop size of "<<P.popSize<<endl;
 
     /* Initialize the World, take default hz and iteration */
-    World w;
+    World w(60.0f,10,10);
 
     // Create a creature that is added to the world
     CreatureP hoppy = w.createCreature(configFile);

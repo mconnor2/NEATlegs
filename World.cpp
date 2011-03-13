@@ -16,20 +16,16 @@ void jointDestroy(Joint *j) {
     cerr<<"Destroying a joint, but not really."<<endl;
 }
 
-World::World (float _hz, int _iterations) : 
-	      timeStep(1.0f/_hz), iterations(_iterations) 
+World::World (float _hz, int _Viterations, int _Piterations) : 
+	      timeStep(1.0f/_hz), velocityIterations(_Viterations),
+	      positionIterations(_Piterations)
 {
-    //Code taken basically straight from Box2D user manual
-    b2AABB worldAABB;
-    worldAABB.lowerBound.Set(-100.0f, -100.0f);
-    worldAABB.upperBound.Set(100.0f, 100.0f);
-
     //Set gravity pointing downward
     b2Vec2 gravity(0.0f, -fGravity);
     bool doSleep = true;
 
     //Create world
-    b2W = new b2World(worldAABB, gravity, doSleep);
+    b2W = new b2World(gravity, doSleep);
 
     //Create ground
     b2BodyDef groundBodyDef;
@@ -40,12 +36,16 @@ World::World (float _hz, int _iterations) :
 		 bodyDestroy);
 		 //boost::bind(&b2World::DestroyBody, b2W, _1));
     
-    b2PolygonDef groundBoxDef;
+    b2PolygonShape groundBoxDef;
     groundBoxDef.SetAsBox(100.0f, 10.0f);
-    groundBoxDef.density = 0.0f;
-    groundBoxDef.friction = 1.0f;
+   
+    b2FixtureDef groundFixtureDef;
+    groundFixtureDef.shape = &groundBoxDef;
 
-    ground->CreateShape(&groundBoxDef);
+    groundFixtureDef.density = 0.0f;
+    groundFixtureDef.friction = 1.0f;
+
+    ground->CreateFixture(&groundFixtureDef);
 }
 
 World::~World () {
@@ -91,7 +91,8 @@ void World::step () {
     for_each(beings.begin(), beings.end(),
 	     boost::mem_fn(&Creature::update));
 
-    b2W->Step(timeStep, iterations);
+    b2W->Step(timeStep, velocityIterations, positionIterations);
+    b2W->ClearForces();
 }
 
 void World::draw (BoxScreen *screen) const {
