@@ -9,11 +9,15 @@
 const float World::fGravity = 10.0;
 
 void bodyDestroy(Body *p) {
+#ifdef __DEBUG
     cerr<<"Destroying a body, but not really."<<endl;
+#endif
 }
 
 void jointDestroy(Joint *j) {
+#ifdef __DEBUG
     cerr<<"Destroying a joint, but not really."<<endl;
+#endif
 }
 
 World::World (float _hz, int _Viterations, int _Piterations) : 
@@ -68,7 +72,7 @@ JointP World::createJoint (const b2JointDef *def) {
     return j;
 }
 
-CreatureP World::createCreature (const char* creatureConfig) {
+CreatureP World::createCreature (const libconfig::Config &creatureConfig) {
     CreatureP cp(new Creature());
     if (!cp->initFromFile(creatureConfig, this)) {
 	//Problem with initialization, so return empty CreatureP

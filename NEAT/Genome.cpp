@@ -432,6 +432,7 @@ Network *Genome::createNewNetwork() const {
 void Genome::printDescription(const char *prefix) const {
     std::cout<<prefix<<"Genome has "<<nLinks<<" links, "
 	     <<nNodes<<" nodes."<<endl;
+
 /*
     for (int i = 0; i<nLinks; ++i) {
 	std::cout<<prefix<<"  Link "<<i<<": ";

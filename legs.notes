@@ -586,4 +586,29 @@ During simulation, initialize in[] array with values from each sensor
 
 Alternatively I can put the sensor network into the creature, that way the target is set once, and if I create multiple creatures they will have their own sensors...  That does make more sense.
 
+03/14/11
+
+Here's a good ol' todo for legs: add ability to parallel process.  Actually, dual goals with one starting change.  What I want to do is when I display current results I want to show the top creature in each specie in parallel, so say 4x4 boxes each with little walker.  This requires a seperate World and Creature for each box (or thread).  Is there any sort of notion of deep World copy...
+
+One good step in this, seperate out find fitness for current population so can pull true best member each generation (before any mutation during copying?). 
+
+    -Get fitness
+    -Find best individual in each species
+    -Display if doing that
+    -Now next generation
+
+Then I need to form a way to create new world/creature threads.  I can do this with config file, but that seems inelegant.  What may need to do is parse file once into some internal format, and then recreate world (or just load once statically, store 15x in array...)
+
+As it is now, I pass in world and creature when I create the hopper fitness function.  Perhaps it will make sense to pass in genome and world/creature pair (environment of some sort perhaps).  
+
+03/16/11
+
+Ok, trying to track down why the best score doesn't stay constant, if we keep the same networks, and it appears the best network does stay constant (at least with the score changing).  This means I am initializing the network incorrectly (always possible), or the simulation isn't deterministic.  Lets see if rand appears anywhere in Box code.
+
+Ah, muscles have state.  Does that change it.  Nope...
+
+Ok, doing testMult, I have figured out that if I recreate a world and creature each time, I get same results, so there is some state I am not resetting... lets track it down.
+
+It looks like I am going to have to recreate (and destroy) the world every time I run objective function.  This really shouldn't slow things down too much in comparison to the actual simulation, but need to keep it in mind.  Also a good question is what format to store the configuration information?  maybe libconfig setting format is good enough.  For now, lets assume it is unless otherwise proven it takes too much time or memory (it better not be reprocessing the file everytime).
+
 

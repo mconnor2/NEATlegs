@@ -4,12 +4,12 @@
 
 #include <boost/function.hpp>
 
-#include <libconfig.h++>
-
 #include <SDL/SDL.h>
 #include <SDL/SDL_gfxPrimitives.h>
 #include <SDL/SDL_framerate.h>
 #include <SDL/SDL_ttf.h>
+
+#include <libconfig.h++>
 
 #include "NEAT/random.h"
 #include "NEAT/Network.h"
@@ -30,7 +30,7 @@ const double Pi = 3.14159265358979323;
 TTF_Font *fnt;
 
 /**
- * Test for creature hopping.  Most crap is hard coded at this point.
+ * Test for creature creation and simulation.  Is it deterministic? 
  *
  */
 class hopper : public unary_function<const GenomeP, double> {
@@ -49,25 +49,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	    auto_ptr<Network> N(g->createNewNetwork());
 	
 	    int steps=0,y;
-
-	    /* Initialize the World, take default hz and iteration */
-	    World w(60.0f,10,10);
-
-	    // Create a creature that is added to the world
-	    CreatureP C = w.createCreature(*config);
-
-	    if (!C) {
-		cerr<<"Problem loading Creature, exiting."<<endl;
-		exit(1);
-	    }
-		    
-	    double *in = new double[P->nInput];  //Input loading array
-	    //Output: thigh muscle length(%max), k; shin muscle length(%max), k
-	    double *out = new double[P->nOutput];
-	    int nMuscles = C->muscles.size();
 	    
-	    for (int i = 0; i<P->nOutput; ++i) out[i] = 0.0;
-
 	    FPSmanager fpsm;
 
 	    SDL_Surface *text_surf = NULL;
@@ -92,7 +74,26 @@ class hopper : public unary_function<const GenomeP, double> {
 		    text_surf = TTF_RenderText_Blended(fnt,num,fgColor);
 		}
 	    }
-	   
+
+	    /* Initialize the World, take default hz and iteration */
+	    World w(60.0f,20,20);
+
+	    // Create a creature that is added to the world
+	    CreatureP C = w.createCreature(*config);
+	    
+	    if (!C) {
+		cerr<<"Problem loading Creature, exiting."<<endl;
+		exit(1);
+	    }
+	    
+	    double *in = new double[P->nInput];  //Input loading array
+	    //Output: thigh muscle length(%max), k; shin muscle length(%max), k
+	    double *out = new double[P->nOutput];
+	    int nMuscles = C->muscles.size();
+	    
+	    for (int i = 0; i<P->nInput; ++i) in[i] = 0.0;
+	    for (int i = 0; i<P->nOutput; ++i) out[i] = 0.0;
+
 	    C->reset();
 /*	    {
 		shapePos headPos = C->shapes["head"];
@@ -102,6 +103,20 @@ class hopper : public unary_function<const GenomeP, double> {
 */
 	    double score = 0;
 	    double maxX = 0, maxY = 0;
+
+	    C->setInput(in);
+	    cout<<"Initialized test..."<<endl;
+	    cout<<"in ->";
+	    for (int i = 0; i<P->nInput; ++i) {
+		cout<<" "<<in[i];
+	    }
+	    cout<<endl;
+	    N->run(in, out);
+	    cout<<"out ->";
+	    for (int i = 0; i<P->nOutput; ++i) {
+		cout<<" "<<out[i];
+	    }
+	    cout<<endl;
 
 	    /*--- Iterate through the action-learn loop. ---*/
 	    while (steps++ < MAX_STEPS) {
@@ -118,6 +133,20 @@ class hopper : public unary_function<const GenomeP, double> {
 */
 		//Run input through network
 		N->run(in, out);
+	   
+		if (steps <= 2) {
+		    cout<<"STEP "<<steps<<endl;
+		    cout<<"  in ->";
+		    for (int i = 0; i<P->nInput; ++i) {
+			cout<<" "<<in[i];
+		    }
+		    cout<<endl;
+		    cout<<"  out ->";
+		    for (int i = 0; i<P->nOutput; ++i) {
+			cout<<" "<<out[i];
+		    }
+		    cout<<endl;
+		}
 
 		//Update creature's muscles based on output
 		for (int m = 0; m<nMuscles; ++m) {
@@ -175,7 +204,7 @@ class hopper : public unary_function<const GenomeP, double> {
 	};
 
     private:
-	const libconfig::Config *config;
+	libconfig::Config *config;
 	const ExpParameters *P;
 
 	/**
@@ -348,39 +377,17 @@ int main (int argc, char **argv) {
     }
    
     cout<<"Generating pop size of "<<P.popSize<<endl;
-    
-    P.nInput = config.lookup("sensors").getLength()+1;
-    P.nOutput = config.lookup("muscles").getLength()*2;
 
+    GenomeP g(new Genome(&P));
     hopper fit(1000, &config, &P);
-    boost::function<double (const GenomeP)> f = fit;
 
-    GeneticAlgorithm GA(&P, &f);
+    double fitness = 0.0;
+    for (int i = 0; i<10; ++i) {
+	fitness = fit(g);
+	cout<<i<<": "<<fitness<<endl;
+    }
 
     double maxFit = -1e9, curMaxFit = 0;
     
-    //cout<<"Generation 0"<<endl;
-    //GA->printPopulation();
-
-    cout<<"Initialized.  Starting simulation."<<endl;
-
-    for (int gen = 0; gen < 1000; gen++) {
-	//Each generation will receive a different input, so network
-	// can't just memorize pattern
-	//fit.regenerate();
-
-	curMaxFit = GA.nextGeneration();
-	if (curMaxFit > maxFit) maxFit = curMaxFit;
-	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
-	cout<<"========================================================="<<endl;
-
-	if (gen%10 == 0 && drawGen)
-	    fit(GA.bestIndiv(), gen, screen);
-
-	//cout<<"Generation "<<gen+1<<endl;
-	//GA.printPopulation();
-	
-	//if (error == 0) break;
-    }
     return 0;
 }

@@ -38,6 +38,8 @@ legs: $(PHYS_OBJS) legs.o
 hopper: $(OBJS) hopper.o
 	$(CXX) $(CXXFLAGS) -o hopper $(OBJS) hopper.o $(LIBS)
 
+test: $(OBJS) testMult.o
+	$(CXX) $(CXXFLAGS) -o testMult $(OBJS) testMult.o $(LIBS)
 
 .PHONY: clean
 clean:

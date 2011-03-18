@@ -5,18 +5,21 @@
 
 double Specie::calculateFitness() {
     fitness = 0;
-    GenomeP maxFit = members[0];
+    //GenomeP maxFit = members[0];
+    genome_it maxFiti = members.begin();
+    double maxFitness = -1e9;
     for (genome_it pi = members.begin(); pi != members.end(); ++pi) {
 	(*pi)->fitness /= nMembers;
 	fitness += (*pi)->fitness;
 
-	if ((*pi)->fitness > maxFit->fitness) {
-	    maxFit = *pi;
+	if ((*pi)->fitness > maxFitness) {
+	    maxFiti = pi;
+	    maxFitness = (*pi)->fitness;
 	}
     }
 
     //Make sure the representative member is the most fit
-    members[0].swap(maxFit);
+    members[0].swap(*maxFiti);
 }
     
 double Specie::maxFitness() const {

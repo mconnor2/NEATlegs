@@ -3,6 +3,7 @@
 
 #include <Box2D.h>
 #include <vector>
+#include <libconfig.h++>
 
 #include "boxTypes.h"
 
@@ -24,7 +25,9 @@ class World {
 	
 	void draw (BoxScreen *screen) const;
 
-	CreatureP createCreature (const char* creatureConfig);
+	//CreatureP createCreature (const char* creatureConfig);
+	CreatureP createCreature (const libconfig::Config &creatureConfig);
+	
 	//int addCreature (CreatureP &c);
 	
 	BodyP createBody (const b2BodyDef *def); 

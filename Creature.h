@@ -4,6 +4,7 @@
 #include <Box2D.h>
 #include <vector>
 #include <map>
+#include <libconfig.h++>
 
 #include "boxTypes.h"
 //#include "BoxScreen.h"
@@ -25,14 +26,16 @@ class Creature {
     Creature (bool _useBias = true) : useBias(_useBias) { }
 
     /* Create Creature's body and add it to the world */
-    int initFromFile(const char *configFile, World *w);
+    //int initFromFile(const char *configFile, World *w);
+    int initFromFile(const libconfig::Config &config, World *w);
 
     void update ();
 
     void draw (BoxScreen *screen) const;
 
     void reset ();
-	
+    void activate ();
+
     inline int numSensors() const {
 	return (sensors.size() + (useBias ? 1 : 0));
     }
@@ -69,7 +72,12 @@ class Muscle {
 		k((_minK + _maxK) / 2.), eq((_minEq + _maxEq)/2.), kd(_kd) 
 	{ }
 
-	float update ();
+	inline void reset () {
+	    k = (minK + maxK) / 2.;
+	    eq = (minEq + maxEq) / 2.;
+	}
+
+	float update () const;
 
 	void draw (BoxScreen *screen) const;
 

@@ -7,8 +7,6 @@
 
 #include <boost/shared_ptr.hpp>
 
-#include <libconfig.h++>
-    
 using namespace libconfig;
 
 inline double limit_norm (double v, const double min, const double max) {
@@ -350,27 +348,9 @@ int readSensors (Setting &sensorConfig, sensorList &sensors,
  *
  * return 1 on succes, 0 on error
  */
-int Creature::initFromFile (const char* configFile, World *w) {
-    
-    Config config;
-    try {
-	config.readFile(configFile);
-    } catch (ParseException pe) {
-	cerr<<"Creature::initFromFile parse error"<<endl;
-	cerr<<"   config file "<<configFile<<endl;
-	cerr<<"   line number "<<pe.getLine()<<endl;
-	cerr<<"   error: "<<pe.getError()<<endl;
-
-	return 0;
-    } catch (...) {
-	cerr<<"Creature::initFromFile error reading from file."<<endl;
-
-	return 0;
-    }
-    config.setAutoConvert(true);
-
+//int Creature::initFromFile (const char* configFile, World *w) {
+int Creature::initFromFile (const Config &config, World *w) {
     //Config specifies limbs, joints, muscles and shapes
-    
     if (!config.exists("limbs")) {
 	cerr<<"Creature::initFromFile limbs member does not exist"<<endl;
 	return 0;
@@ -428,6 +408,19 @@ void Creature::reset () {
 	i->b->SetLinearVelocity(zero);
 	i->b->SetAngularVelocity(0);
     }
+    for (muscleList::iterator i = muscles.begin();
+	 i != muscles.end(); ++i)
+    {
+	(*i)->reset();
+    }
+}
+    
+void Creature::activate () {
+    for (bodyPosList::iterator i = parts.begin();
+	 i != parts.end(); ++i)
+    {
+	i->b->SetActive(true);
+    }
 }
 
 void Creature::draw (BoxScreen *screen) const {
@@ -476,7 +469,7 @@ void Creature::setInput(double *input) const {
  *
  * returns the magnitude of this force.
  */
-float Muscle::update () {
+float Muscle::update () const {
     Vec2 a1W = body1->GetWorldPoint(end1L);
     Vec2 a2W = body2->GetWorldPoint(end2L);
 

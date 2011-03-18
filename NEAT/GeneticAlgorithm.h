@@ -5,10 +5,12 @@
 #include <vector>
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
+#include <libconfig.h++>
 
 #include "NEATtypes.h"
 //class Genome;
 //class InnovationStore;
+
 
 /**
  * Paramters for running genetic algorithm experiment.  
@@ -69,7 +71,7 @@ struct ExpParameters {
     double startPopulationPercent;	//How many members to start with, as
 					// percent of total desired population
 
-    int loadFromFile (const char* configFile);
+    int loadFromFile (const libconfig::Config &config);
     ExpParameters();
 };
 

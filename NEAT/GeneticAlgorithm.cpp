@@ -12,8 +12,6 @@
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
-#include <libconfig.h++>
-
 using namespace std;
 
 //Default parameters, but -1 population size
@@ -27,23 +25,7 @@ ExpParameters::ExpParameters() :
     oldAge(5), startPopulationPercent(0.5)
 { }
 
-int ExpParameters::loadFromFile(const char* configFile) {
-    libconfig::Config config;
-    try {
-	config.readFile(configFile);
-    } catch (libconfig::ParseException pe) {
-	cerr<<"ExpParameters::loadFromFile parse error"<<endl;
-	cerr<<"   config file "<<configFile<<endl;
-	cerr<<"   line number "<<pe.getLine()<<endl;
-	cerr<<"   error: "<<pe.getError()<<endl;
-
-	return 0;
-    } catch (...) {
-	cerr<<"ExpParameters::loadFromFile error reading from file."<<endl;
-
-	return 0;
-    }
-
+int ExpParameters::loadFromFile(const libconfig::Config &config) {
     if (!config.exists("global")) {
 	cerr<<"ExpParameters::loadFromFile config file must have 'global' section."<<endl;
 
@@ -204,10 +186,29 @@ double GeneticAlgorithm::nextGeneration() {
 	}
     }
     double avgFit = sumFit / (double)population.size();
-    
+
+/*
+    //What is max fitness of first specie
+    double firstSpecieMax = 1e-9;
+    for (genome_it gi = species.front()->members.begin();
+	 gi != species.front()->members.end(); ++gi) 
+    {
+	if ((*gi)->fitness > firstSpecieMax) {
+	    firstSpecieMax = (*gi)->fitness;
+	}
+    }
+    cout<<"Specie 0 max fitness (before calculateFitness) = "
+	<<firstSpecieMax<<endl;
+*/
     //Sum fitness of each species, and divide individuals by size of group
     for_each(species.begin(), species.end(), 
 	     boost::mem_fn(&Specie::calculateFitness));
+    
+/*
+    cout<<"Specie 0 max fitness (after calculateFitness) = "
+	<<species.front()->maxFitness()<<endl;
+    species.front()->members.front()->printDescription("--");
+*/
 
     //Since each individual's fitness is divided by size of the group
     // then sum of total fitness should be same as sum of the species average
@@ -349,7 +350,12 @@ double GeneticAlgorithm::nextGeneration() {
     if (P->targetSpecies > 0) adaptSpeciesThresh(species.size());
 
     ++generation;
-
+    
+/*    
+    cout<<"Specie 0 max fitness (after full mating) = "
+	<<species.front()->maxFitness()<<endl;
+    species.front()->members.front()->printDescription("--");
+*/
     return maxFit;
 }
 

@@ -11,6 +11,8 @@
 #include <SDL/SDL_gfxPrimitives.h>
 #include <SDL/SDL_framerate.h>
 
+#include <libconfig.h++>
+
 #include "BoxScreen.h"
 #include "World.h"
 #include "Creature.h"
@@ -173,8 +175,25 @@ int main (int argc, char **argv) {
 
     // Create a creature that is added to the world
     Creature walker;
+    
+    libconfig::Config config;
+    try {
+	config.readFile(configFile);
+    } catch (libconfig::ParseException pe) {
+	cerr<<"Config parse error"<<endl;
+	cerr<<"   config file "<<configFile<<endl;
+	cerr<<"   line number "<<pe.getLine()<<endl;
+	cerr<<"   error: "<<pe.getError()<<endl;
 
-    if (!walker.initFromFile(configFile, &w)) {
+	return 1;
+    } catch (...) {
+	cerr<<"Config error reading from file."<<endl;
+
+	return 1;
+    }
+    config.setAutoConvert(true);
+
+    if (!walker.initFromFile(config, &w)) {
 	fprintf(stderr, "Couldn't init creature from file, exiting.\n");
 	exit(1);
     }
