@@ -97,6 +97,7 @@ class GeneticAlgorithm {
 
 	// Produce one generation of the genetic algorithm, returning
 	// the max fitness of current generation.
+	void runFitness() const;
 	double nextGeneration();
 
 	void printPopulation() const;
@@ -104,6 +105,7 @@ class GeneticAlgorithm {
 	GenomeP bestIndiv() const {
 	    return maxFitI;
 	}
+
 
     private:
 	ExpParameters *P;

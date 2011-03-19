@@ -254,16 +254,21 @@ int main (int argc, char **argv) {
     SDL_Surface *screen = NULL;
     bool drawGen = false;
 
+    int maxGen = 1000;
+
     /* Process arguments */
     int opt;
     char *configFile = NULL;
-    while ((opt = getopt(argc, argv, "VC:h")) != -1) {
+    while ((opt = getopt(argc, argv, "VC:hN:")) != -1) {
 	switch(opt) {
 	    case 'V':
 		drawGen = true;
 	    break;
 	    case 'C':
 		configFile = optarg;
+	    break;
+	    case 'N':
+		maxGen = atoi(optarg);
 	    break;
 	    default:
 		printf("Usage: hopper -C config file [-V for video] [-h this]\n");
@@ -364,7 +369,7 @@ int main (int argc, char **argv) {
 
     cout<<"Initialized.  Starting simulation."<<endl;
 
-    for (int gen = 0; gen < 1000; gen++) {
+    for (int gen = 0; gen < maxGen; gen++) {
 	//Each generation will receive a different input, so network
 	// can't just memorize pattern
 	//fit.regenerate();

@@ -611,4 +611,100 @@ Ok, doing testMult, I have figured out that if I recreate a world and creature e
 
 It looks like I am going to have to recreate (and destroy) the world every time I run objective function.  This really shouldn't slow things down too much in comparison to the actual simulation, but need to keep it in mind.  Also a good question is what format to store the configuration information?  maybe libconfig setting format is good enough.  For now, lets assume it is unless otherwise proven it takes too much time or memory (it better not be reprocessing the file everytime).
 
+03/19/11
+
+Wow, parallel_for was real easy... lets see if this is actually helping.
+
+500 generations, with parallel_for
+mcdesktop ~/projects/legs $ time ./hopper -C walker.cfg -N 500
+Run 1  
+  After generation 499, maximum fitness =  7.18117
+  =========================================================
+
+  real    2m59.197s
+  user    10m39.464s
+  sys     0m4.178s
+
+Run 2
+  After generation 499, maximum fitness =  20.8244
+  =========================================================
+
+  real    4m56.364s
+  user    17m58.875s
+  sys     0m6.693s
+
+Run 3
+  After generation 499, maximum fitness =  22.9071
+  =========================================================
+
+  real    4m27.988s
+  user    16m30.264s
+  sys     0m4.514s
+
+Run 4
+  After generation 499, maximum fitness =  7.86407
+  =========================================================
+
+  real    3m24.453s
+  user    12m18.812s
+  sys     0m4.737s
+
+Run 5
+  After generation 499, maximum fitness =  43.9484
+  =========================================================
+
+  real    9m46.642s
+  user    36m34.156s
+  sys     0m8.315s
+
+
+I know, I'm a moron and should be measuring simulation steps/sec.
+I'll do that next.
+
+Now without parallel_for:
+mcdesktop ~/projects/legs $ time ./hopper -C walker.cfg -N 500
+Run 1
+  After generation 499, maximum fitness =  15.8232
+  =========================================================
+
+  real    10m39.026s
+  user    10m38.840s
+  sys     0m0.070s
+
+Run 2
+  After generation 499, maximum fitness =  9.20221
+  =========================================================
+
+  real    11m9.234s
+  user    11m9.043s
+  sys     0m0.074s
+
+Run 3
+  After generation 499, maximum fitness =  9.04654
+  =========================================================
+
+  real    16m32.487s
+  user    16m32.218s
+  sys     0m0.092s
+
+Run 4
+  After generation 499, maximum fitness =  12.641
+  =========================================================
+
+  real    19m29.823s
+  user    19m29.511s
+  sys     0m0.100s
+
+Run 5
+  After generation 499, maximum fitness =  18.5634
+  =========================================================
+
+  real    12m36.161s
+  user    12m35.945s
+  sys     0m0.077s
+
+
+Hmm, is there an issue with concurrency and: random number generator, Box memory allocation, ... ?
+Ah, random number generation shouldn't matter for creating networks etc.  Ok
+
 

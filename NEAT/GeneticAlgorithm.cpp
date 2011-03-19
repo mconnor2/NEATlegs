@@ -12,6 +12,9 @@
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
+#include "tbb/parallel_for.h"
+#include "tbb/blocked_range.h"
+
 using namespace std;
 
 //Default parameters, but -1 population size
@@ -152,6 +155,29 @@ FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
     return first;
 }
 
+using namespace tbb;
+
+struct rangeFitness {
+    FitnessFunction *f;
+    const genomeVec &p;
+    rangeFitness(const genomeVec &pop, FitnessFunction *_f) : p(pop), f(_f) { }
+    void operator()(const blocked_range<size_t> &range) const {
+	for (size_t i = range.begin(); i != range.end(); ++i) {
+	    (*f)(p[i]);
+	}
+	//for_each(range.begin(), range.end(), *f);
+    }
+};
+
+void GeneticAlgorithm::runFitness() const {
+    //Just for fun, lets use for_each to find the fitness for
+    // each individual, storing them in individual genome
+    //for_each(population.begin(), population.end(), *fitnessF);
+    
+    parallel_for( blocked_range<size_t>(0,population.size()), 
+    		  rangeFitness(population, fitnessF));
+}
+
 
 /**
  * Run one iteration of genetic algorithm, creating new generation and
@@ -171,10 +197,8 @@ FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
  *  -Return max fitness
  */
 double GeneticAlgorithm::nextGeneration() {
-
-    //Just for fun, lets use for_each to find the fitness for
-    // each individual, storing them in individual genome
-    for_each(population.begin(), population.end(), *fitnessF);
+    
+    runFitness();
 
     //Find true mean and max fitness of population, ignoring species size
     double maxFit = -1e20, sumFit = 0;

@@ -12,6 +12,10 @@ INC += -I../physics/Box2D_v2.1.2/Box2D/Box2D
 INC += -I../physics/Box2D_v2.1.2/Box2D
 LIBS += -L../physics/Box2D_v2.1.2/Box2D/Box2D -lBox2D
 
+INC += -I/home/mconnor/Downloads/tbb30_20101215oss/include/
+
+LIBS += -L/home/mconnor/Downloads/tbb30_20101215oss/build/linux_intel64_gcc_cc4.4.5_libc2.12.1_kernel2.6.36_debug -ltbb_debug
+
 #CXXFLAGS += `pkg-config --cflags libconfig++`
 LIBS += -lconfig++ #`pkg-config --libs libconfig++`
 
