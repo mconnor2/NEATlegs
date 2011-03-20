@@ -167,8 +167,10 @@ class hopper : public unary_function<const GenomeP, double> {
 
 //	cout<<"Made it "<<steps<<" steps..."
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
-    
+  
+#ifdef PROFILE
 	    g->steps = steps;
+#endif
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
 	    //return (g->fitness = score/MAX_STEPS);

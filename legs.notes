@@ -713,7 +713,15 @@ ToDo:
 -Measure simulation steps/sec
 -Detangle fitness, display, next generation
 -Display multiple simulation at once.
+-Some genetic algorithm modifications
+    -Different forms of genome passing (single member reproduction/mutation)
+    -Specie stagnation
+	*Graph species first
+    -Do I have sharing right?  It seems to just cause uniform number of members per species, almost no matter what... have to double check/think about this.
 
 Looks like 35k box steps/second with parallel_for
-	    9.5k box steps/second with for_each
+	    9.7k box steps/second with for_each
+
+Yeah, for mutate only reproduction, ken stanley has 0.25 percent chance.  Makes sense, choose best member and varie weights a little bit.  Its really the only way to improve the best.  Yeah, lets do that.
+
 

@@ -37,8 +37,10 @@ class Genome {
 	double fitness;
 	int specie;
 
+#ifdef PROFILE
 	//How many steps of simulation were run during objective
 	int steps;
+#endif
 
 	//void save(file)
 	//void load(file)
