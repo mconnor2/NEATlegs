@@ -155,13 +155,11 @@ FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
     return first;
 }
 
-using namespace tbb;
-
 struct rangeFitness {
     FitnessFunction *f;
     const genomeVec &p;
     rangeFitness(const genomeVec &pop, FitnessFunction *_f) : p(pop), f(_f) { }
-    void operator()(const blocked_range<size_t> &range) const {
+    void operator()(const tbb::blocked_range<size_t> &range) const {
 	for (size_t i = range.begin(); i != range.end(); ++i) {
 	    (*f)(p[i]);
 	}
@@ -174,8 +172,8 @@ void GeneticAlgorithm::runFitness() const {
     // each individual, storing them in individual genome
     //for_each(population.begin(), population.end(), *fitnessF);
     
-    parallel_for( blocked_range<size_t>(0,population.size()), 
-    		  rangeFitness(population, fitnessF));
+    tbb::parallel_for( tbb::blocked_range<size_t>(0,population.size()), 
+		       rangeFitness(population, fitnessF));
 }
 
 
