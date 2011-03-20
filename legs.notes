@@ -707,4 +707,13 @@ Run 5
 Hmm, is there an issue with concurrency and: random number generator, Box memory allocation, ... ?
 Ah, random number generation shouldn't matter for creating networks etc.  Ok
 
+03/20/11
+
+ToDo:
+-Measure simulation steps/sec
+-Detangle fitness, display, next generation
+-Display multiple simulation at once.
+
+Looks like 35k box steps/second with parallel_for
+	    9.5k box steps/second with for_each
 

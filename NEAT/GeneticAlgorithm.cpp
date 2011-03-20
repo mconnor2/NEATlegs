@@ -14,6 +14,7 @@
 
 #include "tbb/parallel_for.h"
 #include "tbb/blocked_range.h"
+#include "tbb/tick_count.h"
 
 using namespace std;
 
@@ -168,12 +169,25 @@ struct rangeFitness {
 };
 
 void GeneticAlgorithm::runFitness() const {
+    using namespace tbb;
+
+    tick_count t0 = tick_count::now();
+
     //Just for fun, lets use for_each to find the fitness for
     // each individual, storing them in individual genome
     //for_each(population.begin(), population.end(), *fitnessF);
     
-    tbb::parallel_for( tbb::blocked_range<size_t>(0,population.size()), 
-		       rangeFitness(population, fitnessF));
+    parallel_for( blocked_range<size_t>(0,population.size()), 
+    		  rangeFitness(population, fitnessF));
+    
+    tick_count t1 = tick_count::now();
+
+    int simulSteps = 0;
+    for (genome_cit p = population.begin(); p != population.end(); ++p) {
+	simulSteps += (*p)->steps;
+    }
+    cout<<"Fitness computation: "<<(double)simulSteps/((t1-t0).seconds())
+	<<" steps/sec"<<endl;
 }
 
 

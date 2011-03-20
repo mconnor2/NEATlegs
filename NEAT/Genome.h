@@ -37,6 +37,9 @@ class Genome {
 	double fitness;
 	int specie;
 
+	//How many steps of simulation were run during objective
+	int steps;
+
 	//void save(file)
 	//void load(file)
     private:
