@@ -17,27 +17,28 @@ using namespace boost::lambda;
 Genome::Genome (ExpParameters *_P) : P(_P) {
     nLinks = P->nInput * P->nOutput;
     nNodes = P->nInput + P->nOutput;
-    
+
+//    cout<<"Genome: nLinks = "<<nLinks<<", nNodes = "<<nNodes<<endl;
+
     links = new Link[nLinks];
-    Link *link = &links[0];
     int linkID = 0;
     for (int inID = 0; inID < P->nInput; ++inID) {
 	for (int outID = P->nInput; outID < nNodes; ++outID) {
-	    link->inID = inID;
-	    link->inNode = NULL;
-	    link->outID = outID;
-	    link->outNode = NULL;
+	    links[linkID].inID = inID;
+	    links[linkID].inNode = NULL;
+	    links[linkID].outID = outID;
+	    links[linkID].outNode = NULL;
 	    
 	    //Give it an initial random weight (Gaussian?)
-	    link->weight = rand_gauss();
+	    links[linkID].weight = rand_gauss();
 
 	    //And it starts enabled
-	    link->enabled = true;
+	    links[linkID].enabled = true;
 
-	    link->innov = linkID++;
-	    link++;
+	    links[linkID].innov = linkID++;
 	}
     }
+//    cout<<"Genome: "<<linkID<<" == "<<nLinks<<endl;
 }
 
 /**
@@ -51,6 +52,88 @@ Genome::Genome (Link *_links, int _nLinks, int _nNodes,
 	
 Genome::~Genome() {
     delete [] links;
+}
+
+void addNodeMutate (Link *childLinks, int &nLink, int &nNodes, 
+		    InnovationStore *IS)
+{
+    //Randomly select a link to disable and replace by two links and a
+    // new neuron inside.
+    int splitLink = 0;
+    do {
+	splitLink = rand_int()%nLink;
+    } while(!childLinks[splitLink].enabled);
+    
+    int newNeuronID = -1;
+
+    IS->addNode(childLinks[splitLink].innov,
+		childLinks[nLink].innov, //preInnov
+		childLinks[nLink+1].innov, //postInnov
+		newNeuronID);
+
+    ++nNodes;
+
+    #ifdef _DEBUG_PRINT
+	cout<<"  Adding New node:"<<endl;
+	cout<<"    Splitting link: ";
+	childLinks[splitLink].printLink();
+	cout<<endl;
+	cout<<"    New neuron id: "<<newNeuronID<<endl;
+	cout<<"    New pre link innovation: "<<childLinks[nLink].innov
+	    <<", post link: "<<childLinks[nLink+1].innov<<endl;
+    #endif
+
+    //Now connect splitLink.in to new neuron
+    childLinks[nLink].inID = childLinks[splitLink].inID;
+    childLinks[nLink].outID = newNeuronID;
+    childLinks[nLink].weight = 1.0;
+    childLinks[nLink].enabled = true;
+
+    //And connect new neuron to splitLink.out
+    childLinks[nLink+1].inID = newNeuronID;
+    childLinks[nLink+1].outID = childLinks[splitLink].outID;
+    childLinks[nLink+1].weight = childLinks[splitLink].weight;
+    childLinks[nLink+1].enabled = true;
+    
+    //Old connection is disabled
+    childLinks[splitLink].enabled = false;
+
+    nLink+=2;
+}
+   
+void addLinkMutate (std::set<int> &neuronIDs, Link *childLinks,
+		    int &nLinks, InnovationStore *IS, 
+		    const ExpParameters *P)
+{
+    //Randomly select input neuron and output neuron from those seen
+    // in parents
+    vector<int> neurons;
+    neurons.insert(neurons.begin(), neuronIDs.begin(), neuronIDs.end());
+
+    int nNeurons = neurons.size();
+
+    //Input neuron can be any node,
+    //Output neuron cannot be an input node.
+    childLinks[nLinks].inID  = neurons[rand_int()%nNeurons];
+    childLinks[nLinks].outID = neurons[rand_int()%(nNeurons-P->nInput)+
+				  P->nInput];
+
+    //Use innovation store to find if this innovation has been done before
+    // and set the innovation appropriately.
+    IS->addLink(childLinks[nLinks].inID, childLinks[nLinks].outID, 
+		childLinks[nLinks].innov);
+    
+    //And set the weight to random gaussian, mean 0, std dev 1
+    childLinks[nLinks].weight = rand_gauss();
+    childLinks[nLinks].enabled = true;
+    
+    #ifdef _DEBUG_PRINT
+	cout<<"  Adding New link:";
+	childLinks[nLinks].printLink();
+	cout<<endl;
+    #endif
+    
+    ++nLinks;
 }
 
 /**
@@ -237,83 +320,72 @@ GenomeP Genome::mate(const GenomeP &parent2, InnovationStore *IS) const {
    
     int nChildNodes = neuronIDs.size();
 
-    if (addNode) {
-	//Randomly select a link to disable and replace by two links and a
-	// new neuron inside.
-	int splitLink = 0;
-	do {
-	    splitLink = rand_int()%i;
-	} while(!childLinks[splitLink].enabled);
-	
-	int newNeuronID = -1;
+    if (addNode) addNodeMutate(childLinks, i, nChildNodes, IS);
 
-	IS->addNode(childLinks[splitLink].innov,
-		    childLinks[i].innov, //preInnov
-		    childLinks[i+1].innov, //postInnov
-		    newNeuronID);
+    if (addLink) addLinkMutate(neuronIDs, childLinks, i, IS, P);
 
-	++nChildNodes;
+    //XXX May have to sort childLinks because innovation store adds innovation
+    //    IDs out of order, possibly?  If erasing IS every generation, then
+    //    only the added links from mutation are a problem, otherwise new
+    //    innovation numbers can come from anywhere.
+    stable_sort(childLinks,childLinks + nChildLinks);
+    
+    //return new Genome(childLinks, nChildLinks, nChildNodes, P);
+    GenomeP child(new Genome(childLinks, nChildLinks, nChildNodes, P));
+    return child;
+}
 
-	#ifdef _DEBUG_PRINT
-	    cout<<"  Adding New node:"<<endl;
-	    cout<<"    Splitting link: ";
-	    childLinks[splitLink].printLink();
-	    cout<<endl;
-	    cout<<"    New neuron id: "<<newNeuronID<<endl;
-	    cout<<"    New pre link innovation: "<<childLinks[i].innov
-		<<", post link: "<<childLinks[i+1].innov<<endl;
-	#endif
+/**
+ * Single organism reproduction, only a single parent,
+ * Form a new genome that is a copy of the parent's links.  
+ *
+ *  Assumes the links are sorted by innovation number, which should be the case
+ *  if added as mutation occurs.  Also assumes the calling parent (this) is the
+ *  more fit parent.
+ * 
+ * Also applies structural mutation.
+ *
+ */
+GenomeP Genome::singleMate(InnovationStore *IS) const {
 
-	//Now connect splitLink.in to new neuron
-	childLinks[i].inID = childLinks[splitLink].inID;
-	childLinks[i].outID = newNeuronID;
-	childLinks[i].weight = 1.0;
-	childLinks[i].enabled = true;
+    //Lets do two pass at the mating.  The first pass figures out the size
+    // of the child genome, the second creates a new array of links and fills
+    // it in with copies of parent links. 
 
-	//And connect new neuron to splitLink.out
-	childLinks[i+1].inID = newNeuronID;
-	childLinks[i+1].outID = childLinks[splitLink].outID;
-	childLinks[i+1].weight = childLinks[splitLink].weight;
-	childLinks[i+1].enabled = true;
-	
-	//Old connection is disabled
-	childLinks[splitLink].enabled = false;
+    int nChildLinks = nLinks;
+    
+    //Since we need to figure out the number of links before hand, we will
+    // do structural mutation during mating, and need to calculate if these
+    // mutations will occur, and add them to nChildLinks
+    int addLink = 0, addNode = 0;
+    if (rand_double() < P->addLinkMutationRate) addLink = 1;
+    if (rand_double() < P->addNodeMutationRate) addNode = 1;
 
-	i+=2;
+    //For add link mutation, we'll need to know the set of neurons to try
+    // to connect
+    std::set<int> neuronIDs;
+    
+    nChildLinks += addLink + 2*addNode;
+
+    #ifdef _DEBUG_PRINT
+	cout<<"  Mating, creating network with "<<nChildLinks<<" links."<<endl;
+    #endif
+
+    Link* childLinks = new Link[nChildLinks];    
+
+    int i = 0;
+    for (int p1i = 0; p1i < nLinks; ++p1i) {
+	childLinks[i++].copy(links[p1i], P->linkEnabledRate);
+	    
+	neuronIDs.insert(links[p1i].inID);
+	neuronIDs.insert(links[p1i].outID);
     }
+   
+    int nChildNodes = neuronIDs.size();
 
-    if (addLink) {
-	//Randomly select input neuron and output neuron from those seen
-	// in parents
-	vector<int> neurons;
-	neurons.insert(neurons.begin(), neuronIDs.begin(), neuronIDs.end());
+    if (addNode) addNodeMutate(childLinks, i, nChildNodes, IS);
 
-	int nNeurons = neurons.size();
-
-	//Input neuron can be any node,
-	//Output neuron cannot be an input node.
-	childLinks[i].inID  = neurons[rand_int()%nNeurons];
-	childLinks[i].outID = neurons[rand_int()%(nNeurons-P->nInput)+
-				      P->nInput];
-
-	//Use innovation store to find if this innovation has been done before
-	// and set the innovation appropriately.
-	IS->addLink(childLinks[i].inID, childLinks[i].outID, 
-		    childLinks[i].innov);
-	
-	//And set the weight to random gaussian, mean 0, std dev 1
-	childLinks[i].weight = rand_gauss();
-	childLinks[i].enabled = true;
-	
-	#ifdef _DEBUG_PRINT
-	    cout<<"  Adding New link:";
-	    childLinks[i].printLink();
-	    cout<<endl;
-	#endif
-	
-	++i;
-
-    }
+    if (addLink) addLinkMutate(neuronIDs, childLinks, i, IS, P);
 
     //XXX May have to sort childLinks because innovation store adds innovation
     //    IDs out of order, possibly?  If erasing IS every generation, then

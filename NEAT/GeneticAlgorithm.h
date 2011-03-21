@@ -22,7 +22,7 @@ struct ExpParameters {
 
     bool inheritAllLinks;		//Should child get links (excess, etc)
 					// from both parents, or just dominant
-
+    
     //Mating probabilities:
     double inheritDominant;		//For shared genes, probability weight
 					//  comes only from dominant parent,
@@ -57,6 +57,9 @@ struct ExpParameters {
 					// adaptation, -1 turn off adaptation
     double threshAdapt;			//Amount to change compatThresh with
 					// specie number adaptation
+    
+    double singleMate;			//Chance of single specie mating, only
+					// mutating one parent
     
     double specieMate;			//Number of children whose parents
 					// are selected from one specie

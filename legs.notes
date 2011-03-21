@@ -724,4 +724,4 @@ Looks like 35k box steps/second with parallel_for
 
 Yeah, for mutate only reproduction, ken stanley has 0.25 percent chance.  Makes sense, choose best member and varie weights a little bit.  Its really the only way to improve the best.  Yeah, lets do that.
 
-
+Goddamn, appears I have a serious bug hidding somewhere.  My program appears to crash (not creating Genomes?) if I comment out a cout statement.  Quite impressive that I have done this again.  My guess is a pointer arithmetic bug, most likely in genome creation

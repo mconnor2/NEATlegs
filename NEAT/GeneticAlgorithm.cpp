@@ -25,8 +25,8 @@ ExpParameters::ExpParameters() :
     weightMutationRate(0.2), weightPerturbScale(0.1), weightPerturbNormal(0.6),
     weightPerturbUniform(0.39), addLinkMutationRate(0.2),
     addNodeMutationRate(0.1), compatGDiff(1.0), compatWDiff(0.4),
-    compatThresh(7.0), targetSpecies(-1), threshAdapt(0.1), specieMate(0.99), 
-    oldAge(5), startPopulationPercent(0.5)
+    compatThresh(7.0), targetSpecies(-1), threshAdapt(0.1), 
+    singleMate(0.2), specieMate(0.99), oldAge(5), startPopulationPercent(0.5)
 { }
 
 int ExpParameters::loadFromFile(const libconfig::Config &config) {
@@ -60,6 +60,7 @@ int ExpParameters::loadFromFile(const libconfig::Config &config) {
 	config.lookupValue("global.compatThresh",compatThresh);
 	config.lookupValue("global.targetSpecies",targetSpecies);
 	config.lookupValue("global.threshAdapt",threshAdapt);
+	config.lookupValue("global.singleMate",singleMate);
 	config.lookupValue("global.specieMate",specieMate);
 	config.lookupValue("global.oldAge",oldAge);
 	config.lookupValue("global.startPopulationPercent",
@@ -85,6 +86,8 @@ GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction* _f) :
 				    P(_P), fitnessF(_f)
 {
     int initialPopulation = P->startPopulationPercent * P->popSize;
+//    cout<<"Start population = "<<P->popSize<<"*"
+//			       <<P->startPopulationPercent<<endl;
     population.reserve(initialPopulation);
     for (int i = 0; i<initialPopulation; ++i) {
 	GenomeP g(new Genome(P));
@@ -93,6 +96,9 @@ GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction* _f) :
 	speciate(g, species);
     }
     generation = 0;
+
+//    cout<<"Genetic Algorithm initialization: population "<<population.size()
+//	<<", species "<<species.size()<<endl;
 
     if (P->targetSpecies > 0) adaptSpeciesThresh(species.size());
 
@@ -304,63 +310,76 @@ double GeneticAlgorithm::nextGeneration() {
     //Now fill rest of population by mating random individuals, chosen by
     // distribution of fitness.
     while (nextGenPop<P->popSize) {
-	GenomeP p1, p2;
-	if (rand_double() < P->specieMate) {
-	    //Select Species based on average fitness
-	    double rfit = sumFit * rand_double();
-	    specie_it sit = selectParent(species.begin(), species.end(), rfit);
-
-	    if (sit == species.end()) {
-		cerr<<"Something wrong with specie selection..."<<endl;
-		continue;
-	    }
-
-	    //Now choose both parents from this species
-	    SpecieP sp = *sit;
-	    genome_it p1t, p2t;
-	    rfit = sp->fitness * rand_double();
-	    p1t = selectParent(sp->members.begin(), sp->members.end(), rfit);
-	    	
-	    rfit = sp->fitness * rand_double();
-	    p2t = selectParent(sp->members.begin(), sp->members.end(), rfit);
-	    
-	    if (p1t == sp->members.end() or p2t == sp->members.end()) {
-		cerr<<"Something wrong with specie selection of parents..."<<endl;
-		continue;
-	    }
-	    p1 = *p1t;
-	    p2 = *p2t;
-	} else {
-	    //Interspecies mating, go over entire population
-	    // although each members fitness scaled by species size
-	    genome_it p1t, p2t;
+	GenomeP child;
+	if (rand_double() < P->singleMate) {
+	    //Single parent mating, go over entire population
+	    // and select a single parent, although each members fitness
+	    // scaled by species size
+	    genome_it p1t;
 	    double rfit = sumFit * rand_double();
 	    p1t = selectParent(population.begin(), population.end(), rfit);
-	
-	    rfit = sumFit * rand_double();
-	    p2t = selectParent(population.begin(), population.end(), rfit);
+
+	    child = (*p1t)->singleMate(IS);
+	} else {
+	    GenomeP p1, p2;
+	    if (rand_double() < P->specieMate) {
+		//Select Species based on average fitness
+		double rfit = sumFit * rand_double();
+		specie_it sit = selectParent(species.begin(), species.end(), 
+					     rfit);
+		if (sit == species.end()) {
+		    cerr<<"Something wrong with specie selection..."<<endl;
+		    continue;
+		}
+
+		//Now choose both parents from this species
+		SpecieP sp = *sit;
+		genome_it p1t, p2t;
+		rfit = sp->fitness * rand_double();
+		p1t = selectParent(sp->members.begin(), sp->members.end(), 
+				   rfit);
+		rfit = sp->fitness * rand_double();
+		p2t = selectParent(sp->members.begin(), sp->members.end(), 
+				   rfit);
+		if (p1t == sp->members.end() or p2t == sp->members.end()) {
+		    cerr<<"Something wrong with specie selection of parents..."
+			<<endl;
+		    continue;
+		}
+		p1 = *p1t;
+		p2 = *p2t;
+	    } else {
+		//Interspecies mating, go over entire population
+		// although each members fitness scaled by species size
+		genome_it p1t, p2t;
+		double rfit = sumFit * rand_double();
+		p1t = selectParent(population.begin(), population.end(), rfit);
 	    
-	    if (p1t == population.end() or p2t == population.end()) {
-		cerr<<"Something wrong with population selection of parents..."<<endl;
-		continue;
+		rfit = sumFit * rand_double();
+		p2t = selectParent(population.begin(), population.end(), rfit);
+		
+		if (p1t == population.end() or p2t == population.end()) {
+		    cerr<<"Something wrong with population selection of parents..."<<endl;
+		    continue;
+		}
+		
+		p1 = *p1t;
+		p2 = *p2t;
 	    }
-	    
-	    p1 = *p1t;
-	    p2 = *p2t;
+
+	    #ifdef _DEBUG_PRINT
+		cout<<"  Creating child "<<i<<endl;
+		cout<<"    Parents p1: fit="<<p1->fitness<<", "
+		    <<"p2: fit="<<p2->fitness<<endl;
+	    #endif
+
+	    // Make sure p1 is dominant parent
+	    if (p1->fitness < p2->fitness) {
+		p1.swap(p2);
+	    }
+
+	    child = p1->mate(p2, IS);
 	}
-
-	#ifdef _DEBUG_PRINT
-	    cout<<"  Creating child "<<i<<endl;
-	    cout<<"    Parents p1: fit="<<p1->fitness<<", "
-		<<"p2: fit="<<p2->fitness<<endl;
-	#endif
-
-	// Make sure p1 is dominant parent
-	if (p1->fitness < p2->fitness) {
-	    p1.swap(p2);
-	}
-
-	GenomeP child = p1->mate(p2, IS);
 
 	child->mutate();
 

@@ -340,11 +340,9 @@ int main (int argc, char **argv) {
 	cerr<<"   config file "<<configFile<<endl;
 	cerr<<"   line number "<<pe.getLine()<<endl;
 	cerr<<"   error: "<<pe.getError()<<endl;
-
 	return 1;
     } catch (...) {
 	cerr<<"Config error reading from file."<<endl;
-
 	return 1;
     }
     config.setAutoConvert(true);
@@ -357,12 +355,20 @@ int main (int argc, char **argv) {
     }
    
     cout<<"Generating pop size of "<<P.popSize<<endl;
-    
-    P.nInput = config.lookup("sensors").getLength()+1;
-    P.nOutput = config.lookup("muscles").getLength()*2;
+   
+    try {
+	P.nInput = config.lookup("sensors").getLength()+1;
+	P.nOutput = config.lookup("muscles").getLength()*2;
+    } catch (...) {
+	cerr<<"Must specify sensors and muscles list in config file"<<endl;
+	return 1;
+    }
 
     hopper fit(1000, &config, &P);
     boost::function<double (const GenomeP)> f = fit;
+    
+//    cout<<"Initial population size "<<P.startPopulationPercent
+//	<<" * "<<P.popSize<<endl;
 
     GeneticAlgorithm GA(&P, &f);
 

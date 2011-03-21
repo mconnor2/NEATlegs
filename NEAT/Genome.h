@@ -20,10 +20,10 @@ class Network;
 class Genome {
     public:
 	Genome (ExpParameters *_P);
-	Genome (Link *_links, int _nLinks, int _nNodes, ExpParameters *_P);
 	~Genome();
 
 	GenomeP mate(const GenomeP &parent2, InnovationStore *IS) const;
+	GenomeP singleMate(InnovationStore *IS) const;
 
 	void mutate();
 
@@ -45,14 +45,13 @@ class Genome {
 	//void save(file)
 	//void load(file)
     private:
+	Genome (Link *_links, int _nLinks, int _nNodes, ExpParameters *_P);
+	
 	Link* links;
 	int nLinks;
 	int nNodes;
 
-
 	ExpParameters *P;
 };
-
-
 
 #endif
