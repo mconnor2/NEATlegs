@@ -35,12 +35,8 @@ TTF_Font *fnt;
  */
 class hopper : public unary_function<const GenomeP, double> {
     public:
-	const int MAX_STEPS;
-	//const bool random_start;
-
-	const static double HEAD_FLOOR = 0.75;
-
-	hopper(int max_steps, libconfig::Config *_config, ExpParameters *_P) :
+	hopper(const int max_steps, const libconfig::Config *_config, 
+	       const ExpParameters *_P) :
 	    MAX_STEPS(max_steps), config(_config), P(_P) 
 	{ }
 
@@ -179,6 +175,11 @@ class hopper : public unary_function<const GenomeP, double> {
 	};
 
     private:
+	const int MAX_STEPS;
+	//const bool random_start;
+
+	const static double HEAD_FLOOR = 0.75;
+
 	const libconfig::Config *config;
 	const ExpParameters *P;
 
@@ -365,7 +366,7 @@ int main (int argc, char **argv) {
     }
 
     hopper fit(1000, &config, &P);
-    boost::function<double (const GenomeP)> f = fit;
+    FitnessFunction f = fit;
     
 //    cout<<"Initial population size "<<P.startPopulationPercent
 //	<<" * "<<P.popSize<<endl;
