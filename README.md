@@ -61,6 +61,8 @@ The configuration file is formatted to be read by [libconfig][2], which has a
 simple and hopefully fairly obvious structure and formatting.  The config file
 is broken up into sections:
 
+[2]: http://www.hyperrealm.com/libconfig/
+
 * global for NEAT genetic algorithm parameters
 * limbs for specifying a list of physical limbs of the creature
 * joints join limbs by name (currently just revolute type joints)
@@ -69,8 +71,6 @@ is broken up into sections:
 * sensors specify input that translate body position to input to the network.
   There are currently 3 types of sensors: Joint angle, Height of shape, Limb
   angle.
-
-[2]: http://www.hyperrealm.com/libconfig/
 
 Three example configuration files are included:
 
