@@ -12,9 +12,13 @@
 #include <boost/mem_fn.hpp>
 #include <boost/bind.hpp>
 
-#include "tbb/parallel_for.h"
-#include "tbb/blocked_range.h"
-#include "tbb/tick_count.h"
+#ifdef USE_TBB
+    #include "tbb/parallel_for.h"
+    #include "tbb/blocked_range.h"
+#ifdef PROFILE
+    #include "tbb/tick_count.h"
+#endif
+#endif
 
 using namespace std;
 
@@ -162,6 +166,8 @@ FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
     return first;
 }
 
+#ifdef USE_TBB
+
 struct rangeFitness {
     FitnessFunction *f;
     const genomeVec &p;
@@ -174,17 +180,26 @@ struct rangeFitness {
     }
 };
 
+#endif
+
 void GeneticAlgorithm::runFitness() const {
+#ifdef USE_TBB
     using namespace tbb;
+#endif
 #ifdef PROFILE
     tick_count t0 = tick_count::now();
 #endif
-    //Just for fun, lets use for_each to find the fitness for
-    // each individual, storing them in individual genome
-    //for_each(population.begin(), population.end(), *fitnessF);
     
+#ifdef USE_TBB
     parallel_for( blocked_range<size_t>(0,population.size()), 
     		  rangeFitness(population, fitnessF));
+
+#else
+    //Just for fun, lets use for_each to find the fitness for
+    // each individual, storing them in individual genome
+    for_each(population.begin(), population.end(), *fitnessF);
+#endif
+
 #ifdef PROFILE
     tick_count t1 = tick_count::now();
 

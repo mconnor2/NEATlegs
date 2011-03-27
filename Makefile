@@ -6,16 +6,23 @@ CXXFLAGS += -g
 INC := -I/usr/include -I/usr/include/SDL 
 LIBS := -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 
-#INC += -I../physics/Box2D_v2.0.1/Box2D/Include
-#LIBS += -L../physics/Box2D_v2.0.1/Box2D/Source/Gen/float -lbox2d
 INC += -I../physics/Box2D_v2.1.2/Box2D/Box2D
 INC += -I../physics/Box2D_v2.1.2/Box2D
 LIBS += -L../physics/Box2D_v2.1.2/Box2D/Box2D -lBox2D
 
+
+#####################################################################
+# If you want to use Intell Threading Building Blocks, include the lines
+# below, making sure the TBB30_INSTALL_DIR and TBB30_BIN_DIR environment
+# variables are set to make it work
+CXXFLAGS += -DUSE_TBB
 INC += -I$(TBB30_INSTALL_DIR)/include/
 
+# Use Debug or Release, set TBB30_BIN_DIR appropriately
 LIBS += -L$(TBB30_BIN_DIR) -ltbb_debug
 #LIBS += -L$(TBB30_BIN_DIR) -ltbb
+
+CXXFLAGS += -DPROFILE
 
 #CXXFLAGS += `pkg-config --cflags libconfig++`
 LIBS += -lconfig++ #`pkg-config --libs libconfig++`
@@ -31,8 +38,6 @@ include NEAT/Rules.mk
 OBJS := $(patsubst %.cpp,%.o, $(filter %.cpp,$(SRCS)))
 
 CXXFLAGS += $(INC)
-
-CXXFLAGS += -DPROFILE
 
 .SUFFIXES: .cpp 
 
