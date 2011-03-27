@@ -1,7 +1,7 @@
 #ifndef __CREATURE_H
 #define __CREATURE_H
 
-#include <Box2D.h>
+#include <Box2D/Box2D.h>
 #include <vector>
 #include <map>
 #include <libconfig.h++>

@@ -6,7 +6,6 @@ CXXFLAGS += -g
 INC := -I/usr/include -I/usr/include/SDL 
 LIBS := -L/usr/lib -lSDL -lSDL_gfx -lSDL_ttf -lpthread
 
-INC += -I../physics/Box2D_v2.1.2/Box2D/Box2D
 INC += -I../physics/Box2D_v2.1.2/Box2D
 LIBS += -L../physics/Box2D_v2.1.2/Box2D/Box2D -lBox2D
 

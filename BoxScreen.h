@@ -3,7 +3,7 @@
 
 //Box2D shape drawing helpers
 // translates from Box2D coordinates to SDL pixel coordinates
-#include <Box2D.h>
+#include <Box2D/Box2D.h>
 #include <SDL/SDL.h>
 
 #include "boxTypes.h"

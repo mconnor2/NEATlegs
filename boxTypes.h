@@ -1,7 +1,7 @@
 #ifndef __BOX_TYPE_H__
 #define __BOX_TYPE_H__
 
-#include <Box2D.h>
+#include <Box2D/Box2D.h>
 #include <string>
 #include <vector>
 #include <map>

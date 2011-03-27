@@ -1,7 +1,7 @@
 #ifndef __WORLD_H
 #define __WORLD_H
 
-#include <Box2D.h>
+#include <Box2D/Box2D.h>
 #include <vector>
 #include <libconfig.h++>
 
