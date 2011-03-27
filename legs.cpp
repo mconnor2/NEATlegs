@@ -64,10 +64,11 @@ void ClearScreen(SDL_Surface *screen)
 	}
 }
 
-void runSimulation (SDL_Surface *screen, World *world, Creature *C) {
+void runSimulation (SDL_Surface *screen, World *world, CreatureP &C) {
     FPSmanager fpsm;
 
-    BoxScreen s(screen);
+    //100 pixels a meter
+    BoxScreen s(screen, 100.0f);
 
     int rate = 120;
     SDL_initFramerate(&fpsm);
@@ -173,9 +174,6 @@ int main (int argc, char **argv) {
     /* Initialize the World, take default hz and iteration */
     World w(60.0f,10,10);
 
-    // Create a creature that is added to the world
-    Creature walker;
-    
     libconfig::Config config;
     try {
 	config.readFile(configFile);
@@ -193,10 +191,11 @@ int main (int argc, char **argv) {
     }
     config.setAutoConvert(true);
 
-    if (!walker.initFromFile(config, &w)) {
+    CreatureP walker = w.createCreature(config);
+    if (!walker) {
 	fprintf(stderr, "Couldn't init creature from file, exiting.\n");
 	exit(1);
     }
 
-    runSimulation(screen, &w, &walker);
+    runSimulation(screen, &w, walker);
 }
