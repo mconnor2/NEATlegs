@@ -4,6 +4,7 @@
 #include "Network.h"
 #include "Genome.h"
 #include "GeneticAlgorithm.h"
+#include "RunLog.h"
 
 using namespace std;
 
@@ -56,16 +57,14 @@ int main (int argc, char **argv) {
 
     GeneticAlgorithm GA(&P, &fit);
 
-    double maxFit = -1e9, curMaxFit = 0;
-    
+    RunLog log((RunLog::Options()));
+
     cout<<"Generation 0"<<endl;
     GA.printPopulation();
 
     for (int gen = 0; gen < 10; gen++) {
-	curMaxFit = GA.nextGeneration();
-	if (curMaxFit > maxFit) maxFit = curMaxFit;
-	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
-	cout<<"========================================================="<<endl;
+	GA.nextGeneration();
+	log.record(GA);
 	cout<<"Generation "<<gen+1<<endl;
 	GA.printPopulation();
     }

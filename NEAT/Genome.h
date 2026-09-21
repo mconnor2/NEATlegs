@@ -5,8 +5,9 @@
 struct Link;
 class Network;
 
-#include <vector>
+#include <iosfwd>
 #include <memory>
+#include <vector>
 
 //#include "GeneticAlgorithm.h"
 #include "NEATtypes.h"
@@ -27,7 +28,7 @@ class Genome {
 
 	void mutate();
 
-	double compat(const GenomeP &g2);
+	double compat(const GenomeP &g2) const;
 
 	Network *createNewNetwork() const;
 
@@ -37,13 +38,25 @@ class Genome {
 	double fitness;
 	int specie;
 
-#ifdef PROFILE
-	//How many steps of simulation were run during objective
+	//How many steps of simulation were run during objective, if the
+	// fitness function records it (used for steps/sec statistics)
 	int steps = 0;
-#endif
 
-	//void save(file)
-	//void load(file)
+	// Independent deep copy (safe to evaluate on another thread while
+	// the original is in use)
+	GenomeP clone() const;
+
+	int numLinks() const { return nLinks; }
+	int numEnabledLinks() const;
+	int numHiddenNodes() const;
+
+	//Plain text format: '#' comment lines, a "genome" header line, then
+	// one "link" line per gene.  load() returns an empty pointer (and
+	// prints why) if the file is malformed or doesn't match P's
+	// input/output counts.
+	void save(std::ostream &out) const;
+	static GenomeP load(std::istream &in, ExpParameters *P);
+
     private:
 	Genome (Link *_links, int _nLinks, int _nNodes, ExpParameters *_P);
 	

@@ -16,22 +16,27 @@ cmake --build build -j            # all targets
 cmake --build build --target hopper
 ```
 
-Targets: libraries `neat` (NEAT/, no graphics/physics deps), `display` (SDL3 wrapper), `physics` (World/Creature/BoxScreen); executables `legs`, `hopper`, `testMult`, `xorTest`, `maxTest`, `poleBalance`. `NEAT_PROFILE` (default ON) defines `PROFILE`, which adds `Genome::steps` and prints steps/sec per generation.
+Targets: libraries `neat` (NEAT/, no graphics/physics deps), `display` (SDL3 wrapper), `statsview` (stats overlay drawn on a `Display`), `physics` (World/Creature/BoxScreen); executables `legs`, `hopper`, `testMult`, `xorTest`, `maxTest`, `poleBalance`.
 
 `ld: warning: building for macOS-X but linking with dylib ... built for newer version` comes from an outdated Command Line Tools SDK, not the project.
 
 There is no unit-test framework. Sanity checks:
 - `./build/xorTest`, `./build/poleBalance` — GA works (poleBalance reaches fitness ~1.0)
 - `./build/testMult -C hopper.cfg` — same genome simulated 10× must print identical fitness (determinism)
-- `./build/hopper -C walker.cfg -N 40` — headless GA run on a creature
+- `./build/hopper -C walker.cfg -N 40 -o /tmp/run` — headless GA run on a creature (writes stats CSVs and genome snapshots to the run dir; defaults to `runs/<config>-<time>/`, which is gitignored)
+- `./build/hopper -C <run>/config.cfg -r <run>/best.genome` — replay a saved genome (should reproduce its recorded fitness exactly)
 
 Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To render headlessly use `SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software`.
 
 ## Architecture
 
-**NEAT library (`NEAT/`)** — `GeneticAlgorithm` owns the population and `Specie`s; `Genome` holds genes and builds a `Network` (`createNewNetwork()`, `run(in, out)`); `InnovationStore` tracks innovation numbers. GA hyperparameters live in `ExpParameters`, loaded from the config's `global` section. The fitness function is a `std::function<double(const GenomeP)>` and **is called concurrently from `std::thread` workers** in `GeneticAlgorithm::runFitness()`, so it must be thread safe. Related constraints:
+**NEAT library (`NEAT/`)** — `GeneticAlgorithm` owns the population and `Specie`s (with ids stable across generations); `Genome` holds genes and builds a `Network` (`createNewNetwork()`, `run(in, out)`); `InnovationStore` tracks innovation numbers. GA hyperparameters live in `ExpParameters`, loaded from the config's `global` section. The fitness function is a `std::function<double(const GenomeP)>` and **is called concurrently from `std::thread` workers** in `GeneticAlgorithm::runFitness()`, so it must be thread safe. Related constraints:
 - `Network` borrows the genome's `links` array and writes neuron pointers into it, so one genome must never be evaluated twice concurrently (holds today since each genome appears once per population).
 - The KISS RNG in `random.cpp` is `thread_local`; `dev_seed_rand()` seeds the calling thread and new threads derive from it.
+
+**Statistics** — the GA doesn't print. `nextGeneration()` appends a `GenerationStats` (`NEAT/Stats.h`) to `history()` and keeps the top genomes in `topGenomes()`. Both are captured *before* fitness sharing, which divides `genome->fitness` by species size in place, so after `nextGeneration()` returns `genome->fitness` is the shared value; use `topGenomes()`' paired raw fitness. Diversity is mean pairwise `Genome::compat` (O(n²), no RNG draws so it doesn't change the run). `RunLog` (`NEAT/RunLog.*`) turns this into the console table, `stats.csv`/`species.csv`, and genome snapshots via `Genome::save`/`Genome::load`. `drawStatsOverlay` (`StatsOverlay.*`) draws it over a replay; fitness functors take an optional per-frame overlay callback.
+
+**Watch mode (`hopper -V` / `-d N`)** — SDL must stay on the main thread, so `watchEvolution()` runs the GA loop on a background `std::thread` and the main thread replays the latest published best. They share only a `Monitor`: stats copies each generation and a `Genome::clone()` of the best every N generations. It has to be a clone, because building a `Network` writes into the genome's link array and the GA may be evaluating the same champion. In the fitness functor, any key breaks out of the replay; `Display::quitRequested()` tells callers whether it was a quit. Closing the window sets `Monitor::stop`, and the GA finishes its generation and runs `RunLog::finish`. Headless, SDL turns SIGTERM into a quit (SIGINT too, unless the process inherited it as ignored, e.g. a background `&` job).
 
 **Physics (top level)** — Box2D 3 uses value ids (`b2BodyId`, `b2JointId`) instead of pointers; `boxTypes.h` holds the typedefs.
 - `World` owns a `b2WorldId` (ground, stepping with substeps). Box2D's global world table isn't thread safe, so world create/destroy is mutex-guarded; libconfig lazily mutates `Config` on reads, so `createCreature` is mutex-guarded too.

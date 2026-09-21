@@ -9,10 +9,14 @@
 #include "Network.h"
 #include "Genome.h"
 #include "GeneticAlgorithm.h"
+#include "RunLog.h"
 
 #include <unistd.h>
 
 #include "Display.h"
+#include "StatsOverlay.h"
+
+#include <functional>
 
 using namespace std;
 
@@ -42,7 +46,8 @@ class poleBalance {
 	{ }
 
 	double operator()(const GenomeP &g, 
-			  int Generation = 0, Display *display = nullptr) {
+			  Display *display = nullptr,
+			  const function<void(Display &)> &overlay = nullptr) {
 	    unique_ptr<Network> N(g->createNewNetwork());
 	
 	   float x,			/* cart position, meters */
@@ -75,7 +80,6 @@ class poleBalance {
 	     x = x_dot = theta = theta_dot = 0.0;
 	     
 	     
-	   string genLabel = to_string(Generation);
 	   
 	   /*--- Iterate through the action-learn loop. ---*/
 	   while (steps++ < MAX_STEPS)
@@ -109,7 +113,7 @@ class poleBalance {
 	       
 	       if (display) {
 		    display->clear();
-		    display->text(10, 10, genLabel);
+		    if (overlay) overlay(*display);
 
 		    display_cart(steps,x,theta,display);
 		    display->present();
@@ -279,28 +283,28 @@ int main (int argc, char **argv) {
 
     GeneticAlgorithm GA(&P, &f);
 
-    double maxFit = -1e9, curMaxFit = 0;
-    
-    //cout<<"Generation 0"<<endl;
-    //GA->printPopulation();
+    RunLog log((RunLog::Options()));
 
     for (int gen = 0; gen < 1000; gen++) {
 	//Each generation will receive a different input, so network
 	// can't just memorize pattern
 	//fit.regenerate();
 
-	curMaxFit = GA.nextGeneration();
-	if (curMaxFit > maxFit) maxFit = curMaxFit;
-	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
-	cout<<"========================================================="<<endl;
+	GA.nextGeneration();
+	log.record(GA);
 
-	if (drawGen)
-	    fit(GA.bestIndiv(), gen, display.get());
+	if (drawGen) {
+	    string title = "Generation " + to_string(gen) + " best";
+	    fit(GA.bestIndiv(), display.get(), [&](Display &d) {
+		drawStatsOverlay(d, title, GA.history());
+	    });
+	}
 
 	//cout<<"Generation "<<gen+1<<endl;
 	//GA.printPopulation();
 	
 	//if (error == 0) break;
     }
+    log.finish(GA);
     return 0;
 }

@@ -5,12 +5,14 @@
 #include "NEATtypes.h"
 
 struct Specie {
+    int id;		//Carried over when species continues next generation
     int nMembers;
     int age;
     double fitness;	//Average fitness of its members
     genomeVec members;
 
-    Specie(int _age = 0) : nMembers(0), fitness(-1), age(_age) {}
+    Specie(int _id, int _age = 0) :
+	id(_id), nMembers(0), age(_age), fitness(-1) {}
 
     GenomeP representative () const {return members[0];}
     
@@ -26,7 +28,6 @@ struct Specie {
 
     bool cull(const int oldAge, double &totalFitness);
 
-    void print_statistics () const;
 };
 
 

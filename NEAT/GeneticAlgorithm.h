@@ -4,9 +4,11 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <utility>
 #include <libconfig.h++>
 
 #include "NEATtypes.h"
+#include "Stats.h"
 //class Genome;
 //class InnovationStore;
 
@@ -93,9 +95,9 @@ class GeneticAlgorithm {
 	GeneticAlgorithm(ExpParameters *P, FitnessFunction* f);
 	~GeneticAlgorithm();
 
-	// Produce one generation of the genetic algorithm, returning
-	// the max fitness of current generation.
-	void runFitness() const;
+	// Evaluate the current generation, record its statistics, then
+	// breed the next one.  Returns max fitness of the evaluated
+	// generation.
 	double nextGeneration();
 
 	void printPopulation() const;
@@ -103,6 +105,23 @@ class GeneticAlgorithm {
 	GenomeP bestIndiv() const {
 	    return maxFitI;
 	}
+
+	// Statistics for every generation evaluated so far (back() is the
+	// most recent)
+	const std::vector<GenerationStats> &history() const {
+	    return stats;
+	}
+
+	// Best genomes of the most recently evaluated generation, highest
+	// raw fitness first, paired with that fitness (genome->fitness is
+	// rescaled by fitness sharing, so don't rely on it).
+	typedef std::pair<double, GenomeP> RankedGenome;
+	const std::vector<RankedGenome> &topGenomes() const {
+	    return top;
+	}
+
+	// How many genomes topGenomes() keeps (default 10)
+	void setKeepTop(int n) { keepTop = n; }
 
 
     private:
@@ -112,10 +131,17 @@ class GeneticAlgorithm {
 	
 	InnovationStore *IS;
 
+	void runFitness(double &seconds) const;
 	void speciate(const GenomeP& g, specieVec &sv);
 	void adaptSpeciesThresh(const int specieSize);
 
-	void print_statistics(int gen, double maxFit, double meanFit) const;
+	void recordStatistics(double evalSeconds);
+
+	int nextSpecieId = 0;
+
+	std::vector<GenerationStats> stats;
+	std::vector<RankedGenome> top;
+	int keepTop = 10;
 
 	genomeVec population;
 

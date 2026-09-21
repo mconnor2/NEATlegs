@@ -10,6 +10,7 @@
 #include "random.h"
 
 #include <atomic>
+#include <cmath>
 #include <chrono>
 #include <functional>
 #include <thread>
@@ -127,7 +128,7 @@ void GeneticAlgorithm::speciate(const GenomeP& g, specieVec &sv)
     }
     if (s == sv.end()) {
 	//No compatable species found, add one
-	SpecieP ns(new Specie());
+	SpecieP ns(new Specie(nextSpecieId++));
 	sv.push_back(ns);
 	sv.back()->addMember(g);
     }
@@ -164,10 +165,8 @@ FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
  * Evaluate fitness of every member of the population.  Evaluations are
  * independent, so they're spread across all hardware threads.
  */
-void GeneticAlgorithm::runFitness() const {
-#ifdef PROFILE
+void GeneticAlgorithm::runFitness(double &seconds) const {
     auto t0 = chrono::steady_clock::now();
-#endif
 
     atomic<size_t> next(0);
     auto worker = [&]() {
@@ -182,16 +181,88 @@ void GeneticAlgorithm::runFitness() const {
     worker();
     for (auto &t : threads) t.join();
 
-#ifdef PROFILE
     chrono::duration<double> elapsed = chrono::steady_clock::now() - t0;
+    seconds = elapsed.count();
+}
 
-    int simulSteps = 0;
-    for (genome_cit p = population.begin(); p != population.end(); ++p) {
-	simulSteps += (*p)->steps;
+/**
+ * Summarize the just-evaluated population into stats.back(), and remember
+ * its best genomes.  Must run before fitness sharing rescales fitness.
+ */
+void GeneticAlgorithm::recordStatistics(double evalSeconds) {
+    GenerationStats st;
+    st.generation = generation;
+    st.populationSize = population.size();
+    st.nSpecies = species.size();
+    st.compatThresh = P->compatThresh;
+    st.evalSeconds = evalSeconds;
+
+    const size_t n = population.size();
+    if (n == 0) {
+	stats.push_back(st);
+	return;
     }
-    cout<<"Fitness computation: "<<(double)simulSteps/elapsed.count()
-	<<" steps/sec"<<endl;
-#endif
+
+    double sum = 0, sumSq = 0, sumHidden = 0, sumLinks = 0;
+    long totalSteps = 0;
+    st.maxFitness = -1e300;
+    st.minFitness = 1e300;
+    for (const GenomeP &g : population) {
+	sum += g->fitness;
+	sumSq += g->fitness * g->fitness;
+	st.maxFitness = max(st.maxFitness, g->fitness);
+	st.minFitness = min(st.minFitness, g->fitness);
+	sumHidden += g->numHiddenNodes();
+	sumLinks += g->numEnabledLinks();
+	totalSteps += g->steps;
+    }
+    st.meanFitness = sum / n;
+    st.stdevFitness = sqrt(max(0.0, sumSq / n - st.meanFitness*st.meanFitness));
+    st.meanHiddenNodes = sumHidden / n;
+    st.meanEnabledLinks = sumLinks / n;
+    if (totalSteps > 0 && evalSeconds > 0)
+	st.stepsPerSec = totalSteps / evalSeconds;
+
+    //Diversity: mean compatibility distance over all pairs.  Deterministic
+    // (no RNG draws, so it doesn't perturb the run) and cheap next to
+    // fitness evaluation for populations of a few hundred.
+    if (n > 1) {
+	double sumCompat = 0;
+	for (size_t i = 0; i < n; ++i)
+	    for (size_t j = i+1; j < n; ++j)
+		sumCompat += population[i]->compat(population[j]);
+	st.meanCompat = sumCompat / (n*(n-1)/2.0);
+    }
+
+    for (const SpecieP &sp : species) {
+	SpecieStats ss;
+	ss.id = sp->id;
+	ss.age = sp->age;
+	ss.size = sp->members.size();
+	ss.maxFitness = -1e300;
+	double specieSum = 0;
+	for (const GenomeP &g : sp->members) {
+	    specieSum += g->fitness;
+	    ss.maxFitness = max(ss.maxFitness, g->fitness);
+	}
+	ss.meanFitness = ss.size ? specieSum / ss.size : 0;
+	st.species.push_back(ss);
+    }
+
+    //Best genomes by raw fitness
+    top.clear();
+    for (const GenomeP &g : population) top.push_back(make_pair(g->fitness, g));
+    size_t k = min(top.size(), (size_t)max(keepTop, 1));
+    partial_sort(top.begin(), top.begin() + k, top.end(),
+		 [](const RankedGenome &a, const RankedGenome &b) {
+		     return a.first > b.first;
+		 });
+    top.resize(k);
+
+    st.bestHiddenNodes = top[0].second->numHiddenNodes();
+    st.bestEnabledLinks = top[0].second->numEnabledLinks();
+
+    stats.push_back(st);
 }
 
 
@@ -214,7 +285,8 @@ void GeneticAlgorithm::runFitness() const {
  */
 double GeneticAlgorithm::nextGeneration() {
     
-    runFitness();
+    double evalSeconds;
+    runFitness(evalSeconds);
 
     //Find true mean and max fitness of population, ignoring species size
     double maxFit = -1e20, sumFit = 0;
@@ -225,7 +297,8 @@ double GeneticAlgorithm::nextGeneration() {
 	    maxFitI = *gi;
 	}
     }
-    double avgFit = sumFit / (double)population.size();
+
+    recordStatistics(evalSeconds);
 
 /*
     //What is max fitness of first specie
@@ -263,8 +336,6 @@ double GeneticAlgorithm::nextGeneration() {
 	return s->cull(P->oldAge, sumFit);
     });
 
-    print_statistics(generation,maxFit,avgFit);
-
     #ifdef _DEBUG_PRINT
 	cout<<"Fitness values: ";
 	for (genome_it gi = population.begin(); gi != population.end(); ++gi) {
@@ -272,16 +343,6 @@ double GeneticAlgorithm::nextGeneration() {
 	}
 	cout<<endl;
     #endif
-
-    cout<<"Generation "<<generation
-	<<": Max fitness = "<<maxFit
-	<<", mean fitness = "<<avgFit<<endl;
-    
-    cout<<"Max fit network:"<<endl;
-    maxFitI->printDescription("  ");
-
-    cout<<"#Species "<<species.size()<<endl;
-    cout<<endl;
 
     genomeVec nextGen;
     nextGen.reserve(P->popSize);
@@ -298,7 +359,8 @@ double GeneticAlgorithm::nextGeneration() {
     for (specie_it s = species.begin(); s != species.end(); s++) {
 	nextGen.push_back((*s)->representative());
 
-	nextGenSpecies.push_back(SpecieP(new Specie((*s)->age + 1)));
+	nextGenSpecies.push_back(SpecieP(new Specie((*s)->id,
+						    (*s)->age + 1)));
 	nextGenSpecies.back()->addMember((*s)->representative());
 	
 	nextGenPop++;
@@ -419,18 +481,4 @@ void GeneticAlgorithm::printPopulation() const {
 	cout<<"Member "<<i<<":"<<endl;
 	population[i]->printDescription("  ");
     }
-}
-
-void GeneticAlgorithm::print_statistics(int gen, double maxFit, 
-					double meanFit) const
-{
-    //Print out overall fitness statistics of current gen
-    cerr<<gen<<"\t"<<meanFit<<"\t"<<maxFit;
-
-    //Print out number of species, and for each species give stats
-    cerr<<"\t"<<species.size();
-    for_each(species.begin(), species.end(), 
-	     mem_fn(&Specie::print_statistics));
-    
-    cerr<<endl;
 }
