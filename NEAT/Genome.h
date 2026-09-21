@@ -6,7 +6,7 @@ struct Link;
 class Network;
 
 #include <vector>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 //#include "GeneticAlgorithm.h"
 #include "NEATtypes.h"
@@ -39,7 +39,7 @@ class Genome {
 
 #ifdef PROFILE
 	//How many steps of simulation were run during objective
-	int steps;
+	int steps = 0;
 #endif
 
 	//void save(file)

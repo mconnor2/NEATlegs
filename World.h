@@ -1,7 +1,7 @@
 #ifndef __WORLD_H
 #define __WORLD_H
 
-#include <Box2D/Box2D.h>
+#include <box2d/box2d.h>
 #include <vector>
 #include <libconfig.h++>
 
@@ -12,38 +12,37 @@ using namespace std;
 class BoxScreen;
 
 /**
- * World management class.  Stores pointer to world, handles overall
+ * World management class.  Owns the Box2D world, handles overall
  * simulation stepping, etc.
  */
 class World {
     public:
-	World (float _hz = 60.0f, int _Viterations = 10, int _Piterations = 10);
+	World (float _hz = 60.0f, int _subSteps = 4);
 
 	~World ();
-    
+
+	World (const World &) = delete;
+	World &operator= (const World &) = delete;
+
 	void step ();
-	
+
 	void draw (BoxScreen *screen) const;
 
-	//CreatureP createCreature (const char* creatureConfig);
 	CreatureP createCreature (const libconfig::Config &creatureConfig);
-	
-	//int addCreature (CreatureP &c);
-	
-	BodyP createBody (const b2BodyDef *def); 
-	JointP createJoint (const b2JointDef *def); 
-	
+
+	b2WorldId id () const { return b2W; }
+
 	static const float fGravity;
 
     private:
-	b2World *b2W;
-	
-	BodyP ground;
+	b2WorldId b2W;
 
-	creatureList beings; 
+	BodyId ground;
 
-	float32 timeStep;
-	int32 velocityIterations, positionIterations;
+	creatureList beings;
+
+	float timeStep;
+	int subSteps;
 };
 
 #endif

@@ -20,6 +20,8 @@ double Specie::calculateFitness() {
 
     //Make sure the representative member is the most fit
     members[0].swap(*maxFiti);
+
+    return fitness;
 }
     
 double Specie::maxFitness() const {

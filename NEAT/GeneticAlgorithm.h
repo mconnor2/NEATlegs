@@ -3,8 +3,7 @@
 
 #include <functional>
 #include <vector>
-#include <boost/shared_ptr.hpp>
-#include <boost/function.hpp>
+#include <memory>
 #include <libconfig.h++>
 
 #include "NEATtypes.h"
@@ -78,13 +77,9 @@ struct ExpParameters {
     ExpParameters();
 };
 
-typedef boost::function<double (const GenomeP)> FitnessFunction;
-//typedef std::unary_function<const GenomeP, double> FitnessFunction;
-//typedef double FitnessFunction(const GenomeP);
-//class FitnessFunction : public std::unary_function<const GenomeP, double>{
-//    public:
-//	virtual double operator() (const GenomeP) = 0;
-//};
+// Evaluates a genome, storing and returning its fitness.  Called
+// concurrently from several threads, so it must be thread safe.
+typedef std::function<double (const GenomeP)> FitnessFunction;
 
 /**
  * NEAT Genetic Algorithm

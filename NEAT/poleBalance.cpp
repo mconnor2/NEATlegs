@@ -2,24 +2,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <boost/function.hpp>
+#include <functional>
+#include <memory>
 
 #include "random.h"
 #include "Network.h"
 #include "Genome.h"
 #include "GeneticAlgorithm.h"
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_gfxPrimitives.h>
-#include <SDL/SDL_framerate.h>
-#include <SDL/SDL_ttf.h>
+#include <unistd.h>
+
+#include "Display.h"
 
 using namespace std;
 
 const int Width  = 640;
 const int Height = 320;
-
-TTF_Font *fnt;
 
 /**
  * Single Pole balancing experiment.  Physics test of NEAT to evolve
@@ -31,7 +29,7 @@ TTF_Font *fnt;
  * Also use as a test for saving and displaying network behaviour.
  *
  */
-class poleBalance : public unary_function<const GenomeP, double> {
+class poleBalance {
     public:
 	const int MAX_STEPS;
 	const bool random_start;
@@ -44,8 +42,8 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	{ }
 
 	double operator()(const GenomeP &g, 
-			  int Generation = 0, SDL_Surface *screen = NULL) {
-	    auto_ptr<Network> N(g->createNewNetwork());
+			  int Generation = 0, Display *display = nullptr) {
+	    unique_ptr<Network> N(g->createNewNetwork());
 	
 	   float x,			/* cart position, meters */
 		 x_dot,			/* cart velocity */
@@ -77,27 +75,7 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	     x = x_dot = theta = theta_dot = 0.0;
 	     
 	     
-	   FPSmanager fpsm;
-
-	   SDL_Surface *text_surf = NULL;
-
-	   SDL_Rect text_loc;
-	   text_loc.x = 10;
-	   text_loc.y = 10;
-
-	   if (screen) {
-	     int rate = static_cast<int>(2.0/TAU);
-	     SDL_initFramerate(&fpsm);
-	     SDL_setFramerate(&fpsm,rate);
-
-	     if (fnt) {
-		SDL_Color fgColor={255,255,255};
-
-		char num[16];
-		snprintf(num,16,"%d",Generation);
-		text_surf = TTF_RenderText_Blended(fnt,num,fgColor);
-	     }
-	   }
+	   string genLabel = to_string(Generation);
 	   
 	   /*--- Iterate through the action-learn loop. ---*/
 	   while (steps++ < MAX_STEPS)
@@ -129,19 +107,16 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	       /*--- Apply action to the simulated cart-pole ---*/
 	       cart_pole(y, &x, &x_dot, &theta, &theta_dot);
 	       
-	       if (screen) {
-		    ClearScreen(screen);
+	       if (display) {
+		    display->clear();
+		    display->text(10, 10, genLabel);
 
-		    if (text_surf) {
-			SDL_BlitSurface(text_surf,NULL,screen,&text_loc);
-		    }
+		    display_cart(steps,x,theta,display);
+		    display->present();
 
-		    display_cart(steps,x,theta,screen);
-		    SDL_Flip(screen);
+		    if (display->poll() != DisplayEvent::None) exit(0);
 
-		    if (HandleEvent()) break;
-
-		    SDL_framerateDelay(&fpsm);
+		    display->waitFrame();
 	       }
 
 	       /*--- Check for failure.  If so, return steps ---*/
@@ -149,9 +124,6 @@ class poleBalance : public unary_function<const GenomeP, double> {
 		   theta > twelve_degrees) 
 		   break;
 	     }
-
-	     if (text_surf)
-		 SDL_FreeSurface(text_surf);
 
 //	cout<<"Made it "<<steps<<" steps..."
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
@@ -212,7 +184,8 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	 *  Convert 640 to 320 into [-3.2 : 3.2], [0 : 3.2] for display
 	 *  purposes.
 	 */
-	void display_cart(int steps, float x, float theta, SDL_Surface *screen)
+	void display_cart(int steps, float x, float theta,
+			  Display *display) const
 	{
 	    const int zeroX = Width>>1;
 	    const int zeroY = Height-1;
@@ -222,65 +195,25 @@ class poleBalance : public unary_function<const GenomeP, double> {
 	    int ty = by - cos(theta)*200;
 
 	    //Give a progress bar of sorts near the top
-	    lineColor(screen, 0,0, Width*((float)steps)/MAX_STEPS,0,0xFF0000FF);
+	    display->line(0,0, Width*((float)steps)/MAX_STEPS,0,0xFF0000FF);
 
 	    //Display edges of the board
 	    // Center
-	    lineColor(screen, zeroX, zeroY, zeroX, zeroY-10, 0xFF0000FF);
+	    display->line(zeroX, zeroY, zeroX, zeroY-10, 0xFF0000FF);
 	    // Edges
-	    lineColor(screen, zeroX-240,zeroY, zeroX-240,zeroY-10, 0x0000FFFF);
-	    lineColor(screen, zeroX+240,zeroY, zeroX+240,zeroY-10, 0x0000FFFF);
+	    display->line(zeroX-240,zeroY, zeroX-240,zeroY-10, 0x0000FFFF);
+	    display->line(zeroX+240,zeroY, zeroX+240,zeroY-10, 0x0000FFFF);
 
 	    //cout<<bx<<", "<<by<<" - "<<tx<<", "<<ty<<endl;
 
-	    lineColor(screen, bx, by, tx, ty, 0x00FF00FF);
+	    display->line(bx, by, tx, ty, 0x00FF00FF);
 	};
-
-	bool HandleEvent()
-	{
-	    SDL_Event event; 
-
-	    /* Check for events */
-	    while ( SDL_PollEvent(&event) ) {
-		switch (event.type) {
-		    case SDL_KEYDOWN:
-		    case SDL_QUIT:
-			exit(0);
-			break;
-		}
-	    }
-	    return false;
-	}
-
-
-	void ClearScreen(SDL_Surface *screen)
-	{
-	    /* Set the screen to black */
-	    if ( SDL_LockSurface(screen) == 0 ) {
-		Uint32 black;
-		Uint8 *pixels;
-		black = SDL_MapRGB(screen->format, 0, 0, 0);
-		pixels = (Uint8 *)screen->pixels;
-		for (int i=0; i<screen->h; ++i ) {
-		    memset(pixels, black,
-			   screen->w*screen->format->BytesPerPixel);
-		    pixels += screen->pitch;
-		}
-		SDL_UnlockSurface(screen);
-	    }
-	}
 };
-
-void exitingfunc () {
-   TTF_Quit();
-   SDL_Quit();
-}
 
 int main (int argc, char **argv) {
     //set random seed to come from udev random
     dev_seed_rand();
 
-    SDL_Surface *screen = NULL;
     bool drawGen = false;
 
     /* Process arguments */
@@ -296,51 +229,16 @@ int main (int argc, char **argv) {
 	}
     }
     
+    unique_ptr<Display> display;
     if (drawGen) {
-
-	/* Initialize SDL */
-	if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-	    fprintf(stderr,
-		    "Couldn't initialize SDL: %s\n", SDL_GetError());
-	    exit(1);
+	try {
+	    //Draw at twice simulation speed (TAU = 0.01)
+	    display.reset(new Display("Single Pole Balance", Width, Height,
+				      200));
+	} catch (exception &e) {
+	    cerr<<e.what()<<endl;
+	    return 1;
 	}
-	atexit(exitingfunc);
-	    
-	Uint32 video_flags;
-
-	const int desired_bpp = 32;
-	video_flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
-
-	/* Initialize the display */
-	screen = SDL_SetVideoMode(Width, Height, desired_bpp, video_flags);
-	if ( screen == NULL ) {
-	    fprintf(stderr, "Couldn't set %dx%dx%d video mode: %s\n",
-				    Width, Height, desired_bpp, SDL_GetError());
-	    exit(1);
-	}
-
-	/* Show some info */
-	printf("Set %dx%dx%d mode\n",
-		screen->w, screen->h, screen->format->BitsPerPixel);
-	printf("Video surface located in %s memory.\n",
-		(screen->flags&SDL_HWSURFACE) ? "video" : "system");
-	    
-	/* Check for double buffering */
-	if ( screen->flags & SDL_DOUBLEBUF ) {
-	    printf("Double-buffering enabled - good!\n");
-	}
-
-	TTF_Init();
-
-	//Hardcode font location
-	fnt = TTF_OpenFont("ProggyClean.ttf",12);
-	if (!fnt) {
-	    printf("TTF_OpenFont: %s\n", TTF_GetError());
-	    fnt = NULL;
-	}
-
-	/* Set the window manager title bar */
-	SDL_WM_SetCaption("Single Pole Balance", "Single Pole Balance");
     }
 
     ExpParameters P;
@@ -377,7 +275,7 @@ int main (int argc, char **argv) {
     P.oldAge = 5;
 
     poleBalance fit(10000, 0.01);
-    boost::function<double (const GenomeP)> f = fit;
+    FitnessFunction f = fit;
 
     GeneticAlgorithm GA(&P, &f);
 
@@ -397,7 +295,7 @@ int main (int argc, char **argv) {
 	cout<<"========================================================="<<endl;
 
 	if (drawGen)
-	    fit(GA.bestIndiv(), gen, screen);
+	    fit(GA.bestIndiv(), gen, display.get());
 
 	//cout<<"Generation "<<gen+1<<endl;
 	//GA.printPopulation();

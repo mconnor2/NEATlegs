@@ -2,7 +2,7 @@
 #define _INNOVATION_STORE_H
 
 #include <map>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 struct ExpParameters;
 
@@ -48,7 +48,7 @@ class InnovationStore {
 	std::map<newLink, int> newLinks;
 	
 	//Map from link (innovation id) to new Node info
-	std::map<int, boost::shared_ptr<newNode> > newNodes;
+	std::map<int, std::shared_ptr<newNode> > newNodes;
 
 	//For tracking added links and neurons
 	int nextNeuronID;

@@ -7,9 +7,7 @@
 #include <iostream>
 #include <set>
 #include <algorithm>
-#include <boost/lambda/lambda.hpp>
 
-using namespace boost::lambda;
 
 /** 
  * Create default link setup based on number of inputs and outputs.

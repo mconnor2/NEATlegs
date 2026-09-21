@@ -28,23 +28,32 @@ Requirements
 
 The code depends on:
 
-* boost (shared_ptr, function, mem_fn, bind)
-* libconfig
-* SDL, SDL_ttf, SDL_gfx
-* Box2D v2.1.2
+* [Box2D][3] v3.x
+* SDL3 and SDL3_ttf
+* libconfig (C++ bindings)
+* CMake 3.20+ and a C++17 compiler
 
-Optionally Intel Threading Building Blocks (TBB) can be used to parallelize the
-trivially parallel fitness calculation across the population each generation.
+[3]: https://box2d.org
 
-If these libraries are installed, and the locations in the Makefile are
-appropriate, then just running gnu make should be enough.
+On macOS with Homebrew:
+
+    brew install cmake pkgconf box2d sdl3 sdl3_ttf libconfig
+
+Fitness evaluation is spread across all hardware threads using the standard
+library, so no threading library is needed.
+
+Building
+--------
+
+    cmake -S . -B build
+    cmake --build build -j
 
 Running
 -------
 
-Two programs are created when make is run.  legs simply tests the physical
+Programs are built into `build/`.  legs simply tests the physical
 configuration and simulation, dropping whatever figure is given to it via -C
-configuration file, and watching it fall.
+configuration file, and watching it fall (space resets, any other key quits).
 
 hopper runs the actual genetic algorithm, optionally displaying fittest member every 10 generations.  Command line parameters are:
 
@@ -52,7 +61,14 @@ hopper runs the actual genetic algorithm, optionally displaying fittest member e
 * -N number of generations (default 1000)
 * -V if included, display simulation of fittest member every 10 generations
 
+For example:
+
+    ./build/hopper -C walker.cfg -N 200 -V
+
 The rest of the many (many) algorithm parameters are specified in the configuration file, along with the specification of the walker.
+
+The NEAT-only demos (xorTest, poleBalance [-V], maxTest) are built as well, and
+testMult checks that repeated simulations of one genome are deterministic.
 
 Configuration File
 ------------------

@@ -9,16 +9,10 @@
 #include "InnovationStore.h"
 #include "random.h"
 
-#include <boost/mem_fn.hpp>
-#include <boost/bind.hpp>
-
-#ifdef USE_TBB
-    #include "tbb/parallel_for.h"
-    #include "tbb/blocked_range.h"
-#ifdef PROFILE
-    #include "tbb/tick_count.h"
-#endif
-#endif
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <thread>
 
 using namespace std;
 
@@ -166,48 +160,36 @@ FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
     return first;
 }
 
-#ifdef USE_TBB
-
-struct rangeFitness {
-    FitnessFunction *f;
-    const genomeVec &p;
-    rangeFitness(const genomeVec &pop, FitnessFunction *_f) : p(pop), f(_f) { }
-    void operator()(const tbb::blocked_range<size_t> &range) const {
-	for (size_t i = range.begin(); i != range.end(); ++i) {
-	    (*f)(p[i]);
-	}
-	//for_each(range.begin(), range.end(), *f);
-    }
-};
-
-#endif
-
+/**
+ * Evaluate fitness of every member of the population.  Evaluations are
+ * independent, so they're spread across all hardware threads.
+ */
 void GeneticAlgorithm::runFitness() const {
-#ifdef USE_TBB
-    using namespace tbb;
-#endif
 #ifdef PROFILE
-    tick_count t0 = tick_count::now();
-#endif
-    
-#ifdef USE_TBB
-    parallel_for( blocked_range<size_t>(0,population.size()), 
-    		  rangeFitness(population, fitnessF));
-
-#else
-    //Just for fun, lets use for_each to find the fitness for
-    // each individual, storing them in individual genome
-    for_each(population.begin(), population.end(), *fitnessF);
+    auto t0 = chrono::steady_clock::now();
 #endif
 
+    atomic<size_t> next(0);
+    auto worker = [&]() {
+	for (size_t i = next++; i < population.size(); i = next++) {
+	    (*fitnessF)(population[i]);
+	}
+    };
+
+    unsigned nThreads = max(1u, thread::hardware_concurrency());
+    vector<thread> threads;
+    for (unsigned t = 1; t < nThreads; ++t) threads.emplace_back(worker);
+    worker();
+    for (auto &t : threads) t.join();
+
 #ifdef PROFILE
-    tick_count t1 = tick_count::now();
+    chrono::duration<double> elapsed = chrono::steady_clock::now() - t0;
 
     int simulSteps = 0;
     for (genome_cit p = population.begin(); p != population.end(); ++p) {
 	simulSteps += (*p)->steps;
     }
-    cout<<"Fitness computation: "<<(double)simulSteps/((t1-t0).seconds())
+    cout<<"Fitness computation: "<<(double)simulSteps/elapsed.count()
 	<<" steps/sec"<<endl;
 #endif
 }
@@ -260,7 +242,7 @@ double GeneticAlgorithm::nextGeneration() {
 */
     //Sum fitness of each species, and divide individuals by size of group
     for_each(species.begin(), species.end(), 
-	     boost::mem_fn(&Specie::calculateFitness));
+	     mem_fn(&Specie::calculateFitness));
     
 /*
     cout<<"Specie 0 max fitness (after calculateFitness) = "
@@ -277,8 +259,9 @@ double GeneticAlgorithm::nextGeneration() {
     for (genome_it gi = population.begin(); gi != population.end(); ++gi) 
 	sumFit += (*gi)->fitness;
     
-    species.remove_if(boost::bind(&Specie::cull, _1, 
-				  P->oldAge, boost::ref(sumFit)));
+    species.remove_if([&](const SpecieP &s) {
+	return s->cull(P->oldAge, sumFit);
+    });
 
     print_statistics(generation,maxFit,avgFit);
 
@@ -447,7 +430,7 @@ void GeneticAlgorithm::print_statistics(int gen, double maxFit,
     //Print out number of species, and for each species give stats
     cerr<<"\t"<<species.size();
     for_each(species.begin(), species.end(), 
-	     boost::mem_fn(&Specie::print_statistics));
+	     mem_fn(&Specie::print_statistics));
     
     cerr<<endl;
 }

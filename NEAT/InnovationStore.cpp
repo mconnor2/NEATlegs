@@ -31,7 +31,7 @@ bool InnovationStore::addNode(int linkInnov,
 		     int &newPreInnov, int &newPostInnov, int &newNeuron) 
 {
     if (newNodes.count(linkInnov) > 0) {
-	boost::shared_ptr<newNode> nodeInfo = newNodes[linkInnov];
+	std::shared_ptr<newNode> nodeInfo = newNodes[linkInnov];
 	
 	newPreInnov = nodeInfo->preInnov;
 	newPostInnov = nodeInfo->postInnov;
@@ -43,7 +43,7 @@ bool InnovationStore::addNode(int linkInnov,
     newNeuron = nextNeuronID++;
     
     newNodes.insert( std::make_pair(linkInnov, 
-	boost::shared_ptr<newNode>(new newNode(newPreInnov, newPostInnov,
+	std::shared_ptr<newNode>(new newNode(newPreInnov, newPostInnov,
 					       newNeuron))));
     return false;
 }
