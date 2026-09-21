@@ -33,7 +33,8 @@ Genome::Genome (ExpParameters *_P) : P(_P) {
 	    //And it starts enabled
 	    links[linkID].enabled = true;
 
-	    links[linkID].innov = linkID++;
+	    links[linkID].innov = linkID;
+	    ++linkID;
 	}
     }
 //    cout<<"Genome: "<<linkID<<" == "<<nLinks<<endl;
