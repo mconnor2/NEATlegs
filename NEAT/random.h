@@ -6,6 +6,10 @@
 /**
  * Some random number generating code that should be better than stdlib rand
  *
+ * Generator state is per thread, so fitness functions can draw random
+ * numbers while the population is evaluated in parallel.
+ * dev_seed_rand() seeds the calling thread, and every thread started
+ * afterwards gets its own seed derived from it.
  */
 
 
@@ -27,8 +31,8 @@ inline double rand_double () {
 //Algorithm is from Numerical Recipes in C, Second Edition
 // Code is from ken stanley's NEAT implementation
 inline double rand_gauss() {
-  static int iset=0;
-  static double gset;
+  thread_local int iset=0;
+  thread_local double gset;
   double fac,rsq,v1,v2;
 
   if (iset==0) {

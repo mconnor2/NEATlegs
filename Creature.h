@@ -1,7 +1,7 @@
 #ifndef __CREATURE_H
 #define __CREATURE_H
 
-#include <Box2D/Box2D.h>
+#include <box2d/box2d.h>
 #include <vector>
 #include <map>
 #include <libconfig.h++>
@@ -18,7 +18,7 @@ class BoxScreen;
 using namespace std;
 
 class Sensor;
-typedef boost::shared_ptr<Sensor> SensorP;
+typedef std::shared_ptr<Sensor> SensorP;
 typedef vector<SensorP> sensorList;
 
 class Creature {
@@ -26,7 +26,6 @@ class Creature {
     Creature (bool _useBias = true) : useBias(_useBias) { }
 
     /* Create Creature's body and add it to the world */
-    //int initFromFile(const char *configFile, World *w);
     int initFromFile(const libconfig::Config &config, World *w);
 
     void update ();
@@ -62,8 +61,8 @@ class Creature {
 
 class Muscle {
     public:
-	Muscle (const BodyP &b1, const Vec2 &l1, 
-		const BodyP &b2, const Vec2 &l2,
+	Muscle (BodyId b1, const Vec2 &l1, 
+		BodyId b2, const Vec2 &l2,
 		float _minK, float _maxK, 
 		float _minEq, float _maxEq,
 		float _kd) :
@@ -90,7 +89,7 @@ class Muscle {
 	float kd;		//Spring dampening
 	float eq, minEq, maxEq;	//Spring's equilibrium distance
 
-	BodyP body1, body2;	//Bodies muscle connects
+	BodyId body1, body2;	//Bodies muscle connects
 	Vec2 end1L, end2L;	//Local point of contact (fixed)
 };
 

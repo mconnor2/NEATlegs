@@ -2,23 +2,18 @@
 #define __BOXSCREEN_H
 
 //Box2D shape drawing helpers
-// translates from Box2D coordinates to SDL pixel coordinates
-#include <Box2D/Box2D.h>
-#include <SDL/SDL.h>
+// translates from Box2D coordinates to screen pixel coordinates
+#include <box2d/box2d.h>
 
 #include "boxTypes.h"
-
-typedef Uint32 Color;
-
-#define WIDTH 640
-#define HEIGHT 480
+#include "Display.h"
 
 class BoxScreen {
     public:
-	BoxScreen (SDL_Surface *s, float _pM = 10.0f,
-		   float BoxOriginX = WIDTH/2.0f, float BoxOriginY = HEIGHT - 1.0f);
+	// Box origin defaults to bottom center of the display
+	BoxScreen (Display *d, float _pM = 10.0f);
 
-	void drawBody (const BodyP &b);
+	void drawBody (BodyId b);
 
 	void drawGrid ();
 
@@ -26,21 +21,20 @@ class BoxScreen {
 
 	void keepViewable (const Vec2 &pW);
 
-	inline void box2pixel (const Vec2 &boxV, Vec2 &screenV);
+	inline void box2pixel (const Vec2 &boxV, Vec2 &screenV) const;
 
-	//Default pixel border for 640x480:
-	static const int LeftBorder = 300, RightBorder = WIDTH-300,
-			 TopBorder = 32, BottomBorder = HEIGHT-32;
+	//Pixel border kept around a followed point
+	static const int SideBorder = 300, TopBottomBorder = 32;
     private:
 	float pM;		//pixels/meter
 	Vec2 BoxOriginP;	//location of box origin in pixel space
-	
-	void drawShape (const BodyP &b, const Shape *s);
 
-	SDL_Surface *screen;
+	void drawShape (BodyId b, b2ShapeId s);
+
+	Display *display;
 };
 
-inline void BoxScreen::box2pixel (const Vec2 &boxV, Vec2 &screenV) {
+inline void BoxScreen::box2pixel (const Vec2 &boxV, Vec2 &screenV) const {
     screenV.x = BoxOriginP.x + pM*boxV.x;
     screenV.y = BoxOriginP.y - pM*boxV.y;
 }

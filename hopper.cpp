@@ -1,21 +1,20 @@
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
-#include <boost/function.hpp>
+#include <functional>
+#include <memory>
 
 #include <libconfig.h++>
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_gfxPrimitives.h>
-#include <SDL/SDL_framerate.h>
-#include <SDL/SDL_ttf.h>
 
 #include "NEAT/random.h"
 #include "NEAT/Network.h"
 #include "NEAT/Genome.h"
 #include "NEAT/GeneticAlgorithm.h"
 
+#include "Display.h"
 #include "BoxScreen.h"
 #include "World.h"
 #include "Creature.h"
@@ -25,15 +24,11 @@ using namespace std;
 const int Width  = 640;
 const int Height = 480;
 
-const double Pi = 3.14159265358979323;
-
-TTF_Font *fnt;
-
 /**
  * Test for creature hopping.  Most crap is hard coded at this point.
  *
  */
-class hopper : public unary_function<const GenomeP, double> {
+class hopper {
     public:
 	hopper(const int max_steps, const libconfig::Config *_config, 
 	       const ExpParameters *_P) :
@@ -41,13 +36,13 @@ class hopper : public unary_function<const GenomeP, double> {
 	{ }
 
 	double operator()(const GenomeP &g, 
-			  int Generation = 0, SDL_Surface *screen = NULL) {
-	    auto_ptr<Network> N(g->createNewNetwork());
+			  int Generation = 0, Display *display = nullptr) const {
+	    unique_ptr<Network> N(g->createNewNetwork());
 	
-	    int steps=0,y;
+	    int steps=0;
 
-	    /* Initialize the World, take default hz and iteration */
-	    World w(60.0f,10,10);
+	    /* Initialize the World, take default hz and substeps */
+	    World w(60.0f);
 
 	    // Create a creature that is added to the world
 	    CreatureP C = w.createCreature(*config);
@@ -64,30 +59,17 @@ class hopper : public unary_function<const GenomeP, double> {
 	    
 	    for (int i = 0; i<P->nOutput; ++i) out[i] = 0.0;
 
-	    FPSmanager fpsm;
-
-	    SDL_Surface *text_surf = NULL;
-
-	    SDL_Rect text_loc;
-	    text_loc.x = 10;
-	    text_loc.y = 10;
-	    
 	    // 100 pixels a meter
-	    BoxScreen s(screen, 100.0f);
+	    BoxScreen s(display, 100.0f);
 
-	    if (screen) {
-		int rate = 60; //static_cast<int>(2.0/TAU);
-		SDL_initFramerate(&fpsm);
-		SDL_setFramerate(&fpsm,rate);
-    
-		if (fnt) {
-		    SDL_Color fgColor={255,255,255};
+	    string genLabel = to_string(Generation);
 
-		    char num[16];
-		    snprintf(num,16,"%d",Generation);
-		    text_surf = TTF_RenderText_Blended(fnt,num,fgColor);
-		}
+	    if (!C->shapes.count("head")) {
+		cerr<<"Creature must define a shape named 'head', exiting."
+		    <<endl;
+		exit(1);
 	    }
+	    const shapePos headPos = C->shapes["head"];
 	   
 	    C->reset();
 /*	    {
@@ -124,26 +106,22 @@ class hopper : public unary_function<const GenomeP, double> {
 		/* Advance the world */
 		w.step();
 		
-	        shapePos headPos = C->shapes["head"];
-	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
+	        Vec2 headV = b2Body_GetWorldPoint(headPos.b, headPos.localPos);
 
-		if (screen) {
-		    ClearScreen(screen);
-
-		    if (text_surf) {
-			SDL_BlitSurface(text_surf,NULL,screen,&text_loc);
-		    }
+		if (display) {
+		    display->clear();
+		    display->text(10, 10, genLabel);
 
 //		    cout<<"Head height: "<<headV.x<<", "<<headV.y<<endl;
 		    
 		    s.keepViewable(headV);
 		    s.drawGrid();
 		    w.draw(&s);
-		    SDL_Flip(screen);
+		    display->present();
 
-		    if (HandleEvent()) break;
+		    if (display->poll() != DisplayEvent::None) exit(0);
 
-		    SDL_framerateDelay(&fpsm);
+		    display->waitFrame();
 		}
 
 		/*--- Check for failure.  If so, return steps ---*/
@@ -154,9 +132,6 @@ class hopper : public unary_function<const GenomeP, double> {
 		if (headV.x > maxX) maxX = headV.x;
 		if (headV.y > maxY) maxY = headV.y;
 	    }
-
-	    if (text_surf)
-		SDL_FreeSurface(text_surf);
 
 	    delete [] in;
 	    delete [] out;
@@ -178,85 +153,16 @@ class hopper : public unary_function<const GenomeP, double> {
 	const int MAX_STEPS;
 	//const bool random_start;
 
-	const static double HEAD_FLOOR = 0.75;
+	static constexpr double HEAD_FLOOR = 0.75;
 
 	const libconfig::Config *config;
 	const ExpParameters *P;
-
-	/**
-	 * Draw display balance cart, 
-	 *
-	 *  Convert 640 to 320 into [-3.2 : 3.2], [0 : 3.2] for display
-	 *  purposes.
-	 */
-/*
-	void display_cart(int steps, float x, float theta, SDL_Surface *screen)
-	{
-	    const int zeroX = Width>>1;
-	    const int zeroY = Height-1;
-    
-	    int bx = x*100 + zeroX, by = zeroY;
-	    int tx = bx + sin(theta)*200;
-	    int ty = by - cos(theta)*200;
-
-	    //Give a progress bar of sorts near the top
-	    lineColor(screen, 0,0, Width*((float)steps)/MAX_STEPS,0,0xFF0000FF);
-
-	    //Display edges of the board
-	    // Center
-	    lineColor(screen, zeroX, zeroY, zeroX, zeroY-10, 0xFF0000FF);
-	    // Edges
-	    lineColor(screen, zeroX-240,zeroY, zeroX-240,zeroY-10, 0x0000FFFF);
-	    lineColor(screen, zeroX+240,zeroY, zeroX+240,zeroY-10, 0x0000FFFF);
-
-	};
-*/
-
-	bool HandleEvent()
-	{
-	    SDL_Event event; 
-
-	    /* Check for events */
-	    while ( SDL_PollEvent(&event) ) {
-		switch (event.type) {
-		    case SDL_KEYDOWN:
-		    case SDL_QUIT:
-			exit(0);
-			break;
-		}
-	    }
-	    return false;
-	}
-
-
-	void ClearScreen(SDL_Surface *screen)
-	{
-	    /* Set the screen to black */
-	    if ( SDL_LockSurface(screen) == 0 ) {
-		Uint32 black;
-		Uint8 *pixels;
-		black = SDL_MapRGB(screen->format, 0, 0, 0);
-		pixels = (Uint8 *)screen->pixels;
-		for (int i=0; i<screen->h; ++i ) {
-		    memset(pixels, black,
-			   screen->w*screen->format->BytesPerPixel);
-		    pixels += screen->pitch;
-		}
-		SDL_UnlockSurface(screen);
-	    }
-	}
 };
-
-void exitingfunc () {
-   TTF_Quit();
-   SDL_Quit();
-}
 
 int main (int argc, char **argv) {
     //set random seed to come from udev random
     dev_seed_rand();
 
-    SDL_Surface *screen = NULL;
     bool drawGen = false;
 
     int maxGen = 1000;
@@ -286,57 +192,10 @@ int main (int argc, char **argv) {
 	exit(1);
     }
 
-    if (drawGen) {
-
-	/* Initialize SDL */
-	if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-	    fprintf(stderr,
-		    "Couldn't initialize SDL: %s\n", SDL_GetError());
-	    exit(1);
-	}
-	atexit(exitingfunc);
-	    
-	Uint32 video_flags;
-
-	const int desired_bpp = 32;
-	video_flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
-
-	/* Initialize the display */
-	screen = SDL_SetVideoMode(Width, Height, desired_bpp, video_flags);
-	if ( screen == NULL ) {
-	    fprintf(stderr, "Couldn't set %dx%dx%d video mode: %s\n",
-				    Width, Height, desired_bpp, SDL_GetError());
-	    exit(1);
-	}
-
-	/* Show some info */
-	printf("Set %dx%dx%d mode\n",
-		screen->w, screen->h, screen->format->BitsPerPixel);
-	printf("Video surface located in %s memory.\n",
-		(screen->flags&SDL_HWSURFACE) ? "video" : "system");
-	    
-	/* Check for double buffering */
-	if ( screen->flags & SDL_DOUBLEBUF ) {
-	    printf("Double-buffering enabled - good!\n");
-	}
-
-	TTF_Init();
-
-	//Hardcode font location
-	fnt = TTF_OpenFont("ProggyClean.ttf",12);
-	if (!fnt) {
-	    printf("TTF_OpenFont: %s\n", TTF_GetError());
-	    fnt = NULL;
-	}
-
-	/* Set the window manager title bar */
-	SDL_WM_SetCaption("Hopper Test", "Hopper Test");
-    }
-    
     libconfig::Config config;
     try {
 	config.readFile(configFile);
-    } catch (libconfig::ParseException pe) {
+    } catch (libconfig::ParseException &pe) {
 	cerr<<"Config parse error"<<endl;
 	cerr<<"   config file "<<configFile<<endl;
 	cerr<<"   line number "<<pe.getLine()<<endl;
@@ -367,6 +226,16 @@ int main (int argc, char **argv) {
 
     hopper fit(1000, &config, &P);
     FitnessFunction f = fit;
+
+    unique_ptr<Display> display;
+    if (drawGen) {
+	try {
+	    display.reset(new Display("Hopper Test", Width, Height));
+	} catch (exception &e) {
+	    cerr<<e.what()<<endl;
+	    return 1;
+	}
+    }
     
 //    cout<<"Initial population size "<<P.startPopulationPercent
 //	<<" * "<<P.popSize<<endl;
@@ -391,7 +260,7 @@ int main (int argc, char **argv) {
 	cout<<"========================================================="<<endl;
 
 	if (gen%10 == 0 && drawGen)
-	    fit(GA.bestIndiv(), gen, screen);
+	    fit(GA.bestIndiv(), gen, display.get());
 
 	//cout<<"Generation "<<gen+1<<endl;
 	//GA.printPopulation();

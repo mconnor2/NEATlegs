@@ -1,6 +1,7 @@
 #include <iostream>
 
-#include <boost/function.hpp>
+#include <functional>
+#include <memory>
 
 #include "random.h"
 #include "Network.h"
@@ -19,7 +20,7 @@ using namespace std;
  * of the generation get same input, but overall can't just memorize
  * sequence.
  */
-class xorTest : public unary_function<const GenomeP, double> {
+class xorTest {
     public:
 	xorTest (int N) {
 	    Rounds = N;
@@ -30,7 +31,7 @@ class xorTest : public unary_function<const GenomeP, double> {
 	}
 
 	double operator()(const GenomeP &g) const {
-	    auto_ptr<Network> N(g->createNewNetwork());
+	    unique_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};
 	    double output[1] = {0};
@@ -67,7 +68,7 @@ class xorTest : public unary_function<const GenomeP, double> {
 	// correct, use 0-1 error where we threshold classification at 
 	// 0.5
 	int testError(const GenomeP &g) const {
-	    auto_ptr<Network> N(g->createNewNetwork());
+	    unique_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};
 	    double output[1] = {0};
@@ -155,7 +156,7 @@ int main (int argc, char **argv) {
     P.oldAge = 5;
 
     xorTest fit(30);
-    boost::function<double (const GenomeP)> f = fit;
+    FitnessFunction f = fit;
 
     GeneticAlgorithm GA(&P, &f);
 

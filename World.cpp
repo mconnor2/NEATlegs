@@ -3,108 +3,77 @@
 #include "BoxScreen.h"
 
 #include <iostream>
-#include <boost/mem_fn.hpp>
-#include <boost/bind.hpp>
+#include <mutex>
 
 const float World::fGravity = 10.0;
 
-void bodyDestroy(Body *p) {
-#ifdef __DEBUG
-    cerr<<"Destroying a body, but not really."<<endl;
-#endif
-}
+//Box2D keeps every world in a global table (max 128) that isn't
+// protected, so worlds must be created and destroyed one at a time.  Once
+// created, each world is only touched by the thread that owns it.
+static std::mutex worldTableMutex;
 
-void jointDestroy(Joint *j) {
-#ifdef __DEBUG
-    cerr<<"Destroying a joint, but not really."<<endl;
-#endif
-}
+//libconfig lazily builds its C++ Setting wrappers on first access, so even
+// read-only lookups on a shared Config race.  Creature construction is cheap
+// compared to simulation, so just read configs one thread at a time.
+static std::mutex configMutex;
 
-World::World (float _hz, int _Viterations, int _Piterations) : 
-	      timeStep(1.0f/_hz), velocityIterations(_Viterations),
-	      positionIterations(_Piterations)
+World::World (float _hz, int _subSteps) :
+	      timeStep(1.0f/_hz), subSteps(_subSteps)
 {
     //Set gravity pointing downward
-    b2Vec2 gravity(0.0f, -fGravity);
-    bool doSleep = true;
+    b2WorldDef worldDef = b2DefaultWorldDef();
+    worldDef.gravity = {0.0f, -fGravity};
+    worldDef.enableSleep = true;
 
     //Create world
-    b2W = new b2World(gravity, doSleep);
+    {
+	std::lock_guard<std::mutex> lock(worldTableMutex);
+	b2W = b2CreateWorld(&worldDef);
+    }
 
     //Create ground
-    b2BodyDef groundBodyDef;
-    groundBodyDef.position.Set(0.0f, -10.0f);
-    //groundBodyDef.AddShape(&groundBoxDef);
+    b2BodyDef groundBodyDef = b2DefaultBodyDef();
+    groundBodyDef.position = {0.0f, -10.0f};
+    ground = b2CreateBody(b2W, &groundBodyDef);
 
-    ground.reset(b2W->CreateBody(&groundBodyDef),
-		 bodyDestroy);
-		 //boost::bind(&b2World::DestroyBody, b2W, _1));
-    
-    b2PolygonShape groundBoxDef;
-    groundBoxDef.SetAsBox(100.0f, 10.0f);
-   
-    b2FixtureDef groundFixtureDef;
-    groundFixtureDef.shape = &groundBoxDef;
+    b2Polygon groundBox = b2MakeBox(100.0f, 10.0f);
 
-    groundFixtureDef.density = 0.0f;
-    groundFixtureDef.friction = 1.0f;
+    b2ShapeDef groundShapeDef = b2DefaultShapeDef();
+    groundShapeDef.density = 0.0f;
+    groundShapeDef.material.friction = 1.0f;
 
-    ground->CreateFixture(&groundFixtureDef);
+    b2CreatePolygonShape(ground, &groundShapeDef, &groundBox);
 }
 
 World::~World () {
-    delete b2W;
-}
-
-BodyP World::createBody (const b2BodyDef *def) {
-    //Use Box2d world::DestroyBody for clean up
-    //  good chance this is a bad idea...
-    BodyP b(b2W->CreateBody(def),
-	    bodyDestroy);
-	    //boost::bind(&b2World::DestroyBody, b2W, _1));
-    return b;
-}
-
-JointP World::createJoint (const b2JointDef *def) {
-    JointP j(b2W->CreateJoint(def),
-	     jointDestroy);
-	     //boost::bind(&b2World::DestroyJoint, b2W, _1));
-    return j;
+    //Creatures only hold ids, so it's fine to let them outlive the world
+    std::lock_guard<std::mutex> lock(worldTableMutex);
+    b2DestroyWorld(b2W);
 }
 
 CreatureP World::createCreature (const libconfig::Config &creatureConfig) {
     CreatureP cp(new Creature());
+    std::unique_lock<std::mutex> lock(configMutex);
     if (!cp->initFromFile(creatureConfig, this)) {
 	//Problem with initialization, so return empty CreatureP
 	return CreatureP();
     }
-    
-    int id = beings.size();
+
     beings.push_back(cp);
     return cp;
 }
-/*	
-int World::addCreature (CreatureP &c) {
-    int id = beings.size();
-    beings.push_back(c);
-    return id;
-}
-*/
-void World::step () {
-    //Update forces (muscles) on objects
-    for_each(beings.begin(), beings.end(),
-	     boost::mem_fn(&Creature::update));
 
-    b2W->Step(timeStep, velocityIterations, positionIterations);
-    b2W->ClearForces();
+void World::step () {
+    //Update forces (muscles) on objects.  Box2D clears applied forces
+    // after every step.
+    for (auto &c : beings) c->update();
+
+    b2World_Step(b2W, timeStep, subSteps);
 }
 
 void World::draw (BoxScreen *screen) const {
     //Draw the ground, and the draw all the bodies.
     screen->drawBody(ground);
 
-    for_each(beings.begin(),beings.end(),
-    	     boost::bind(&Creature::draw, _1, screen));
-
+    for (auto &c : beings) c->draw(screen);
 }
-	

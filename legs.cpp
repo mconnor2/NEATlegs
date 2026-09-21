@@ -5,14 +5,12 @@
 #include <unistd.h>
 
 #include <vector>
-//#include <ext/slist>
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_gfxPrimitives.h>
-#include <SDL/SDL_framerate.h>
+#include <SDL3/SDL_timer.h>
 
 #include <libconfig.h++>
 
+#include "Display.h"
 #include "BoxScreen.h"
 #include "World.h"
 #include "Creature.h"
@@ -22,76 +20,27 @@ using namespace std;
 const int Width = 640;
 const int Height = 480;
 
-const double Pi = 3.14159265358979323;
-
-int HandleEvent()
-{
-    SDL_Event event; 
-    int status = 0;
-
-    /* Check for events */
-    while ( SDL_PollEvent(&event) ) {
-	switch (event.type) {
-	    case SDL_KEYDOWN:
-		switch(event.key.keysym.sym){
-		    case SDLK_SPACE:
-			return 1;
-			break;
-		}
-	    case SDL_QUIT:
-                exit(0);
-                break;
-	}
-    }
-    return status;
-}
-
-void ClearScreen(SDL_Surface *screen)
-{
-	int i;
-	/* Set the screen to black */
-	if ( SDL_LockSurface(screen) == 0 ) {
-		Uint32 black;
-		Uint8 *pixels;
-		black = SDL_MapRGB(screen->format, 0, 0, 0);
-		pixels = (Uint8 *)screen->pixels;
-		for ( i=0; i<screen->h; ++i ) {
-			memset(pixels, black,
-				screen->w*screen->format->BytesPerPixel);
-			pixels += screen->pitch;
-		}
-		SDL_UnlockSurface(screen);
-	}
-}
-
-void runSimulation (SDL_Surface *screen, World *world, CreatureP &C) {
-    FPSmanager fpsm;
-
+void runSimulation (Display *display, World *world, CreatureP &C) {
     //100 pixels a meter
-    BoxScreen s(screen, 100.0f);
-
-    int rate = 120;
-    SDL_initFramerate(&fpsm);
-    SDL_setFramerate(&fpsm,rate);
+    BoxScreen s(display, 100.0f);
 
     int nFrames = 100;
     long frames = 0;
-    Uint32 ticks = SDL_GetTicks(), nt;
+    uint64_t ticks = SDL_GetTicks(), nt;
     double sec;
     while (1) {
-	ClearScreen(screen);
+	display->clear();
 	
 	//Draw and update the world
 	world->draw(&s);
 	world->step();
 
-	//Check for exit
-	if (HandleEvent()) {
-	    C->reset();
-	}
+	//Space resets the creature, anything else exits
+	DisplayEvent e = display->poll();
+	if (e == DisplayEvent::Quit) return;
+	if (e == DisplayEvent::Space) C->reset();
 
-	//Flip
-	SDL_Flip(screen);
+	display->present();
 
 	++frames;
 	if (frames%nFrames == 0) {
@@ -102,12 +51,8 @@ void runSimulation (SDL_Surface *screen, World *world, CreatureP &C) {
 	    ticks = nt;
 	}
 
-	SDL_framerateDelay(&fpsm);  
+	display->waitFrame();
     }
-}
-
-void exitingfunc () {
-   SDL_Quit();
 }
 
 int main (int argc, char **argv) {
@@ -134,50 +79,13 @@ int main (int argc, char **argv) {
 	exit(1);
     }
 
-    SDL_Surface *screen;
-
-    /* Initialize SDL */
-    if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-	fprintf(stderr,
-		"Couldn't initialize SDL: %s\n", SDL_GetError());
-	exit(1);
-    }
-    atexit(exitingfunc);
-	
-    Uint32 video_flags;
-
-    int desired_bpp = 32;
-    video_flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
-
-    /* Initialize the display */
-    screen = SDL_SetVideoMode(Width, Height, desired_bpp, video_flags);
-    if ( screen == NULL ) {
-	fprintf(stderr, "Couldn't set %dx%dx%d video mode: %s\n",
-				Width, Height, desired_bpp, SDL_GetError());
-    	exit(1);
-    }
-
-    /* Show some info */
-    printf("Set %dx%dx%d mode\n",
-	    screen->w, screen->h, screen->format->BitsPerPixel);
-    printf("Video surface located in %s memory.\n",
-	   (screen->flags&SDL_HWSURFACE) ? "video" : "system");
-
-    /* Check for double buffering */
-    if ( screen->flags & SDL_DOUBLEBUF ) {
-    	printf("Double-buffering enabled - good!\n");
-    }
-
-    /* Set the window manager title bar */
-    SDL_WM_SetCaption("Walkabout!", "Legs!");
-
-    /* Initialize the World, take default hz and iteration */
-    World w(60.0f,10,10);
+    /* Initialize the World, take default hz and substeps */
+    World w(60.0f);
 
     libconfig::Config config;
     try {
 	config.readFile(configFile);
-    } catch (libconfig::ParseException pe) {
+    } catch (libconfig::ParseException &pe) {
 	cerr<<"Config parse error"<<endl;
 	cerr<<"   config file "<<configFile<<endl;
 	cerr<<"   line number "<<pe.getLine()<<endl;
@@ -197,5 +105,12 @@ int main (int argc, char **argv) {
 	exit(1);
     }
 
-    runSimulation(screen, &w, walker);
+    try {
+	Display display("Walkabout!", Width, Height, 120);
+	runSimulation(&display, &w, walker);
+    } catch (exception &e) {
+	cerr<<e.what()<<endl;
+	return 1;
+    }
+    return 0;
 }

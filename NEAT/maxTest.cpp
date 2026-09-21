@@ -13,10 +13,10 @@ using namespace std;
  *  If all goes correctly, should find networks keep increasing weights.
  */
 
-class maxOutputTest : public unary_function<const GenomeP, double> {
+class maxOutputTest {
     public:
 	double operator()(const GenomeP &g) {
-	    auto_ptr<Network> N(g->createNewNetwork());
+	    unique_ptr<Network> N(g->createNewNetwork());
 
 	    double input[3] = {1,1,1};
 	    double output[1] = {0};
@@ -52,23 +52,22 @@ int main (int argc, char **argv) {
     P.addLinkMutationRate = 0.1;
     P.addNodeMutationRate = 0.1;
    
-    maxOutputTest fit;
+    FitnessFunction fit = maxOutputTest();
 
-    GeneticAlgorithm<maxOutputTest> *GA = 
-	new GeneticAlgorithm<maxOutputTest>(&P, &fit);
+    GeneticAlgorithm GA(&P, &fit);
 
     double maxFit = -1e9, curMaxFit = 0;
     
     cout<<"Generation 0"<<endl;
-    GA->printPopulation();
+    GA.printPopulation();
 
     for (int gen = 0; gen < 10; gen++) {
-	curMaxFit = GA->nextGeneration();
+	curMaxFit = GA.nextGeneration();
 	if (curMaxFit > maxFit) maxFit = curMaxFit;
 	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
 	cout<<"========================================================="<<endl;
 	cout<<"Generation "<<gen+1<<endl;
-	GA->printPopulation();
+	GA.printPopulation();
     }
     return 0;
 }
