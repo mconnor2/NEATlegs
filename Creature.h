@@ -51,6 +51,10 @@ class Creature {
     double positiveWork() const;
     double negativeWork() const;
 
+    // True if body b (one of this creature's limbs) is in contact with
+    // anything that isn't part of this creature, e.g. the ground
+    bool touchesOutside(BodyId b) const;
+
     // If we want to access some body parts by name
     bodyMap limbs;
     jointMap joints;

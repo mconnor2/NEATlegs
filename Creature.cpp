@@ -74,6 +74,44 @@ class BodyAngleSensor : public Sensor {
 	const double minA, maxA;
 };
 
+//Rotation rate of a limb (rad/s, CCW positive)
+class AngularVelocitySensor : public Sensor {
+    public:
+	AngularVelocitySensor(BodyId _t, double _minW, double _maxW) :
+	    t(_t), minW(_minW), maxW(_maxW) { }
+	double read() {
+	    return limit_norm(b2Body_GetAngularVelocity(t), minW, maxW);
+	}
+    private:
+	const BodyId t;
+	const double minW, maxW;
+};
+
+//Velocity of a limb's centre of mass along x or y (m/s)
+class VelocitySensor : public Sensor {
+    public:
+	VelocitySensor(BodyId _t, bool _vertical, double _minV, double _maxV) :
+	    t(_t), vertical(_vertical), minV(_minV), maxV(_maxV) { }
+	double read() {
+	    Vec2 v = b2Body_GetLinearVelocity(t);
+	    return limit_norm(vertical ? v.y : v.x, minV, maxV);
+	}
+    private:
+	const BodyId t;
+	const bool vertical;
+	const double minV, maxV;
+};
+
+//1 while a limb touches anything outside the creature (the ground), else 0
+class ContactSensor : public Sensor {
+    public:
+	ContactSensor(const Creature *_c, BodyId _t) : c(_c), t(_t) { }
+	double read() { return c->touchesOutside(t) ? 1.0 : 0.0; }
+    private:
+	const Creature *c;
+	const BodyId t;
+};
+
 int readLimbs(Setting &limbConfig, bodyMap &limbs, bodyPosList &parts,
 	      World *w) 
 { 
@@ -346,13 +384,18 @@ int readShapes(Setting &shapeConfig, shapeMap &shapes, bodyMap &limbs)
 
 
 int readSensors (Setting &sensorConfig, sensorList &sensors, 
-		 bodyMap &limbs, jointMap &joints, shapeMap &shapes)
+		 bodyMap &limbs, jointMap &joints, shapeMap &shapes,
+		 const Creature *creature)
 { 
     //Sensors:
-    // type = {JointSensor, HeightSensor, BodyAngleSensor
-    // target
+    // type = {JointSensor, HeightSensor, BodyAngleSensor,
+    //         AngularVelocitySensor, VelocitySensor, ContactSensor}
+    // target (joint, shape or limb name)
     //   for HeightSensor: minH, maxH
     //   for BodyAngleSensor: minA, maxA
+    //   for AngularVelocitySensor: minW, maxW (rad/s)
+    //   for VelocitySensor: axis ("x" or "y"), minV, maxV (m/s)
+    //   ContactSensor reads 1 while the limb touches the ground
     int nSensors = sensorConfig.getLength();
     for (int i = 0; i<nSensors; ++i) {
 	try {
@@ -378,6 +421,20 @@ int readSensors (Setting &sensorConfig, sensorList &sensors,
 								      "limb"),
 					      minA, maxA));
 		sensors.push_back(s);
+	    } else if (type == "AngularVelocitySensor") {
+		double minW = curSensor["minW"], maxW = curSensor["maxW"];
+		sensors.push_back(SensorP(new AngularVelocitySensor(
+		    findPart(limbs, target, "limb"), minW, maxW)));
+	    } else if (type == "VelocitySensor") {
+		string axis = curSensor["axis"];
+		if (axis != "x" && axis != "y")
+		    throw runtime_error("VelocitySensor axis must be x or y");
+		double minV = curSensor["minV"], maxV = curSensor["maxV"];
+		sensors.push_back(SensorP(new VelocitySensor(
+		    findPart(limbs, target, "limb"), axis == "y", minV, maxV)));
+	    } else if (type == "ContactSensor") {
+		sensors.push_back(SensorP(new ContactSensor(
+		    creature, findPart(limbs, target, "limb"))));
 	    } else {
 		cerr<<"Creature::readSensors sensor "<<i
 		    <<", unknown type: "<<type<<endl;
@@ -454,7 +511,7 @@ int Creature::initFromFile (const Config &config, World *w) {
     
     if (config.exists("sensors") &&
 	!readSensors(config.lookup("sensors"), sensors, 
-		     limbs, joints, shapes)) 
+		     limbs, joints, shapes, this)) 
     {
 	cerr<<"Creature::initFromFile problem reading sensors"<<endl;
 	return 0;
@@ -519,6 +576,23 @@ void Creature::update () {
 
 void Creature::afterStep (float dt) {
     for (auto &m : muscles) m->afterStep(dt);
+}
+
+bool Creature::touchesOutside (BodyId b) const {
+    int cap = b2Body_GetContactCapacity(b);
+    if (cap == 0) return false;
+    std::vector<b2ContactData> contacts(cap);
+    int n = b2Body_GetContactData(b, contacts.data(), cap);
+    for (int i = 0; i < n; ++i) {
+	if (contacts[i].manifold.pointCount == 0) continue;
+	BodyId other = b2Shape_GetBody(contacts[i].shapeIdA);
+	if (B2_ID_EQUALS(other, b)) other = b2Shape_GetBody(contacts[i].shapeIdB);
+	bool own = false;
+	for (const BodyPos &p : parts)
+	    if (B2_ID_EQUALS(p.b, other)) { own = true; break; }
+	if (!own) return true;
+    }
+    return false;
 }
 
 double Creature::positiveWork () const {

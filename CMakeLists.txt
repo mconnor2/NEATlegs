@@ -70,7 +70,7 @@ target_link_libraries(poleBalance PRIVATE neat statsview)
 enable_testing()
 add_executable(muscleEnergy tests/muscleEnergy.cpp)
 target_link_libraries(muscleEnergy PRIVATE physics)
-foreach(creature hopper walker kanga)
+foreach(creature hopper walker kanga kanga2)
     add_test(NAME muscleEnergy_${creature}
              COMMAND muscleEnergy ${CMAKE_CURRENT_SOURCE_DIR}/${creature}.cfg)
 endforeach()
