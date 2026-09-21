@@ -52,6 +52,8 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 
 **Config sections**: `global` (NEAT params), `limbs`, `joints` (revolute only), `muscles`, `shapes` (named points on limbs), `sensors` (JointSensor, HeightSensor, BodyAngleSensor). Shape friction defaults to 0.2 (Box2D 2.x default the configs were tuned for). `BodyAngleSensor` sees angles in [-π, π] under Box2D 3 (was unbounded in 2.x).
 
+**Creature scale**: all configs are roughly human-sized (head at about 2 m, hopper and walker masses 0.3–0.6 kg), so muscle, force and power numbers compare across models, and everything fits the 640×480 view at 100 px/m. `hopper.cfg` was Froude-scaled down from an original 17 m design (see its header comment). `HEAD_FLOOR` (0.75 m, in `hopper.cpp`) is shared by all configs.
+
 **Known objective issue**: fitness is the head's max x, so a creature can gain distance by diving forward and falling at the end of a run. Energy isn't in the fitness yet; it's only tracked.
 
 `legs.notes` holds the original design notes.
