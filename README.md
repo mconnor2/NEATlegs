@@ -47,6 +47,7 @@ Building
 
     cmake -S . -B build
     cmake --build build -j
+    (cd build && ctest)      # physics checks
 
 Running
 -------
@@ -109,7 +110,14 @@ is broken up into sections:
 * global for NEAT genetic algorithm parameters
 * limbs for specifying a list of physical limbs of the creature
 * joints join limbs by name (currently just revolute type joints)
-* muscles specify a list of joints that attach two limbs
+* muscles specify a list of joints that attach two limbs.  Each muscle is a
+  damped spring whose stiffness (minK..maxK) and rest length (minEq..maxEq)
+  the network controls.  Optional maxForce and maxPower (watts) limit what it
+  can deliver: without maxPower a controller can pump unbounded energy into
+  the creature by changing stiffness and rest length.  Each muscle has an
+  energy reserve worth 0.25 s of maxPower for bursts; average power over time
+  can't exceed maxPower.  The included configs use roughly 8x body weight for
+  maxForce and 50 W per kg of body mass for maxPower, split across muscles.
 * shapes name points on the limbs to be referenced in sensors
 * sensors specify input that translate body position to input to the network.
   There are currently 3 types of sensors: Joint angle, Height of shape, Limb

@@ -35,6 +35,9 @@ struct GenerationStats {
     double meanHiddenNodes = 0, meanEnabledLinks = 0;
     int bestHiddenNodes = 0, bestEnabledLinks = 0;
 
+    //Energy spent per evaluation (Genome::energy); 0 if not recorded
+    double meanEnergy = 0, bestEnergy = 0;
+
     //Evaluation cost.  stepsPerSec is 0 if the fitness function doesn't
     // record Genome::steps.
     double evalSeconds = 0;

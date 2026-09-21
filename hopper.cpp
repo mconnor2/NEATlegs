@@ -157,6 +157,7 @@ class hopper {
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
   
 	    g->steps = steps;
+	    g->energy = C->positiveWork();
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
 	    //return (g->fitness = score/MAX_STEPS);

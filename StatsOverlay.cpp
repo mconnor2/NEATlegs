@@ -69,6 +69,10 @@ void drawStatsOverlay (Display &d, const string &title,
     y += lineH;
     d.text(10, y, fmt("best net: %.0f hidden, %.0f links",
 		      s.bestHiddenNodes, s.bestEnabledLinks));
+    if (s.bestEnergy > 0) {
+	y += lineH;
+	d.text(10, y, fmt("best energy: %.4g J", s.bestEnergy));
+    }
 
     const float w = 200, h = 80;
     drawChart(d, history, d.width() - w - 10, 10, w, h);

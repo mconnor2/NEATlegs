@@ -2,6 +2,8 @@
 #include "World.h"
 #include "BoxScreen.h"
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <stdlib.h>
@@ -252,6 +254,9 @@ int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
     //  maxK = 10000.0;
     //  minEq = 1.5;
     //  maxEq = 4.5;
+    //  kd = 100.0;
+    //  maxForce = 30000.0;	optional, default unlimited
+    //  maxPower = 500.0;	optional, default unlimited
     int nMuscles = muscleConfig.getLength();
     for (int i = 0; i<nMuscles; ++i) {
 	try {
@@ -263,6 +268,18 @@ int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
 		  y1 = curMuscle["pos1"]["y"],
 		  x2 = curMuscle["pos2"]["x"],
 		  y2 = curMuscle["pos2"]["y"];
+	    float maxForce = Muscle::Unlimited, maxPower = Muscle::Unlimited;
+	    curMuscle.lookupValue("maxForce", maxForce);
+	    if (!curMuscle.lookupValue("maxPower", maxPower)) {
+		//Warn once per config, not once per creature built
+		static bool warned = false;
+		if (!warned) {
+		    cerr<<"Warning: muscle '"<<name<<"' has no maxPower, so a "
+			  "controller can pump unbounded energy into the "
+			  "creature"<<endl;
+		    warned = true;
+		}
+	    }
 	    MuscleP muscle(new Muscle(findPart(limbs, obj1, "limb"),
 				      Vec2{x1, y1},
 				      findPart(limbs, obj2, "limb"),
@@ -271,7 +288,8 @@ int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
 				      curMuscle["maxK"],
 				      curMuscle["minEq"],
 				      curMuscle["maxEq"],
-				      curMuscle["kd"]));
+				      curMuscle["kd"],
+				      maxForce, maxPower));
 	    muscles.push_back(muscle);
 	} catch (SettingTypeException &te) {
 	    cerr<<"Creature::readMuscles problem processing muscle "<<i<<endl;
@@ -499,6 +517,22 @@ void Creature::update () {
     }
 }
 
+void Creature::afterStep (float dt) {
+    for (auto &m : muscles) m->afterStep(dt);
+}
+
+double Creature::positiveWork () const {
+    double w = 0;
+    for (auto &m : muscles) w += m->positiveWork();
+    return w;
+}
+
+double Creature::negativeWork () const {
+    double w = 0;
+    for (auto &m : muscles) w += m->negativeWork();
+    return w;
+}
+
 void Creature::setInput(double *input) const {
     if (useBias) {
 	*input++ = 1.0;
@@ -511,12 +545,28 @@ void Creature::setInput(double *input) const {
 }
 
 
+float Muscle::currentLength () const {
+    return b2Length(b2Body_GetWorldPoint(body1, end1L) -
+		    b2Body_GetWorldPoint(body2, end2L));
+}
+
+void Muscle::reset () {
+    k = (minK + maxK) / 2.;
+    eq = currentLength();
+    if (eq < minEq) eq = minEq;
+    if (eq > maxEq) eq = maxEq;
+    appliedForce = {0, 0};
+    torque1 = torque2 = 0;
+    posWork = negWork = 0;
+    reserve = maxPower * ReserveSeconds;
+}
+
 /**
  * Find and apply the force between the two bodies muscle is attached to.
  *
- * returns the magnitude of this force.
+ * returns the force (positive pushes apart, negative pulls together).
  */
-float Muscle::update () const {
+float Muscle::update () {
     Vec2 a1W = b2Body_GetWorldPoint(body1, end1L);
     Vec2 a2W = b2Body_GetWorldPoint(body2, end2L);
 
@@ -533,9 +583,28 @@ float Muscle::update () const {
     // find relative velocity of two points
     Vec2 vel = b2Body_GetLocalPointVelocity(body1, end1L) - 
 	       b2Body_GetLocalPointVelocity(body2, end2L);
-    force -= kd * b2Dot(vel, diff);
+    float lengthening = b2Dot(vel, diff);
+    force -= kd * lengthening;
+
+    //Out of energy: slack, only the (dissipative) damping remains
+    if (reserve <= 0) force = -kd * lengthening;
+
+    //Muscle limits.  Power delivered to the bodies is force times the
+    // rate the attachment points separate; only positive power (energy
+    // going in) is limited.
+    if (force > maxForce) force = maxForce;
+    if (force < -maxForce) force = -maxForce;
+    if (force * lengthening > maxPower) force = maxPower / lengthening;
 
     diff *= force;
+
+    com1Start = b2Body_GetWorldCenterOfMass(body1);
+    com2Start = b2Body_GetWorldCenterOfMass(body2);
+    rot1Start = b2Body_GetRotation(body1);
+    rot2Start = b2Body_GetRotation(body2);
+    appliedForce = diff;
+    torque1 = b2Cross(a1W - com1Start, diff);
+    torque2 = b2Cross(a2W - com2Start, -diff);
 
     //Now apply force to body1
     b2Body_ApplyForce(body1, diff, a1W, true);
@@ -545,6 +614,26 @@ float Muscle::update () const {
     b2Body_ApplyForce(body2, diff, a2W, true);
 
     return force;
+}
+
+/**
+ * Work done over the step by the constant force and torque applied to
+ * each body (positive = energy into the bodies).
+ */
+void Muscle::afterStep (float dt) {
+    Vec2 d1 = b2Body_GetWorldCenterOfMass(body1) - com1Start,
+	 d2 = b2Body_GetWorldCenterOfMass(body2) - com2Start;
+    float th1 = b2RelativeAngle(b2Body_GetRotation(body1), rot1Start),
+	  th2 = b2RelativeAngle(b2Body_GetRotation(body2), rot2Start);
+    double w = b2Dot(appliedForce, d1) + torque1 * th1
+	     - b2Dot(appliedForce, d2) + torque2 * th2;
+    if (w > 0) posWork += w;
+    else negWork += w;
+
+    if (!std::isinf(maxPower)) {
+	reserve += maxPower * dt - (w > 0 ? w : 0);
+	reserve = std::min(reserve, maxPower * ReserveSeconds);
+    }
 }
 
 void Muscle::draw (BoxScreen *screen) const {

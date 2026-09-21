@@ -20,7 +20,7 @@ Targets: libraries `neat` (NEAT/, no graphics/physics deps), `display` (SDL3 wra
 
 `ld: warning: building for macOS-X but linking with dylib ... built for newer version` comes from an outdated Command Line Tools SDK, not the project.
 
-There is no unit-test framework. Sanity checks:
+`(cd build && ctest)` runs `tests/muscleEnergy` on each creature config: the creature is dropped into free fall and its muscles driven adversarially. It checks the centre of mass stays in free fall, internal kinetic energy never exceeds the measured muscle work, and positive work stays within the `maxPower` budget. Other sanity checks (no framework):
 - `./build/xorTest`, `./build/poleBalance` — GA works (poleBalance reaches fitness ~1.0)
 - `./build/testMult -C hopper.cfg` — same genome simulated 10× must print identical fitness (determinism)
 - `./build/hopper -C walker.cfg -N 40 -o /tmp/run` — headless GA run on a creature (writes stats CSVs and genome snapshots to the run dir; defaults to `runs/<config>-<time>/`, which is gitignored)
@@ -41,7 +41,8 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 **Physics (top level)** — Box2D 3 uses value ids (`b2BodyId`, `b2JointId`) instead of pointers; `boxTypes.h` holds the typedefs.
 - `World` owns a `b2WorldId` (ground, stepping with substeps). Box2D's global world table isn't thread safe, so world create/destroy is mutex-guarded; libconfig lazily mutates `Config` on reads, so `createCreature` is mutex-guarded too.
 - `Creature` builds bodies/joints/muscles/sensors from config (`initFromFile`), exposes named `limbs`, `joints`, `shapes` maps, and fills network input via `setInput()` (bias first). Unknown names in the config raise an error instead of creating null ids.
-- `Muscle` is a damped spring between two body points, force applied once per `World::step()`; the network scales stiffness and rest length within configured min/max.
+- `Muscle` is a damped spring between two body points, force applied once per `World::step()`; the network scales stiffness and rest length within configured min/max. `reset()` sets the rest length to the current length, so creatures start relaxed.
+- Muscle energy: changing stiffness or rest length changes stored spring energy for free, so the limits are what bound energy input. `maxForce` clamps the force. `maxPower` limits force × lengthening rate at the start of the step, and also drains a per-muscle energy reserve (0.25 s × `maxPower`) by the *measured* positive work; at zero the muscle goes slack. The reserve is what guarantees the average-power bound, because a stiff muscle starting from rest reads zero power yet does a lot of work within one step. A `maxForce` far above body weight lets one step deliver far more than the budget, so configs use about 8× body weight. Work is measured in `World::step`'s after-step hook as F·Δx_com + τ·Δθ per body. That's exact, because Box2D applies the force as a constant force and torque for the whole step. F × ΔL is only first-order accurate and under-counted fast-rotating limbs. `Creature::positiveWork()` is stored in `Genome::energy` and reported as the `energy` stat.
 - `BoxScreen` maps meters→pixels and draws via `Display` (SDL3 renderer; lines/circles/points/text, frame limiter). Colors are `0xRRGGBBAA`.
 
 **`hopper.cpp`** is the GA driver and fitness functor. Couplings with the config file:
@@ -51,6 +52,6 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 
 **Config sections**: `global` (NEAT params), `limbs`, `joints` (revolute only), `muscles`, `shapes` (named points on limbs), `sensors` (JointSensor, HeightSensor, BodyAngleSensor). Shape friction defaults to 0.2 (Box2D 2.x default the configs were tuned for). `BodyAngleSensor` sees angles in [-π, π] under Box2D 3 (was unbounded in 2.x).
 
-**Known modeling issue**: muscle rest length/stiffness change instantly, which lets evolved controllers pump energy into the body; with `hopper.cfg` the GA finds "launch into the air" solutions (fitness in the hundreds of meters). Physics itself conserves momentum/energy correctly.
+**Known objective issue**: fitness is the head's max x, so a creature can gain distance by diving forward and falling at the end of a run. Energy isn't in the fitness yet; it's only tracked.
 
 `legs.notes` holds the original design notes.
