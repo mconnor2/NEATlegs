@@ -59,11 +59,38 @@ hopper runs the actual genetic algorithm, optionally displaying fittest member e
 
 * -C configuration file
 * -N number of generations (default 1000)
-* -V if included, display simulation of fittest member every 10 generations
+* -V watch evolution: a window continuously replays the most recently
+  published fittest member, with run statistics and a fitness history chart
+  overlaid, while the GA keeps running in the background.  Space jumps to the
+  newest published member; closing the window (or any other key) stops the
+  run after the current generation.
+* -d publish a new fittest member to the window every this many generations
+  (default 10; implies -V)
+* -o output directory for the run (default runs/<config>-<timestamp>)
+* -s snapshot the top genomes every this many generations (default 10, 0 off)
+* -k number of genomes per snapshot (default 3)
+* -r replay a saved genome in a window instead of running the GA
 
 For example:
 
     ./build/hopper -C walker.cfg -N 200 -V
+    ./build/hopper -C walker.cfg -N 500 -d 5
+    ./build/hopper -C walker.cfg -r runs/walker-20260921-153000/best.genome
+
+Each generation prints a summary line: population, species count, max/mean
+fitness and its standard deviation, diversity (mean pairwise compatibility
+distance between genomes), and mean hidden nodes / enabled links.  The run
+directory holds:
+
+* stats.csv: one row per generation with the numbers above and more
+* species.csv: size and fitness of each species per generation (species ids
+  are stable across generations)
+* best.genome: the best genome seen so far
+* snapshots/genNNNNN_rankK.genome: the top genomes at each snapshot
+* config.cfg: copy of the configuration, so a saved genome can be replayed
+  with `-C runs/.../config.cfg -r ...`
+
+Genome files are plain text: a header line followed by one line per link.
 
 The rest of the many (many) algorithm parameters are specified in the configuration file, along with the specification of the walker.
 

@@ -77,12 +77,13 @@ void Display::point (float x, float y, Color c) {
     SDL_RenderPoint(renderer, x, y);
 }
 
-void Display::text (float x, float y, const string &s) {
+void Display::text (float x, float y, const string &s, Color c) {
     if (!font || s.empty()) return;
 
-    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color fg = {(Uint8)(c >> 24), (Uint8)(c >> 16), (Uint8)(c >> 8),
+		    (Uint8)c};
     SDL_Surface *surf = TTF_RenderText_Blended(font, s.c_str(), s.size(),
-					       white);
+					       fg);
     if (!surf) return;
 
     SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
@@ -105,8 +106,10 @@ DisplayEvent Display::poll () {
 			result = DisplayEvent::Space;
 		    break;
 		}
+		quit = true;
 		return DisplayEvent::Quit;
 	    case SDL_EVENT_QUIT:
+		quit = true;
 		return DisplayEvent::Quit;
 	}
     }

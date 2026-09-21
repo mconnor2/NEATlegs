@@ -36,11 +36,15 @@ class Display {
 	void line (float x1, float y1, float x2, float y2, Color c);
 	void circle (float cx, float cy, float r, Color c);
 	void point (float x, float y, Color c);
-	void text (float x, float y, const std::string &s);
+	void text (float x, float y, const std::string &s,
+		   Color c = 0xFFFFFFFF);
 
 	// Drain the event queue.  Space bar -> Space; window close or any
 	// other key -> Quit.
 	DisplayEvent poll ();
+
+	// True once poll() has seen a Quit
+	bool quitRequested () const { return quit; }
 
 	// Sleep so that successive calls happen at most fps times a second
 	void waitFrame ();
@@ -55,6 +59,7 @@ class Display {
 
 	uint64_t frameNS;
 	uint64_t lastFrame = 0;
+	bool quit = false;
 };
 
 #endif

@@ -50,9 +50,3 @@ bool Specie::cull(const int oldAge, double &totalFitness) {
 
     return false;
 }
-
-void Specie::print_statistics () const {
-    std::cerr<<"\t"<<members.size()
-	     <<"\t"<<fitness
-	     <<"\t"<<maxFitness();
-}

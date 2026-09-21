@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <set>
+#include <sstream>
+#include <string>
 #include <algorithm>
 
 
@@ -33,7 +35,8 @@ Genome::Genome (ExpParameters *_P) : P(_P) {
 	    //And it starts enabled
 	    links[linkID].enabled = true;
 
-	    links[linkID].innov = linkID++;
+	    links[linkID].innov = linkID;
+	    ++linkID;
 	}
     }
 //    cout<<"Genome: "<<linkID<<" == "<<nLinks<<endl;
@@ -467,7 +470,7 @@ void Genome::mutate() {
  * Compatability is weighted sum of #mismatching genes and weight difference
  *  for matching genes.
  */
-double Genome::compat(const GenomeP &g2) {
+double Genome::compat(const GenomeP &g2) const {
     int gDiff = 0;
     double wDiff = 0.0;
 
@@ -510,4 +513,94 @@ void Genome::printDescription(const char *prefix) const {
 	std::cout<<endl;
     }
 */
+}
+
+GenomeP Genome::clone() const {
+    Link *copy = new Link[nLinks];
+    for (int i = 0; i<nLinks; ++i) {
+	copy[i] = links[i];
+	copy[i].inNode = copy[i].outNode = NULL;
+    }
+    GenomeP g(new Genome(copy, nLinks, nNodes, P));
+    g->fitness = fitness;
+    g->specie = specie;
+    return g;
+}
+
+int Genome::numEnabledLinks() const {
+    int n = 0;
+    for (int i = 0; i<nLinks; ++i)
+	if (links[i].enabled) ++n;
+    return n;
+}
+
+int Genome::numHiddenNodes() const {
+    return nNodes - P->nInput - P->nOutput;
+}
+
+void Genome::save(std::ostream &out) const {
+    out<<"genome inputs "<<P->nInput<<" outputs "<<P->nOutput
+       <<" nodes "<<nNodes<<" links "<<nLinks<<"\n";
+    out<<"# link innovation in out weight enabled\n";
+    std::streamsize prec = out.precision(17);
+    for (int i = 0; i<nLinks; ++i) {
+	const Link &l = links[i];
+	out<<"link "<<l.innov<<" "<<l.inID<<" "<<l.outID<<" "<<l.weight
+	   <<" "<<(l.enabled ? 1 : 0)<<"\n";
+    }
+    out.precision(prec);
+}
+
+GenomeP Genome::load(std::istream &in, ExpParameters *P) {
+    std::string line;
+    int nIn = -1, nOut = -1, nodes = -1, count = -1;
+
+    //Header, skipping comments
+    while (std::getline(in, line)) {
+	if (line.empty() || line[0] == '#') continue;
+	std::istringstream hs(line);
+	std::string tag, kIn, kOut, kNodes, kLinks;
+	hs>>tag>>kIn>>nIn>>kOut>>nOut>>kNodes>>nodes>>kLinks>>count;
+	if (!hs || tag != "genome") {
+	    cerr<<"Genome::load expected 'genome' header, got: "<<line<<endl;
+	    return GenomeP();
+	}
+	break;
+    }
+    if (count < 0) {
+	cerr<<"Genome::load missing genome header"<<endl;
+	return GenomeP();
+    }
+    if (nIn != P->nInput || nOut != P->nOutput) {
+	cerr<<"Genome::load genome has "<<nIn<<" inputs, "<<nOut
+	    <<" outputs but experiment expects "<<P->nInput<<", "
+	    <<P->nOutput<<endl;
+	return GenomeP();
+    }
+
+    Link *links = new Link[count];
+    int n = 0;
+    while (n < count && std::getline(in, line)) {
+	if (line.empty() || line[0] == '#') continue;
+	std::istringstream ls(line);
+	std::string tag;
+	int enabled;
+	Link &l = links[n];
+	ls>>tag>>l.innov>>l.inID>>l.outID>>l.weight>>enabled;
+	if (!ls || tag != "link") {
+	    cerr<<"Genome::load bad link line: "<<line<<endl;
+	    delete [] links;
+	    return GenomeP();
+	}
+	l.enabled = enabled != 0;
+	l.inNode = l.outNode = NULL;
+	++n;
+    }
+    if (n != count) {
+	cerr<<"Genome::load expected "<<count<<" links, found "<<n<<endl;
+	delete [] links;
+	return GenomeP();
+    }
+
+    return GenomeP(new Genome(links, count, nodes, P));
 }

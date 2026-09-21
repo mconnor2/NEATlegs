@@ -10,8 +10,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
 endif()
 
-option(NEAT_PROFILE "Report fitness evaluation speed each generation" ON)
-
 find_package(Threads REQUIRED)
 find_package(box2d 3 CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
@@ -27,12 +25,10 @@ add_library(neat STATIC
     NEAT/Genome.cpp
     NEAT/Specie.cpp
     NEAT/GeneticAlgorithm.cpp
+    NEAT/RunLog.cpp
 )
 target_include_directories(neat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/NEAT)
 target_link_libraries(neat PUBLIC PkgConfig::LIBCONFIGPP Threads::Threads)
-if(NEAT_PROFILE)
-    target_compile_definitions(neat PUBLIC PROFILE)
-endif()
 
 # SDL3 window/renderer/font helper shared by all visual programs
 add_library(display STATIC Display.cpp)
@@ -40,6 +36,11 @@ target_include_directories(display PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(display PUBLIC SDL3::SDL3 SDL3_ttf::SDL3_ttf)
 target_compile_definitions(display PRIVATE
     NEATLEGS_FONT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/ProggyClean.ttf")
+
+# Run statistics drawn over a Display (only needs NEAT/Stats.h)
+add_library(statsview STATIC StatsOverlay.cpp)
+target_include_directories(statsview PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/NEAT)
+target_link_libraries(statsview PUBLIC display)
 
 # Box2D creature simulation
 add_library(physics STATIC World.cpp Creature.cpp BoxScreen.cpp)
@@ -50,7 +51,7 @@ add_executable(legs legs.cpp)
 target_link_libraries(legs PRIVATE physics)
 
 add_executable(hopper hopper.cpp)
-target_link_libraries(hopper PRIVATE physics neat)
+target_link_libraries(hopper PRIVATE physics neat statsview)
 
 add_executable(testMult testMult.cpp)
 target_link_libraries(testMult PRIVATE physics neat)
@@ -63,4 +64,4 @@ add_executable(maxTest NEAT/maxTest.cpp)
 target_link_libraries(maxTest PRIVATE neat)
 
 add_executable(poleBalance NEAT/poleBalance.cpp)
-target_link_libraries(poleBalance PRIVATE neat display)
+target_link_libraries(poleBalance PRIVATE neat statsview)

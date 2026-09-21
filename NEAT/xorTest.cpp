@@ -7,6 +7,7 @@
 #include "Network.h"
 #include "Genome.h"
 #include "GeneticAlgorithm.h"
+#include "RunLog.h"
 
 using namespace std;
 
@@ -160,27 +161,24 @@ int main (int argc, char **argv) {
 
     GeneticAlgorithm GA(&P, &f);
 
-    double maxFit = -1e9, curMaxFit = 0;
-    
-    //cout<<"Generation 0"<<endl;
-    //GA->printPopulation();
+    RunLog log((RunLog::Options()));
 
     for (int gen = 0; gen < 1000; gen++) {
 	//Each generation will receive a different input, so network
 	// can't just memorize pattern
 	//fit.regenerate();
 
-	curMaxFit = GA.nextGeneration();
-	if (curMaxFit > maxFit) maxFit = curMaxFit;
+	GA.nextGeneration();
+	log.record(GA);
 	int error = fit.testError(GA.bestIndiv());
-	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit
-	    <<", test error = "<<error<<endl;
-	cout<<"========================================================="<<endl;
-	//cout<<"Generation "<<gen+1<<endl;
-	//GA.printPopulation();
 	
-	if (error == 0) break;
+	if (error == 0) {
+	    cout<<"Solved XOR at generation "<<gen<<endl;
+	    break;
+	}
     }
+    log.finish(GA);
+    cout<<"Best genome test error: "<<fit.testError(GA.bestIndiv())<<endl;
     return 0;
 }
 

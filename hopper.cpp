@@ -3,7 +3,18 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <atomic>
 #include <functional>
+#include <mutex>
+#include <thread>
+
+#include <atomic>
+#include <functional>
+#include <mutex>
+#include <thread>
 #include <memory>
 
 #include <libconfig.h++>
@@ -13,8 +24,10 @@
 #include "NEAT/Network.h"
 #include "NEAT/Genome.h"
 #include "NEAT/GeneticAlgorithm.h"
+#include "NEAT/RunLog.h"
 
 #include "Display.h"
+#include "StatsOverlay.h"
 #include "BoxScreen.h"
 #include "World.h"
 #include "Creature.h"
@@ -35,8 +48,12 @@ class hopper {
 	    MAX_STEPS(max_steps), config(_config), P(_P) 
 	{ }
 
-	double operator()(const GenomeP &g, 
-			  int Generation = 0, Display *display = nullptr) const {
+	// With a display, the run is drawn in real time and overlay (if set)
+	// is called each frame to draw on top of the simulation.
+	double operator()(const GenomeP &g, Display *display = nullptr,
+			  const function<void(Display &)> &overlay = nullptr)
+	    const
+	{
 	    unique_ptr<Network> N(g->createNewNetwork());
 	
 	    int steps=0;
@@ -61,8 +78,6 @@ class hopper {
 
 	    // 100 pixels a meter
 	    BoxScreen s(display, 100.0f);
-
-	    string genLabel = to_string(Generation);
 
 	    if (!C->shapes.count("head")) {
 		cerr<<"Creature must define a shape named 'head', exiting."
@@ -110,7 +125,7 @@ class hopper {
 
 		if (display) {
 		    display->clear();
-		    display->text(10, 10, genLabel);
+		    if (overlay) overlay(*display);
 
 //		    cout<<"Head height: "<<headV.x<<", "<<headV.y<<endl;
 		    
@@ -119,7 +134,9 @@ class hopper {
 		    w.draw(&s);
 		    display->present();
 
-		    if (display->poll() != DisplayEvent::None) exit(0);
+		    //Space skips ahead, quit is left for the caller to see
+		    // via display->quitRequested()
+		    if (display->poll() != DisplayEvent::None) break;
 
 		    display->waitFrame();
 		}
@@ -139,9 +156,7 @@ class hopper {
 //	cout<<"Made it "<<steps<<" steps..."
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
   
-#ifdef PROFILE
 	    g->steps = steps;
-#endif
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
 	    //return (g->fitness = score/MAX_STEPS);
@@ -159,18 +174,182 @@ class hopper {
 	const ExpParameters *P;
 };
 
+static void usage () {
+    printf("Usage: hopper -C config [options]\n"
+	   "  -N gens     number of generations (default 1000)\n"
+	   "  -V          watch evolution: a window replays the fittest member\n"
+	   "              while the GA keeps running (Space: jump to newest)\n"
+	   "  -d gens     with -V, publish a new best to watch every this many\n"
+	   "              generations (default 10; implies -V)\n"
+	   "  -o dir      run output directory (default runs/<config>-<time>)\n"
+	   "  -s gens     snapshot top genomes every this many generations\n"
+	   "              (default 10, 0 disables)\n"
+	   "  -k count    genomes per snapshot (default 3)\n"
+	   "  -r genome   replay a saved genome in a window instead of\n"
+	   "              running the GA\n");
+}
+
+// Default run directory: runs/<config name>-<YYYYmmdd-HHMMSS>
+static string defaultRunDir (const char *configFile) {
+    char stamp[32];
+    time_t now = time(NULL);
+    strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", localtime(&now));
+    return "runs/" + std::filesystem::path(configFile).stem().string() +
+	   "-" + stamp;
+}
+
+// Replay a saved genome until the window is closed
+static int replay (const hopper &fit, const char *genomeFile,
+		   ExpParameters *P)
+{
+    ifstream in(genomeFile);
+    if (!in) {
+	cerr<<"Can't open genome file "<<genomeFile<<endl;
+	return 1;
+    }
+    GenomeP g = Genome::load(in, P);
+    if (!g) return 1;
+
+    unique_ptr<Display> display;
+    try {
+	display.reset(new Display("Hopper Replay", Width, Height));
+    } catch (exception &e) {
+	cerr<<e.what()<<endl;
+	return 1;
+    }
+
+    string title = "Replay " +
+		   std::filesystem::path(genomeFile).filename().string();
+    vector<GenerationStats> noHistory;
+    for (int run = 1; !display->quitRequested(); ++run) {
+	double f = fit(g, display.get(), [&](Display &d) {
+	    drawStatsOverlay(d, title, noHistory);
+	});
+	if (!display->quitRequested())
+	    printf("Replay %d: fitness %.4f\n", run, f);
+    }
+    return 0;
+}
+
+/**
+ * Shared state between the GA thread and the display (main) thread when
+ * watching a run.  The GA publishes a copy of its stats every generation
+ * and a clone of the best genome every displayEvery generations; the
+ * display thread replays the newest published genome over and over.
+ */
+struct Monitor {
+    std::mutex m;
+    GenomeP best;		//Clone, never touched by the GA thread
+    double bestFitness = 0;
+    int bestGeneration = -1;
+    std::shared_ptr<const vector<GenerationStats>> history;
+
+    std::atomic<bool> stop{false}, done{false};
+
+    void publishStats (const GeneticAlgorithm &GA) {
+	//Overlay doesn't need the per-species breakdown
+	auto h = std::make_shared<vector<GenerationStats>>(GA.history());
+	for (GenerationStats &st : *h) st.species.clear();
+	std::lock_guard<std::mutex> lock(m);
+	history = h;
+    }
+
+    void publishBest (const GeneticAlgorithm &GA) {
+	const GeneticAlgorithm::RankedGenome &top = GA.topGenomes().at(0);
+	GenomeP g = top.second->clone();
+	std::lock_guard<std::mutex> lock(m);
+	best = g;
+	bestFitness = top.first;
+	bestGeneration = GA.history().back().generation;
+    }
+};
+
+// Evolve on a background thread while the main thread shows the latest
+// published best, until the window is closed.  Closing the window stops
+// the GA after its current generation.
+static void watchEvolution (const hopper &fit, Display &display,
+			    GeneticAlgorithm &GA, RunLog &log, int maxGen,
+			    int displayEvery)
+{
+    Monitor mon;
+
+    std::thread ga([&]() {
+	for (int gen = 0; gen < maxGen && !mon.stop; ++gen) {
+	    GA.nextGeneration();
+	    log.record(GA);
+	    mon.publishStats(GA);
+	    if (gen % displayEvery == 0 || gen == maxGen-1)
+		mon.publishBest(GA);
+	}
+	log.finish(GA);
+	mon.done = true;
+    });
+
+    while (!display.quitRequested()) {
+	GenomeP g;
+	int shownGen;
+	double shownFit;
+	{
+	    std::lock_guard<std::mutex> lock(mon.m);
+	    g = mon.best;
+	    shownGen = mon.bestGeneration;
+	    shownFit = mon.bestFitness;
+	}
+
+	auto overlay = [&](Display &d) {
+	    std::shared_ptr<const vector<GenerationStats>> h;
+	    {
+		std::lock_guard<std::mutex> lock(mon.m);
+		h = mon.history;
+	    }
+	    char title[128];
+	    const char *status = mon.done ? "run finished, close to exit"
+					  : "evolving";
+	    if (g) {
+		snprintf(title, sizeof(title),
+			 "Gen %d best (%.3f)   now: gen %d, %s",
+			 shownGen, shownFit,
+			 h && !h->empty() ? h->back().generation : 0, status);
+	    } else {
+		snprintf(title, sizeof(title), "Waiting for generation 0...");
+	    }
+	    static const vector<GenerationStats> none;
+	    drawStatsOverlay(d, title, h ? *h : none);
+	};
+
+	if (g) {
+	    fit(g, &display, overlay);
+	} else {
+	    display.clear();
+	    overlay(display);
+	    display.present();
+	    display.poll();
+	    display.waitFrame();
+	}
+    }
+
+    mon.stop = true;
+    if (!mon.done)
+	printf("Window closed, stopping after the current generation...\n");
+    ga.join();
+}
+
 int main (int argc, char **argv) {
     //set random seed to come from udev random
     dev_seed_rand();
 
     bool drawGen = false;
+    int displayEvery = 10;
 
     int maxGen = 1000;
+
+    RunLog::Options logOpt;
+    const char *replayFile = NULL;
 
     /* Process arguments */
     int opt;
     char *configFile = NULL;
-    while ((opt = getopt(argc, argv, "VC:hN:")) != -1) {
+    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:d:")) != -1) {
 	switch(opt) {
 	    case 'V':
 		drawGen = true;
@@ -181,14 +360,35 @@ int main (int argc, char **argv) {
 	    case 'N':
 		maxGen = atoi(optarg);
 	    break;
+	    case 'o':
+		logOpt.outputDir = optarg;
+	    break;
+	    case 's':
+		logOpt.snapshotEvery = atoi(optarg);
+	    break;
+	    case 'k':
+		logOpt.snapshotTop = atoi(optarg);
+	    break;
+	    case 'r':
+		replayFile = optarg;
+	    break;
+	    case 'd':
+		displayEvery = atoi(optarg);
+		drawGen = true;
+		if (displayEvery < 1) {
+		    fprintf(stderr, "-d needs a positive generation count\n");
+		    exit(1);
+		}
+	    break;
 	    default:
-		printf("Usage: hopper -C config file [-V for video] [-h this]\n");
+		usage();
 		exit(1);
 	}
     }
     
     if (!configFile) {
 	fprintf(stderr, "Must specify config file.\n");
+	usage();
 	exit(1);
     }
 
@@ -214,8 +414,6 @@ int main (int argc, char **argv) {
 	exit(1);
     }
    
-    cout<<"Generating pop size of "<<P.popSize<<endl;
-   
     try {
 	P.nInput = config.lookup("sensors").getLength()+1;
 	P.nOutput = config.lookup("muscles").getLength()*2;
@@ -225,6 +423,9 @@ int main (int argc, char **argv) {
     }
 
     hopper fit(1000, &config, &P);
+
+    if (replayFile) return replay(fit, replayFile, &P);
+
     FitnessFunction f = fit;
 
     unique_ptr<Display> display;
@@ -237,35 +438,32 @@ int main (int argc, char **argv) {
 	}
     }
     
-//    cout<<"Initial population size "<<P.startPopulationPercent
-//	<<" * "<<P.popSize<<endl;
+    if (logOpt.outputDir.empty()) logOpt.outputDir = defaultRunDir(configFile);
+    logOpt.configPath = configFile;
 
     GeneticAlgorithm GA(&P, &f);
+    GA.setKeepTop(max(logOpt.snapshotTop, 1));
 
-    double maxFit = -1e9, curMaxFit = 0;
-    
-    //cout<<"Generation 0"<<endl;
-    //GA->printPopulation();
+    unique_ptr<RunLog> log;
+    try {
+	log.reset(new RunLog(logOpt));
+    } catch (exception &e) {
+	cerr<<e.what()<<endl;
+	return 1;
+    }
 
-    cout<<"Initialized.  Starting simulation."<<endl;
+    printf("Population %d, %d inputs, %d outputs.  Writing run to %s\n",
+	   P.popSize, P.nInput, P.nOutput, logOpt.outputDir.c_str());
+
+    if (display) {
+	watchEvolution(fit, *display, GA, *log, maxGen, displayEvery);
+	return 0;
+    }
 
     for (int gen = 0; gen < maxGen; gen++) {
-	//Each generation will receive a different input, so network
-	// can't just memorize pattern
-	//fit.regenerate();
-
-	curMaxFit = GA.nextGeneration();
-	if (curMaxFit > maxFit) maxFit = curMaxFit;
-	cout<<"  After generation "<<gen<<", maximum fitness =  "<<maxFit<<endl;
-	cout<<"========================================================="<<endl;
-
-	if (gen%10 == 0 && drawGen)
-	    fit(GA.bestIndiv(), gen, display.get());
-
-	//cout<<"Generation "<<gen+1<<endl;
-	//GA.printPopulation();
-	
-	//if (error == 0) break;
+	GA.nextGeneration();
+	log->record(GA);
     }
+    log->finish(GA);
     return 0;
 }
