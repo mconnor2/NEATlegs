@@ -42,7 +42,7 @@ class poleBalance {
 
 	poleBalance(int max_steps, float _tau = 0.02,
 		    bool _random_start = true) :
-	    MAX_STEPS(max_steps), TAU(_tau), random_start(_random_start) 
+	    MAX_STEPS(max_steps), random_start(_random_start), TAU(_tau) 
 	{ }
 
 	double operator()(const GenomeP &g, 
@@ -63,11 +63,7 @@ class poleBalance {
 	#endif
 	   double out[2] = {0,0}; //Output, L or R
 
-	   double one_degree= 0.0174532;	/* 2pi/360 */
-	   double six_degrees=0.1047192;
 	   double twelve_degrees=0.2094384;
-	   double thirty_six_degrees= 0.628329;
-	   double fifty_degrees=0.87266;
 
 	   if (random_start) {
 	     /*set up random start state*/

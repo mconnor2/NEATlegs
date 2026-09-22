@@ -5,7 +5,7 @@
 #include <list>
 #include <vector>
 
-class Specie;
+struct Specie;
 class Genome;
 struct ExpParameters;
 class InnovationStore;

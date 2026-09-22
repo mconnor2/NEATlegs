@@ -16,13 +16,20 @@ cmake --build build -j            # all targets
 cmake --build build --target hopper
 ```
 
-Targets: libraries `neat` (NEAT/, no graphics/physics deps), `display` (SDL3 wrapper), `statsview` (stats overlay drawn on a `Display`), `physics` (World/Creature/BoxScreen); executables `legs`, `hopper`, `testMult`, `xorTest`, `maxTest`, `poleBalance`.
+Targets: libraries `neat` (NEAT/, no graphics/physics deps), `display` (SDL3 wrapper), `statsview` (stats overlay drawn on a `Display`), `physics` (World/Creature/BoxScreen); executables `legs`, `hopper`, `xorTest`, `maxTest`, `poleBalance`; tests `neatTests`, `creatureConfig`, `muscleEnergy`. Everything builds with `-Wall -Wextra` and should stay warning-free.
 
 `ld: warning: building for macOS-X but linking with dylib ... built for newer version` comes from an outdated Command Line Tools SDK, not the project.
 
-`(cd build && ctest)` runs `tests/muscleEnergy` on each creature config: the creature is dropped into free fall and its muscles driven adversarially. It checks the centre of mass stays in free fall, internal kinetic energy never exceeds the measured muscle work, and positive work stays within the `maxPower` budget. Other sanity checks (no framework):
+`(cd build && ctest)` runs everything in `tests/` (about half a second; `ctest -R <name>` for one, `--output-on-failure` for details). Tests are plain executables using the `TEST`/`CHECK` macros in `tests/check.h`; no framework:
+- `neat` (`neatTests.cpp`): genome save/load and clone round trips, `compat` properties, mating invariants (innovation numbers sorted and unique, dominant parent's genes kept), networks against hand calculations, innovation sharing, seeded RNG, and a seeded GA giving the same history twice in one process.
+- `creatureConfig`: a minimal config builds; unknown names, bad types and missing required fields make `createCreature` return null; the shipped configs build.
+- `muscleEnergy_<creature>`: each creature is dropped into free fall with its muscles driven adversarially. The centre of mass must stay in free fall, internal kinetic energy must never exceed the measured muscle work, and positive work must stay within the `maxPower` budget.
+- `determinism` (`determinism.cmake`): two `hopper -S` runs of kanga2 must write identical genomes, snapshots and `species.csv`. That covers the GA, worker threads and physics together.
+
+Randomness: `seed_rand(seed)` / `dev_seed_rand()` (which returns the seed it chose) in `NEAT/random.h`. `hopper -S <seed>` repeats a run exactly; the seed is printed and saved as `seed.txt` in the run directory. Only draws on the seeding thread are reproducible, so fitness functions that use random numbers on worker threads (`poleBalance`'s random start) aren't.
+
+Other sanity checks:
 - `./build/xorTest`, `./build/poleBalance` — GA works (poleBalance reaches fitness ~1.0)
-- `./build/testMult -C hopper.cfg` — same genome simulated 10× must print identical fitness (determinism)
 - `./build/hopper -C walker.cfg -N 40 -o /tmp/run` — headless GA run on a creature (writes stats CSVs and genome snapshots to the run dir; defaults to `runs/<config>-<time>/`, which is gitignored)
 - `./build/hopper -C <run>/config.cfg -r <run>/best.genome` — replay a saved genome (should reproduce its recorded fitness exactly)
 

@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_compile_options(-Wall -Wextra)
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
 endif()
@@ -53,9 +55,6 @@ target_link_libraries(legs PRIVATE physics)
 add_executable(hopper hopper.cpp)
 target_link_libraries(hopper PRIVATE physics neat statsview)
 
-add_executable(testMult testMult.cpp)
-target_link_libraries(testMult PRIVATE physics neat)
-
 # NEAT-only demos
 add_executable(xorTest NEAT/xorTest.cpp)
 target_link_libraries(xorTest PRIVATE neat)
@@ -66,11 +65,34 @@ target_link_libraries(maxTest PRIVATE neat)
 add_executable(poleBalance NEAT/poleBalance.cpp)
 target_link_libraries(poleBalance PRIVATE neat statsview)
 
-# Physics checks, run with ctest
+# Tests, run with ctest
 enable_testing()
+set(CREATURES hopper walker kanga kanga2)
+
+add_executable(neatTests tests/neatTests.cpp)
+target_link_libraries(neatTests PRIVATE neat)
+add_test(NAME neat COMMAND neatTests)
+
+add_executable(creatureConfig tests/creatureConfig.cpp)
+target_link_libraries(creatureConfig PRIVATE physics)
+set(creatureConfigs)
+foreach(creature ${CREATURES})
+    list(APPEND creatureConfigs ${CMAKE_CURRENT_SOURCE_DIR}/${creature}.cfg)
+endforeach()
+add_test(NAME creatureConfig COMMAND creatureConfig ${creatureConfigs})
+
+# Physics: muscles can't add more energy than their limits allow
 add_executable(muscleEnergy tests/muscleEnergy.cpp)
 target_link_libraries(muscleEnergy PRIVATE physics)
-foreach(creature hopper walker kanga kanga2)
+foreach(creature ${CREATURES})
     add_test(NAME muscleEnergy_${creature}
              COMMAND muscleEnergy ${CMAKE_CURRENT_SOURCE_DIR}/${creature}.cfg)
 endforeach()
+
+# Same seed, same run: GA, threads and physics together
+add_test(NAME determinism
+         COMMAND ${CMAKE_COMMAND}
+                 -DHOPPER=$<TARGET_FILE:hopper>
+                 -DCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/kanga2.cfg
+                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/determinism
+                 -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/determinism.cmake)

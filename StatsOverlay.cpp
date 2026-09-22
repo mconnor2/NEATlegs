@@ -5,7 +5,7 @@
 
 using namespace std;
 
-static const Color White = 0xFFFFFFFF, Grey = 0x808080FF,
+static const Color Grey = 0x808080FF,
 		   MaxColor = 0x40FF40FF, MeanColor = 0xFFD040FF;
 
 static string fmt (const char *f, double a, double b = 0, double c = 0) {

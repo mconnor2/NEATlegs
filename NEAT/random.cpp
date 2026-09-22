@@ -16,10 +16,12 @@ using namespace std;
 
 struct KissState {
     unsigned int x, y, z, c;
+    int haveGauss;		//rand_gauss makes deviates in pairs
+    double gauss;
 };
 
 /* Seed that new threads derive their state from, set by dev_seed_rand */
-static KissState baseSeed = {123456789, 362436000, 521288629, 7654321};
+static KissState baseSeed = {123456789, 362436000, 521288629, 7654321, 0, 0};
 static std::atomic<unsigned int> threadCount(0);
 
 static KissState newThreadState() {
@@ -63,17 +65,52 @@ unsigned int devrand()
     return r;
 }
 
-/* Initialise KISS generator using /dev/urandom */
-void dev_seed_rand()
+//SplitMix64: expands one 64 bit seed into well mixed words
+static uint64_t splitmix64(uint64_t &s) {
+   uint64_t z = (s += 0x9E3779B97F4A7C15ull);
+   z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+   z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+   return z ^ (z >> 31);
+}
+
+void seed_rand(uint64_t seed)
 {
    KissState s;
-   s.x = devrand();
-   while (!(s.y = devrand())); /* y must not be zero */
-   s.z = devrand();
-   /* Don't really need to seed c as well but if you really want to... */
-   s.c = devrand() % 698769069; /* Should be less than 698769069 */
+   s.x = (unsigned int)splitmix64(seed);
+   while (!(s.y = (unsigned int)splitmix64(seed))); /* y must not be zero */
+   s.z = (unsigned int)splitmix64(seed);
+   s.c = (unsigned int)(splitmix64(seed) % 698769069); /* < 698769069 */
+   s.haveGauss = 0;
+   s.gauss = 0;
    baseSeed = s;
    state = s;
+}
+
+/* Initialise KISS generator using /dev/urandom */
+uint64_t dev_seed_rand()
+{
+   uint64_t seed = ((uint64_t)devrand() << 32) | devrand();
+   seed_rand(seed);
+   return seed;
+}
+
+//Normal deviate by the polar method, two at a time
+double rand_gauss()
+{
+  if (state.haveGauss) {
+    state.haveGauss = 0;
+    return state.gauss;
+  }
+  double fac, rsq, v1, v2;
+  do {
+    v1 = 2.0*rand_double() - 1.0;
+    v2 = 2.0*rand_double() - 1.0;
+    rsq = v1*v1 + v2*v2;
+  } while (rsq >= 1.0 || rsq == 0.0);
+  fac = sqrt(-2.0*log(rsq)/rsq);
+  state.gauss = v1*fac;
+  state.haveGauss = 1;
+  return v2*fac;
 }
 
 

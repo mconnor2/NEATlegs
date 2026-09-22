@@ -28,7 +28,7 @@ class maxOutputTest {
 	}
 };
 
-int main (int argc, char **argv) {
+int main () {
     //set random seed to come from udev random
     dev_seed_rand();
 

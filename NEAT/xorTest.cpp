@@ -74,8 +74,6 @@ class xorTest {
 	    double input[3] = {1,1,1};
 	    double output[1] = {0};
 
-	    double sqDiff = 0;
-
 	    const int Passes = 32;
 
 	    int error = 0;
@@ -95,8 +93,8 @@ class xorTest {
 		}
 		sumOut /= (double)Passes;
 
-		if (sumOut >= 0.5 && xorOutput[i] == 0 ||
-		    sumOut < 0.5  && xorOutput[i] == 1) 
+		if ((sumOut >= 0.5 && xorOutput[i] == 0) ||
+		    (sumOut < 0.5  && xorOutput[i] == 1))
 		    error++;
 	    }
     
@@ -123,7 +121,7 @@ class xorTest {
 
 };
 
-int main (int argc, char **argv) {
+int main () {
     //set random seed to come from udev random
     dev_seed_rand();
 

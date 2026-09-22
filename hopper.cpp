@@ -114,7 +114,6 @@ class hopper {
 		cout<<"Head position: "<<headV.x<<", "<<headV.y<<endl;
 	    }
 */
-	    double score = 0;
 	    double maxX = 0, maxY = 0;
 
 	    /*--- Iterate through the action-learn loop. ---*/
@@ -170,7 +169,6 @@ class hopper {
 		for (BodyId b : mustNotTouch)
 		    if (C->touchesOutside(b)) { fell = true; break; }
 		if (fell) break;
-		score += headV.y*headV.y;
 		if (headV.x > maxX) maxX = headV.x;
 		if (headV.y > maxY) maxY = headV.y;
 	    }
@@ -185,7 +183,6 @@ class hopper {
 	    g->energy = C->positiveWork();
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
-	    //return (g->fitness = score/MAX_STEPS);
 	    return (g->fitness = maxX);
 	    //return (g->fitness = maxY);
 	};
@@ -212,6 +209,8 @@ static void usage () {
 	   "  -s gens     snapshot top genomes every this many generations\n"
 	   "              (default 10, 0 disables)\n"
 	   "  -k count    genomes per snapshot (default 3)\n"
+	   "  -S seed     random seed, to repeat a run exactly (default: from\n"
+	   "              /dev/urandom; the seed used is printed and saved)\n"
 	   "  -r genome   replay a saved genome in a window instead of\n"
 	   "              running the GA\n");
 }
@@ -362,10 +361,9 @@ static void watchEvolution (const hopper &fit, Display &display,
 }
 
 int main (int argc, char **argv) {
-    //set random seed to come from udev random
-    dev_seed_rand();
-
     bool drawGen = false;
+    bool haveSeed = false;
+    uint64_t seed = 0;
     int displayEvery = 10;
 
     int maxGen = 1000;
@@ -376,7 +374,7 @@ int main (int argc, char **argv) {
     /* Process arguments */
     int opt;
     char *configFile = NULL;
-    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:d:S:")) != -1) {
 	switch(opt) {
 	    case 'V':
 		drawGen = true;
@@ -399,6 +397,10 @@ int main (int argc, char **argv) {
 	    case 'r':
 		replayFile = optarg;
 	    break;
+	    case 'S':
+		seed = strtoull(optarg, NULL, 10);
+		haveSeed = true;
+	    break;
 	    case 'd':
 		displayEvery = atoi(optarg);
 		drawGen = true;
@@ -413,6 +415,9 @@ int main (int argc, char **argv) {
 	}
     }
     
+    if (haveSeed) seed_rand(seed);
+    else seed = dev_seed_rand();
+
     if (!configFile) {
 	fprintf(stderr, "Must specify config file.\n");
 	usage();
@@ -467,6 +472,7 @@ int main (int argc, char **argv) {
     
     if (logOpt.outputDir.empty()) logOpt.outputDir = defaultRunDir(configFile);
     logOpt.configPath = configFile;
+    logOpt.seed = seed;
 
     GeneticAlgorithm GA(&P, &f);
     GA.setKeepTop(max(logOpt.snapshotTop, 1));
@@ -479,8 +485,9 @@ int main (int argc, char **argv) {
 	return 1;
     }
 
-    printf("Population %d, %d inputs, %d outputs.  Writing run to %s\n",
-	   P.popSize, P.nInput, P.nOutput, logOpt.outputDir.c_str());
+    printf("Population %d, %d inputs, %d outputs, seed %llu.  Writing run to %s\n",
+	   P.popSize, P.nInput, P.nOutput, (unsigned long long)seed,
+	   logOpt.outputDir.c_str());
 
     if (display) {
 	watchEvolution(fit, *display, GA, *log, maxGen, displayEvery);

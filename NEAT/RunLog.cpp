@@ -34,6 +34,8 @@ RunLog::RunLog (const Options &_opt) : opt(_opt), bestEver(-1e300)
 	      "best_energy\n";
     speciesCsv<<"generation,species_id,age,size,mean_fitness,max_fitness\n";
 
+    ofstream(dir / "seed.txt")<<opt.seed<<"\n";
+
     if (!opt.configPath.empty()) {
 	fs::copy_file(opt.configPath, dir / "config.cfg",
 		      fs::copy_options::overwrite_existing, ec);

@@ -53,8 +53,8 @@ struct Link {
     Link (int _inID = -1, Neuron* _in = NULL,
 	  int _outID = -1, Neuron* _out = NULL,
 	  int _innov = -1, double _w = 0, bool _enabled = false) :
-	  inID(_inID), outID(_outID), inNode(_in), outNode(_out),
-	  innov(_innov), weight(_w), enabled(_enabled) {}
+	  innov(_innov), inID(_inID), outID(_outID), inNode(_in),
+	  outNode(_out), weight(_w), enabled(_enabled) {}
 
     void copy (const Link &l, const double enableRate);
     void copy (const Link &l1, const Link &l2, const double enableRate);

@@ -480,7 +480,7 @@ double GeneticAlgorithm::nextGeneration() {
 
 void GeneticAlgorithm::printPopulation() const {
     cout<<"Population size: "<<population.size()<<endl;
-    for (int i = 0; i<population.size(); ++i) {
+    for (size_t i = 0; i<population.size(); ++i) {
 	cout<<"Member "<<i<<":"<<endl;
 	population[i]->printDescription("  ");
     }
