@@ -5,42 +5,39 @@
 #include <vector>
 #include <limits>
 #include <map>
-#include <libconfig.h++>
 
 #include "boxTypes.h"
-//#include "BoxScreen.h"
-//#include "World.h"
+#include "CreatureSpec.h"
 
 class World;
 class Creature;
 class Muscle;
-class BoxScreen;
-
-using namespace std;
+class Renderer;
 
 class Sensor;
 typedef std::shared_ptr<Sensor> SensorP;
-typedef vector<SensorP> sensorList;
+typedef std::vector<SensorP> sensorList;
 
 class Creature {
     public:
-    Creature (bool _useBias = true) : useBias(_useBias) { }
-
-    /* Create Creature's body and add it to the world */
-    int initFromFile(const libconfig::Config &config, World *w);
+    // Build the creature's bodies, joints, muscles and sensors in w.  A
+    // parsed spec is always valid, so this can't fail.
+    Creature (const CreatureSpec &spec, World &w);
 
     // Apply muscle forces for the coming step
     void update ();
     // Account the work muscles did over the step just taken (dt seconds)
     void afterStep (float dt);
 
-    void draw (BoxScreen *screen) const;
+    // Limbs, then muscles
+    void draw (Renderer &r) const;
 
     void reset ();
     void activate ();
 
+    // Network inputs: a bias of 1, then each sensor
     inline int numSensors() const {
-	return (sensors.size() + (useBias ? 1 : 0));
+	return (int)sensors.size() + 1;
     }
 
     void setInput(double *input) const;
@@ -54,6 +51,9 @@ class Creature {
     // True if body b (one of this creature's limbs) is in contact with
     // anything that isn't part of this creature, e.g. the ground
     bool touchesOutside(BodyId b) const;
+
+    // Limb bodies in spec order
+    const std::vector<BodyId> &bodies() const { return limbBodies; }
 
     // If we want to access some body parts by name
     bodyMap limbs;
@@ -70,7 +70,9 @@ class Creature {
 
     /* Sensors that translate input to the brain */
     sensorList sensors;
-    const bool useBias;
+
+    std::vector<BodyId> limbBodies;
+    std::vector<JointId> jointIds;
 };
 
 class Muscle {
@@ -109,10 +111,14 @@ class Muscle {
 
 	float maxPowerLimit () const { return maxPower; }
 
+	// Current control state (set by scaleStrength / scaleLength)
+	float stiffness () const { return k; }
+	float restLength () const { return eq; }
+
 	double positiveWork () const { return posWork; }
 	double negativeWork () const { return negWork; }
 
-	void draw (BoxScreen *screen) const;
+	void draw (Renderer &r) const;
 
 	void scaleLength (double sc);
 

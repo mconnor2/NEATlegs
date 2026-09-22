@@ -3,6 +3,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "check.h"
@@ -210,6 +211,56 @@ TEST(networkHiddenNodeSettles) {
     double x = -0.3;
     vector<double> out = runNet(g, {1.0, x}, 1, 3);
     CHECK_NEAR(out[0], sigmoid(0.5 + 2.0*sigmoid(x)), 1e-12);
+}
+
+// Networks keep their own copy of the structure: building and running
+// them must not change the genome
+TEST(networkLeavesGenomeUntouched) {
+    seed_rand(5);
+    ExpParameters P = params(3, 2);
+    P.addNodeMutationRate = 0.5;
+    InnovationStore IS(&P);
+    GenomeP g = grownGenome(&P, IS, 10);
+    string before = saved(g);
+    runNet(g, {1.0, 0.2, 0.4}, 2, 10);
+    CHECK(saved(g) == before);
+}
+
+// ...so one genome can be evaluated on several threads at once
+TEST(sameGenomeOnManyThreads) {
+    seed_rand(6);
+    ExpParameters P = params(3, 2);
+    P.addNodeMutationRate = 0.5;
+    P.addLinkMutationRate = 0.5;
+    InnovationStore IS(&P);
+    GenomeP g = grownGenome(&P, IS, 15);
+    vector<double> expected = runNet(g, {1.0, 0.3, -0.6}, 2, 50);
+
+    const int T = 8;
+    vector<vector<double>> got(T);
+    vector<thread> threads;
+    for (int t = 0; t < T; ++t)
+	threads.emplace_back([&, t]() {
+	    for (int rep = 0; rep < 20; ++rep)
+		got[t] = runNet(g, {1.0, 0.3, -0.6}, 2, 50);
+	});
+    for (auto &th : threads) th.join();
+    for (int t = 0; t < T; ++t) CHECK(got[t] == expected);
+}
+
+// A neuron nothing feeds (its only incoming link is disabled) used to make
+// the first run() loop forever waiting for it to activate
+TEST(unreachableNeuronDoesNotHang) {
+    ExpParameters P = params(2, 1);
+    GenomeP g = loadText("genome inputs 2 outputs 1 nodes 4 links 3\n"
+			 "link 0 0 2 0.5 1\n"
+			 "link 1 1 3 1.0 0\n"		// only way into neuron 3
+			 "link 2 3 2 2.0 1\n", &P);
+    CHECK(g != nullptr);
+    if (!g) return;
+    vector<double> out = runNet(g, {1.0, 0.5}, 1, 3);
+    // neuron 3 sits at sigmoid(0) = 0.5 once it's updated
+    CHECK_NEAR(out[0], sigmoid(0.5 + 2.0*0.5), 1e-12);
 }
 
 TEST(innovationsSharedWithinGeneration) {

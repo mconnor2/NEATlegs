@@ -39,21 +39,30 @@ target_link_libraries(display PUBLIC SDL3::SDL3 SDL3_ttf::SDL3_ttf)
 target_compile_definitions(display PRIVATE
     NEATLEGS_FONT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/ProggyClean.ttf")
 
-# Run statistics drawn over a Display (only needs NEAT/Stats.h)
+# Run statistics drawn on a Canvas (no SDL; only needs NEAT/Stats.h)
 add_library(statsview STATIC StatsOverlay.cpp)
-target_include_directories(statsview PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/NEAT)
-target_link_libraries(statsview PUBLIC display)
+target_include_directories(statsview PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+                                            ${CMAKE_CURRENT_SOURCE_DIR}/NEAT)
 
-# Box2D creature simulation
-add_library(physics STATIC World.cpp Creature.cpp BoxScreen.cpp)
+# Box2D creature simulation (no graphics: draws through Renderer)
+add_library(physics STATIC World.cpp Creature.cpp CreatureSpec.cpp)
 target_include_directories(physics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(physics PUBLIC box2d::box2d display PkgConfig::LIBCONFIGPP)
+target_link_libraries(physics PUBLIC box2d::box2d PkgConfig::LIBCONFIGPP)
+
+# Episodes: a creature in its world, controlled through sensors and
+# muscles, with end rules (no NEAT, no graphics)
+add_library(sim STATIC Simulation.cpp)
+target_link_libraries(sim PUBLIC physics)
+
+# Draws the physics onto a Canvas (no SDL)
+add_library(view STATIC BoxScreen.cpp)
+target_link_libraries(view PUBLIC physics)
 
 add_executable(legs legs.cpp)
-target_link_libraries(legs PRIVATE physics)
+target_link_libraries(legs PRIVATE physics view display)
 
 add_executable(hopper hopper.cpp)
-target_link_libraries(hopper PRIVATE physics neat statsview)
+target_link_libraries(hopper PRIVATE sim view neat statsview display)
 
 # NEAT-only demos
 add_executable(xorTest NEAT/xorTest.cpp)
@@ -63,7 +72,7 @@ add_executable(maxTest NEAT/maxTest.cpp)
 target_link_libraries(maxTest PRIVATE neat)
 
 add_executable(poleBalance NEAT/poleBalance.cpp)
-target_link_libraries(poleBalance PRIVATE neat statsview)
+target_link_libraries(poleBalance PRIVATE neat statsview display)
 
 # Tests, run with ctest
 enable_testing()
@@ -80,6 +89,15 @@ foreach(creature ${CREATURES})
     list(APPEND creatureConfigs ${CMAKE_CURRENT_SOURCE_DIR}/${creature}.cfg)
 endforeach()
 add_test(NAME creatureConfig COMMAND creatureConfig ${creatureConfigs})
+
+add_executable(simTests tests/simTests.cpp)
+target_link_libraries(simTests PRIVATE sim)
+add_test(NAME sim COMMAND simTests ${CMAKE_CURRENT_SOURCE_DIR}/kanga2.cfg)
+
+# Drawing, with recording Renderer/Canvas (no window, no SDL)
+add_executable(drawTests tests/drawTests.cpp)
+target_link_libraries(drawTests PRIVATE view statsview)
+add_test(NAME draw COMMAND drawTests)
 
 # Physics: muscles can't add more energy than their limits allow
 add_executable(muscleEnergy tests/muscleEnergy.cpp)

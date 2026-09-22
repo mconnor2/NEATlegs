@@ -97,9 +97,10 @@ Genome files are plain text: a header line followed by one line per link.
 
 The rest of the many (many) algorithm parameters are specified in the configuration file, along with the specification of the walker.
 
-The NEAT-only demos (xorTest, poleBalance [-V], maxTest) are built as well, and
-The tests (ctest) check the NEAT library, creature config parsing, muscle
-energy limits, and that a seeded run is fully repeatable.
+The NEAT-only demos (xorTest, poleBalance [-V], maxTest) are built as well.
+The tests (ctest) check the NEAT library, creature config parsing, episodes
+and their end rules, drawing, muscle energy limits, and that a seeded run is
+fully repeatable.
 
 Configuration File
 ------------------
