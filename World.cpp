@@ -69,6 +69,8 @@ void World::step () {
     for (auto &c : beings) c->update();
 
     b2World_Step(b2W, timeStep, subSteps);
+
+    for (auto &c : beings) c->afterStep(timeStep);
 }
 
 void World::draw (BoxScreen *screen) const {

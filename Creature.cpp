@@ -2,6 +2,8 @@
 #include "World.h"
 #include "BoxScreen.h"
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <stdlib.h>
@@ -70,6 +72,44 @@ class BodyAngleSensor : public Sensor {
     private:
 	const BodyId t;
 	const double minA, maxA;
+};
+
+//Rotation rate of a limb (rad/s, CCW positive)
+class AngularVelocitySensor : public Sensor {
+    public:
+	AngularVelocitySensor(BodyId _t, double _minW, double _maxW) :
+	    t(_t), minW(_minW), maxW(_maxW) { }
+	double read() {
+	    return limit_norm(b2Body_GetAngularVelocity(t), minW, maxW);
+	}
+    private:
+	const BodyId t;
+	const double minW, maxW;
+};
+
+//Velocity of a limb's centre of mass along x or y (m/s)
+class VelocitySensor : public Sensor {
+    public:
+	VelocitySensor(BodyId _t, bool _vertical, double _minV, double _maxV) :
+	    t(_t), vertical(_vertical), minV(_minV), maxV(_maxV) { }
+	double read() {
+	    Vec2 v = b2Body_GetLinearVelocity(t);
+	    return limit_norm(vertical ? v.y : v.x, minV, maxV);
+	}
+    private:
+	const BodyId t;
+	const bool vertical;
+	const double minV, maxV;
+};
+
+//1 while a limb touches anything outside the creature (the ground), else 0
+class ContactSensor : public Sensor {
+    public:
+	ContactSensor(const Creature *_c, BodyId _t) : c(_c), t(_t) { }
+	double read() { return c->touchesOutside(t) ? 1.0 : 0.0; }
+    private:
+	const Creature *c;
+	const BodyId t;
 };
 
 int readLimbs(Setting &limbConfig, bodyMap &limbs, bodyPosList &parts,
@@ -252,6 +292,9 @@ int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
     //  maxK = 10000.0;
     //  minEq = 1.5;
     //  maxEq = 4.5;
+    //  kd = 100.0;
+    //  maxForce = 30000.0;	optional, default unlimited
+    //  maxPower = 500.0;	optional, default unlimited
     int nMuscles = muscleConfig.getLength();
     for (int i = 0; i<nMuscles; ++i) {
 	try {
@@ -263,6 +306,18 @@ int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
 		  y1 = curMuscle["pos1"]["y"],
 		  x2 = curMuscle["pos2"]["x"],
 		  y2 = curMuscle["pos2"]["y"];
+	    float maxForce = Muscle::Unlimited, maxPower = Muscle::Unlimited;
+	    curMuscle.lookupValue("maxForce", maxForce);
+	    if (!curMuscle.lookupValue("maxPower", maxPower)) {
+		//Warn once per config, not once per creature built
+		static bool warned = false;
+		if (!warned) {
+		    cerr<<"Warning: muscle '"<<name<<"' has no maxPower, so a "
+			  "controller can pump unbounded energy into the "
+			  "creature"<<endl;
+		    warned = true;
+		}
+	    }
 	    MuscleP muscle(new Muscle(findPart(limbs, obj1, "limb"),
 				      Vec2{x1, y1},
 				      findPart(limbs, obj2, "limb"),
@@ -271,7 +326,8 @@ int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
 				      curMuscle["maxK"],
 				      curMuscle["minEq"],
 				      curMuscle["maxEq"],
-				      curMuscle["kd"]));
+				      curMuscle["kd"],
+				      maxForce, maxPower));
 	    muscles.push_back(muscle);
 	} catch (SettingTypeException &te) {
 	    cerr<<"Creature::readMuscles problem processing muscle "<<i<<endl;
@@ -328,13 +384,18 @@ int readShapes(Setting &shapeConfig, shapeMap &shapes, bodyMap &limbs)
 
 
 int readSensors (Setting &sensorConfig, sensorList &sensors, 
-		 bodyMap &limbs, jointMap &joints, shapeMap &shapes)
+		 bodyMap &limbs, jointMap &joints, shapeMap &shapes,
+		 const Creature *creature)
 { 
     //Sensors:
-    // type = {JointSensor, HeightSensor, BodyAngleSensor
-    // target
+    // type = {JointSensor, HeightSensor, BodyAngleSensor,
+    //         AngularVelocitySensor, VelocitySensor, ContactSensor}
+    // target (joint, shape or limb name)
     //   for HeightSensor: minH, maxH
     //   for BodyAngleSensor: minA, maxA
+    //   for AngularVelocitySensor: minW, maxW (rad/s)
+    //   for VelocitySensor: axis ("x" or "y"), minV, maxV (m/s)
+    //   ContactSensor reads 1 while the limb touches the ground
     int nSensors = sensorConfig.getLength();
     for (int i = 0; i<nSensors; ++i) {
 	try {
@@ -360,6 +421,20 @@ int readSensors (Setting &sensorConfig, sensorList &sensors,
 								      "limb"),
 					      minA, maxA));
 		sensors.push_back(s);
+	    } else if (type == "AngularVelocitySensor") {
+		double minW = curSensor["minW"], maxW = curSensor["maxW"];
+		sensors.push_back(SensorP(new AngularVelocitySensor(
+		    findPart(limbs, target, "limb"), minW, maxW)));
+	    } else if (type == "VelocitySensor") {
+		string axis = curSensor["axis"];
+		if (axis != "x" && axis != "y")
+		    throw runtime_error("VelocitySensor axis must be x or y");
+		double minV = curSensor["minV"], maxV = curSensor["maxV"];
+		sensors.push_back(SensorP(new VelocitySensor(
+		    findPart(limbs, target, "limb"), axis == "y", minV, maxV)));
+	    } else if (type == "ContactSensor") {
+		sensors.push_back(SensorP(new ContactSensor(
+		    creature, findPart(limbs, target, "limb"))));
 	    } else {
 		cerr<<"Creature::readSensors sensor "<<i
 		    <<", unknown type: "<<type<<endl;
@@ -436,7 +511,7 @@ int Creature::initFromFile (const Config &config, World *w) {
     
     if (config.exists("sensors") &&
 	!readSensors(config.lookup("sensors"), sensors, 
-		     limbs, joints, shapes)) 
+		     limbs, joints, shapes, this)) 
     {
 	cerr<<"Creature::initFromFile problem reading sensors"<<endl;
 	return 0;
@@ -499,6 +574,39 @@ void Creature::update () {
     }
 }
 
+void Creature::afterStep (float dt) {
+    for (auto &m : muscles) m->afterStep(dt);
+}
+
+bool Creature::touchesOutside (BodyId b) const {
+    int cap = b2Body_GetContactCapacity(b);
+    if (cap == 0) return false;
+    std::vector<b2ContactData> contacts(cap);
+    int n = b2Body_GetContactData(b, contacts.data(), cap);
+    for (int i = 0; i < n; ++i) {
+	if (contacts[i].manifold.pointCount == 0) continue;
+	BodyId other = b2Shape_GetBody(contacts[i].shapeIdA);
+	if (B2_ID_EQUALS(other, b)) other = b2Shape_GetBody(contacts[i].shapeIdB);
+	bool own = false;
+	for (const BodyPos &p : parts)
+	    if (B2_ID_EQUALS(p.b, other)) { own = true; break; }
+	if (!own) return true;
+    }
+    return false;
+}
+
+double Creature::positiveWork () const {
+    double w = 0;
+    for (auto &m : muscles) w += m->positiveWork();
+    return w;
+}
+
+double Creature::negativeWork () const {
+    double w = 0;
+    for (auto &m : muscles) w += m->negativeWork();
+    return w;
+}
+
 void Creature::setInput(double *input) const {
     if (useBias) {
 	*input++ = 1.0;
@@ -511,12 +619,28 @@ void Creature::setInput(double *input) const {
 }
 
 
+float Muscle::currentLength () const {
+    return b2Length(b2Body_GetWorldPoint(body1, end1L) -
+		    b2Body_GetWorldPoint(body2, end2L));
+}
+
+void Muscle::reset () {
+    k = (minK + maxK) / 2.;
+    eq = currentLength();
+    if (eq < minEq) eq = minEq;
+    if (eq > maxEq) eq = maxEq;
+    appliedForce = {0, 0};
+    torque1 = torque2 = 0;
+    posWork = negWork = 0;
+    reserve = maxPower * ReserveSeconds;
+}
+
 /**
  * Find and apply the force between the two bodies muscle is attached to.
  *
- * returns the magnitude of this force.
+ * returns the force (positive pushes apart, negative pulls together).
  */
-float Muscle::update () const {
+float Muscle::update () {
     Vec2 a1W = b2Body_GetWorldPoint(body1, end1L);
     Vec2 a2W = b2Body_GetWorldPoint(body2, end2L);
 
@@ -533,9 +657,28 @@ float Muscle::update () const {
     // find relative velocity of two points
     Vec2 vel = b2Body_GetLocalPointVelocity(body1, end1L) - 
 	       b2Body_GetLocalPointVelocity(body2, end2L);
-    force -= kd * b2Dot(vel, diff);
+    float lengthening = b2Dot(vel, diff);
+    force -= kd * lengthening;
+
+    //Out of energy: slack, only the (dissipative) damping remains
+    if (reserve <= 0) force = -kd * lengthening;
+
+    //Muscle limits.  Power delivered to the bodies is force times the
+    // rate the attachment points separate; only positive power (energy
+    // going in) is limited.
+    if (force > maxForce) force = maxForce;
+    if (force < -maxForce) force = -maxForce;
+    if (force * lengthening > maxPower) force = maxPower / lengthening;
 
     diff *= force;
+
+    com1Start = b2Body_GetWorldCenterOfMass(body1);
+    com2Start = b2Body_GetWorldCenterOfMass(body2);
+    rot1Start = b2Body_GetRotation(body1);
+    rot2Start = b2Body_GetRotation(body2);
+    appliedForce = diff;
+    torque1 = b2Cross(a1W - com1Start, diff);
+    torque2 = b2Cross(a2W - com2Start, -diff);
 
     //Now apply force to body1
     b2Body_ApplyForce(body1, diff, a1W, true);
@@ -545,6 +688,26 @@ float Muscle::update () const {
     b2Body_ApplyForce(body2, diff, a2W, true);
 
     return force;
+}
+
+/**
+ * Work done over the step by the constant force and torque applied to
+ * each body (positive = energy into the bodies).
+ */
+void Muscle::afterStep (float dt) {
+    Vec2 d1 = b2Body_GetWorldCenterOfMass(body1) - com1Start,
+	 d2 = b2Body_GetWorldCenterOfMass(body2) - com2Start;
+    float th1 = b2RelativeAngle(b2Body_GetRotation(body1), rot1Start),
+	  th2 = b2RelativeAngle(b2Body_GetRotation(body2), rot2Start);
+    double w = b2Dot(appliedForce, d1) + torque1 * th1
+	     - b2Dot(appliedForce, d2) + torque2 * th2;
+    if (w > 0) posWork += w;
+    else negWork += w;
+
+    if (!std::isinf(maxPower)) {
+	reserve += maxPower * dt - (w > 0 ? w : 0);
+	reserve = std::min(reserve, maxPower * ReserveSeconds);
+    }
 }
 
 void Muscle::draw (BoxScreen *screen) const {

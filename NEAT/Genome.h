@@ -42,6 +42,10 @@ class Genome {
 	// fitness function records it (used for steps/sec statistics)
 	int steps = 0;
 
+	//Energy the controller spent (e.g. positive muscle work, in joules)
+	// during the objective, if the fitness function records it
+	double energy = 0;
+
 	// Independent deep copy (safe to evaluate on another thread while
 	// the original is in use)
 	GenomeP clone() const;

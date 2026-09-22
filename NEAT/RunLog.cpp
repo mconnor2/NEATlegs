@@ -30,7 +30,8 @@ RunLog::RunLog (const Options &_opt) : opt(_opt), bestEver(-1e300)
     statsCsv<<"generation,population,species,max_fitness,mean_fitness,"
 	      "min_fitness,stdev_fitness,diversity,compat_thresh,"
 	      "mean_hidden_nodes,mean_enabled_links,best_hidden_nodes,"
-	      "best_enabled_links,eval_seconds,steps_per_sec\n";
+	      "best_enabled_links,eval_seconds,steps_per_sec,mean_energy,"
+	      "best_energy\n";
     speciesCsv<<"generation,species_id,age,size,mean_fitness,max_fitness\n";
 
     if (!opt.configPath.empty()) {
@@ -42,9 +43,9 @@ RunLog::RunLog (const Options &_opt) : opt(_opt), bestEver(-1e300)
 }
 
 void RunLog::printHeader () {
-    printf("%6s %5s %4s %11s %11s %9s %7s %6s %6s  %s\n",
+    printf("%6s %5s %4s %11s %11s %9s %7s %6s %6s %9s  %s\n",
 	   "gen", "pop", "spc", "max", "mean", "stdev", "divers",
-	   "hidden", "links", "notes");
+	   "hidden", "links", "energy", "notes");
 }
 
 void RunLog::record (const GeneticAlgorithm &GA) {
@@ -64,7 +65,8 @@ void RunLog::record (const GeneticAlgorithm &GA) {
 		<<st.stdevFitness<<","<<st.meanCompat<<","<<st.compatThresh<<","
 		<<st.meanHiddenNodes<<","<<st.meanEnabledLinks<<","
 		<<st.bestHiddenNodes<<","<<st.bestEnabledLinks<<","
-		<<st.evalSeconds<<","<<st.stepsPerSec<<"\n";
+		<<st.evalSeconds<<","<<st.stepsPerSec<<","<<st.meanEnergy<<","
+		<<st.bestEnergy<<"\n";
 	statsCsv.flush();
 
 	for (const SpecieStats &ss : st.species) {
@@ -96,10 +98,11 @@ void RunLog::record (const GeneticAlgorithm &GA) {
     }
 
     if (lines++ % 25 == 0) printHeader();
-    printf("%6d %5d %4d %11.4f %11.4f %9.4f %7.2f %6.1f %6.1f  %s\n",
+    printf("%6d %5d %4d %11.4f %11.4f %9.4f %7.2f %6.1f %6.1f %9.4g  %s\n",
 	   st.generation, st.populationSize, st.nSpecies, st.maxFitness,
 	   st.meanFitness, st.stdevFitness, st.meanCompat,
-	   st.meanHiddenNodes, st.meanEnabledLinks, notes.c_str());
+	   st.meanHiddenNodes, st.meanEnabledLinks, st.bestEnergy,
+	   notes.c_str());
     fflush(stdout);
 }
 

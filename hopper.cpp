@@ -6,6 +6,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 #include <atomic>
 #include <functional>
 #include <mutex>
@@ -46,7 +47,19 @@ class hopper {
 	hopper(const int max_steps, const libconfig::Config *_config, 
 	       const ExpParameters *_P) :
 	    MAX_STEPS(max_steps), config(_config), P(_P) 
-	{ }
+	{
+	    //Run ends when the head drops below this (config global.headFloor)
+	    headFloor = 0.75;
+	    config->lookupValue("global.headFloor", headFloor);
+
+	    //Optional list of limbs allowed to touch the ground; the run ends
+	    // (as a fall) when any other limb does (global.groundLimbs)
+	    if (config->exists("global.groundLimbs")) {
+		const libconfig::Setting &gl = config->lookup("global.groundLimbs");
+		for (int i = 0; i < gl.getLength(); ++i)
+		    groundLimbs.push_back(gl[i].c_str());
+	    }
+	}
 
 	// With a display, the run is drawn in real time and overlay (if set)
 	// is called each frame to draw on top of the simulation.
@@ -85,6 +98,14 @@ class hopper {
 		exit(1);
 	    }
 	    const shapePos headPos = C->shapes["head"];
+
+	    vector<BodyId> mustNotTouch;
+	    if (!groundLimbs.empty()) {
+		for (auto &kv : C->limbs)
+		    if (find(groundLimbs.begin(), groundLimbs.end(), kv.first) ==
+			groundLimbs.end())
+			mustNotTouch.push_back(kv.second);
+	    }
 	   
 	    C->reset();
 /*	    {
@@ -144,7 +165,11 @@ class hopper {
 		/*--- Check for failure.  If so, return steps ---*/
 		// For hopper, failure is if creature's head drops below
 		// some level.
-		if (headV.y < HEAD_FLOOR) break;
+		if (headV.y < headFloor) break;
+		bool fell = false;
+		for (BodyId b : mustNotTouch)
+		    if (C->touchesOutside(b)) { fell = true; break; }
+		if (fell) break;
 		score += headV.y*headV.y;
 		if (headV.x > maxX) maxX = headV.x;
 		if (headV.y > maxY) maxY = headV.y;
@@ -157,6 +182,7 @@ class hopper {
 //	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
   
 	    g->steps = steps;
+	    g->energy = C->positiveWork();
 
 	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
 	    //return (g->fitness = score/MAX_STEPS);
@@ -168,7 +194,8 @@ class hopper {
 	const int MAX_STEPS;
 	//const bool random_start;
 
-	static constexpr double HEAD_FLOOR = 0.75;
+	double headFloor;
+	vector<string> groundLimbs;
 
 	const libconfig::Config *config;
 	const ExpParameters *P;
