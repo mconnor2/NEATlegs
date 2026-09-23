@@ -81,7 +81,7 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 
 **Creature scale**: all configs are roughly human-sized (head at about 2 m, hopper and walker masses 0.3–0.6 kg), so muscle, force and power numbers compare across models, and everything fits the 640×480 view at 100 px/m. `hopper.cfg` was Froude-scaled down from an original 17 m design (see its header comment). The default `headFloor` (0.75 m) suits all of them.
 
-**Objective**: plain fitness is the head's max x, so a creature can gain distance by diving forward and falling at the end of a run, or by scooting along on a tail or torso. `groundLimbs` closes the scooting route (kanga2 uses it). Early in a run diving dominates: in kanga2's first generations the mean creature falls within about 50 steps, and the best covers ~2 m by falling forward. `survivalExponent` (with a small `fitnessBase`, so balancing alone earns something) makes an early fall worth little. `energyBudget` ends a run once its muscle work is spent, so fitness becomes distance per budget. A lunge at the very end of a full-length run still pays about 2 m.
+**Objective**: plain fitness is the head's max x, so a creature can gain distance by diving forward and falling at the end of a run, or by scooting along on a tail or torso. `groundLimbs` closes the scooting route (kanga2 uses it). Early in a run diving dominates: in kanga2's first generations the mean creature falls within about 50 steps, and the best covers ~2 m by falling forward. `survivalExponent` (with a small `fitnessBase`, so balancing alone earns something) makes an early fall worth little. `energyBudget` ends a run once its muscle work is spent, so fitness becomes distance per budget. kanga2 uses base 0.1, exponent 0.5 and a 60 J budget. A lunge at the very end of a full-length run still pays about 2 m.
 
 **Evolving kanga2** (5–10 runs per variant, 1000 generations; the spread between runs is large):
 - without `groundLimbs`, most runs scoot on the tail
@@ -90,5 +90,8 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 - population 400 helped about as much, at twice the cost per generation
 - Muscles must keep their line of action clear of the joint over its whole range. A straight spring on the outside of a bend (like a quad without a kneecap) crosses the joint, and flips between extending and flexing it. The generator sweeps each muscle and rejects that, and takes rest-length ranges from the swept lengths.
 - With the knee muscle behind the knee, nearly every run hops instead of shuffling. Early falls (head below `headFloor` at about 200–450 steps) still dominate the results, and a second hip muscle didn't help.
+- Objective (8 seeds per setting, 60 J budget): plain fitness gives a median of 7.4 m, and 6 of 8 best genomes fall. Survival shaping keeps the population up (mean survival ~550 steps instead of ~90), but with base 0.5 and exponent 1, half the runs settle on a 3–6 m shuffle (median 9.1 m within 60 J). Exponent 0.5 with base 0.1–0.25 gives a median of about 24 m, with 1–2 of 8 runs stuck. Base 0 weakens survival (the population falls more, median ~15 m).
+- The budget binds only once a gait covers ~15 m or more; for seeds where it did, it gave clearly more distance per joule than survival shaping alone (e.g. 29 m instead of 20 m on 60 J).
+- Max fitness sometimes drops between generations (the champion is lost, by up to 5 m), although fitness is deterministic.
 
 `legs.notes` holds the original design notes.

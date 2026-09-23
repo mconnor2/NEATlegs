@@ -40,6 +40,12 @@ P = dict(
     groundLimbs=['foot'],       # any other limb touching the ground = fall
     rateSensors=True,           # torso spin, torso velocity, foot contact
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
+    # Objective: (distance + fitnessBase) * survival^survivalExponent, and
+    # the run ends once muscle work reaches energyBudget (J).  Picked from
+    # a grid over 8 seeds (base 0..0.5, exponent 0.5/1): a small base and
+    # exponent 0.5 stop the early dive without trapping runs in a shuffle.
+    # The budget only binds once a gait covers ~15 m or more.
+    fitnessBase=0.1, survivalExponent=0.5, energyBudget=60.0,
 )
 if len(sys.argv) > 2:
     P.update(json.loads(sys.argv[2]))
@@ -187,6 +193,13 @@ L.append('''global: {
     //Run ends when the head drops below this height (m)
     headFloor = %s;
 %s
+    //Fitness = (max head x + fitnessBase) * (fraction of the run survived)
+    // ^ survivalExponent.  The run also ends once positive muscle work
+    // reaches energyBudget (J), which counts as surviving.
+    fitnessBase = %s;
+    survivalExponent = %s;
+    energyBudget = %s;
+
     //Mating probabilities:
     inheritAllLinks = false;
     inheritDominant = 0.9;
@@ -219,6 +232,7 @@ L.append('''global: {
 };
 ''' % (P['popSize'], f(P['headFloor']),
        ('' if not P['groundLimbs'] else '\n    //Only these limbs may touch the ground; any other touching ends the run\n    groundLimbs = (%s);\n' % ', '.join('"%s"' % g for g in P['groundLimbs'])),
+       f(P['fitnessBase']), f(P['survivalExponent']), f(P['energyBudget']),
        f(P['addLink']), f(P['addNode']),
        (10 if P['rateSensors'] else 6)+1, 2*len(mus)))
 
