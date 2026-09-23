@@ -38,6 +38,11 @@ struct GenerationStats {
     //Energy spent per evaluation (Genome::energy); 0 if not recorded
     double meanEnergy = 0, bestEnergy = 0;
 
+    //Genome::steps and Genome::distance; 0 if not recorded
+    double meanSteps = 0, meanDistance = 0;
+    int bestSteps = 0;
+    double bestDistance = 0;
+
     //Evaluation cost.  stepsPerSec is 0 if the fitness function doesn't
     // record Genome::steps.
     double evalSeconds = 0;

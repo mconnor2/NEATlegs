@@ -1,6 +1,8 @@
 # End-to-end determinism: two hopper runs with the same seed must produce
 # identical genomes and species statistics, even though fitness is
 # evaluated on many threads.  (stats.csv is skipped: it holds timings.)
+# Re-evaluating the saved best genome (hopper -e) must give its recorded
+# fitness exactly.
 #
 # cmake -DHOPPER=path -DCONFIG=file.cfg -DOUT=dir [-DGENS=n] -P determinism.cmake
 
@@ -35,3 +37,18 @@ foreach(f ${files})
     endif()
 endforeach()
 message(STATUS "${nFiles} files identical across two runs")
+
+file(STRINGS "${OUT}/a/best.genome" header REGEX "^# fitness ")
+string(REPLACE "# fitness " "" recorded "${header}")
+execute_process(
+    COMMAND "${HOPPER}" -C "${CONFIG}" -e "${OUT}/a/best.genome"
+    OUTPUT_VARIABLE evaluated
+    RESULT_VARIABLE result)
+if(NOT result EQUAL 0 OR NOT evaluated MATCHES "^fitness ([^ ]+) ")
+    message(FATAL_ERROR "hopper -e failed: ${result} ${evaluated}")
+endif()
+if(NOT CMAKE_MATCH_1 STREQUAL recorded)
+    message(FATAL_ERROR "best.genome recorded fitness ${recorded}, "
+                        "re-evaluated ${CMAKE_MATCH_1}")
+endif()
+message(STATUS "best genome re-evaluates to its fitness ${recorded}")

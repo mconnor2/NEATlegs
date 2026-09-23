@@ -31,17 +31,17 @@ Executables `legs`, `hopper`, `xorTest`, `maxTest`, `poleBalance`; tests `neatTe
 `(cd build && ctest)` runs everything in `tests/` (about half a second; `ctest -R <name>` for one, `--output-on-failure` for details). Tests are plain executables using the `TEST`/`CHECK` macros in `tests/check.h`; no framework:
 - `neat` (`neatTests.cpp`): genome save/load and clone round trips, `compat` properties, mating invariants (innovation numbers sorted and unique, dominant parent's genes kept), networks against hand calculations, innovation sharing, seeded RNG, and a seeded GA giving the same history twice in one process.
 - `creatureConfig`: `parseCreatureSpec` resolves names to indices and applies defaults; unknown names, bad types, duplicate names and missing fields throw a message naming the entry; built creatures match their spec; the shipped configs parse and build. `tests/testCreature.h` holds the small two-limb creature the physics tests share.
-- `sim` (`simTests.cpp`): each episode end rule (max steps, head below floor, forbidden limb contact, stopped by the frame callback); outputs reaching the right muscles; the frame callback not changing results; option parsing and validation; determinism; 8 threads sharing one spec getting the single-threaded result.
+- `sim` (`simTests.cpp`): each episode end rule (max steps, head below floor, forbidden limb contact, energy budget spent, stopped by the frame callback); survival and fitness shaping (defaults give plain `maxHeadX` bit for bit); outputs reaching the right muscles; the frame callback not changing results; option parsing and validation; determinism; 8 threads sharing one spec getting the single-threaded result.
 - `draw` (`drawTests.cpp`): recording `Renderer`/`Canvas` check what the world draws, `BoxScreen`'s world-to-pixel mapping, camera and grid, and the stats overlay. No window or SDL needed.
 - `muscleEnergy_<creature>`: each creature is dropped into free fall with its muscles driven adversarially. The centre of mass must stay in free fall, internal kinetic energy must never exceed the measured muscle work, and positive work must stay within the `maxPower` budget.
-- `determinism` (`determinism.cmake`): two `hopper -S` runs of kanga2 must write identical genomes, snapshots and `species.csv`. That covers the GA, worker threads and physics together.
+- `determinism` (`determinism.cmake`): two `hopper -S` runs of kanga2 must write identical genomes, snapshots and `species.csv`, and `hopper -e` on the saved best genome must give its recorded fitness exactly. That covers the GA, worker threads and physics together.
 
 Randomness: `seed_rand(seed)` / `dev_seed_rand()` (which returns the seed it chose) in `NEAT/random.h`. `hopper -S <seed>` repeats a run exactly; the seed is printed and saved as `seed.txt` in the run directory. Only draws on the seeding thread are reproducible, so fitness functions that use random numbers on worker threads (`poleBalance`'s random start) aren't.
 
 Other sanity checks:
 - `./build/xorTest`, `./build/poleBalance` — GA works (poleBalance reaches fitness ~1.0)
 - `./build/hopper -C walker.cfg -N 40 -o /tmp/run` — headless GA run on a creature (writes stats CSVs and genome snapshots to the run dir; defaults to `runs/<config>-<time>/`, which is gitignored)
-- `./build/hopper -C <run>/config.cfg -r <run>/best.genome` — replay a saved genome (should reproduce its recorded fitness exactly)
+- `./build/hopper -C <run>/config.cfg -r <run>/best.genome` — replay a saved genome (should reproduce its recorded fitness exactly); `-e` instead of `-r` evaluates it once headless and prints fitness, distance, steps, energy and end reason
 
 Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To render headlessly use `SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software`.
 
@@ -65,22 +65,23 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 
 **Simulation (`Simulation.*`)** — `Simulation(spec, EpisodeOptions)` is one creature in its own world:
 - `readSensors`/`applyOutputs` (two outputs per muscle: strength then length) and `step(afterPhysics)`
-- end rules: max steps, head below `headFloor`, a limb outside `groundLimbs` touching the ground, or `stop()`
+- end rules: max steps, head below `headFloor`, a limb outside `groundLimbs` touching the ground, positive work reaching `energyBudget` (0 = none; the step that reaches it counts, like max steps), or `stop()`
 - `runEpisode(spec, options, controller, frame)` runs one from the start pose. The frame callback runs after physics and before the end rules, and can stop the episode.
-- `EpisodeResult` holds steps, max head x/y (the ending step doesn't count), energy and the end reason. `episodeOptionsFromConfig` reads `global.headFloor`/`groundLimbs`.
+- `EpisodeResult` holds steps, max head x/y (the ending step doesn't count), energy and the end reason. `episodeOptionsFromConfig` reads `global.headFloor`/`groundLimbs`/`energyBudget`.
+- `episodeFitness` = (`maxHeadX` + `fitnessBase`) × survival^`survivalExponent`, from `FitnessOptions` (`fitnessOptionsFromConfig`). Survival is steps / maxSteps, but 1 when the episode ended by max steps or energy spent, so only falls and forbidden contacts are penalised. Unset options give plain `maxHeadX`, so existing configs reproduce their old runs exactly.
 
 **`hopper.cpp`** is the GA driver:
 - It parses the spec and episode options once and validates them by constructing a `Simulation`.
-- Its fitness functor wraps a `Network` as the `Controller`, calls `runEpisode`, and sets fitness = `maxHeadX`.
+- Its fitness functor wraps a `Network` as the `Controller`, calls `runEpisode`, and sets fitness with `episodeFitness`. It also stores `maxHeadX` in `Genome::distance`, which goes into the `mean_distance`/`best_distance` stats next to `mean_steps`/`best_steps`, because fitness is no longer plain distance.
 - With a display, the frame callback draws and polls the window.
 - `nInput`/`nOutput` come from the spec (sensors + bias, 2 × muscles), overriding `global`.
 - The creature must define a shape named `"head"`.
 
-**Config sections**: `global` (NEAT params, plus optional `headFloor` and `groundLimbs`, both read by `hopper.cpp`), `limbs`, `joints` (revolute only), `muscles`, `shapes` (named points on limbs), `sensors` (JointSensor, HeightSensor, BodyAngleSensor, AngularVelocitySensor, VelocitySensor, ContactSensor). `groundLimbs` lists the limbs allowed to touch the ground; any other limb touching ends the run, via `Creature::touchesOutside`. `kanga2.cfg` is generated by `tools/gen_kanga2.py`: edit the parameters there and regenerate, rather than editing the cfg. Joint angles start at 0 in the start pose (the reference angle is taken at creation), so limits are relative to the start pose. Shape friction defaults to 0.2 (Box2D 2.x default the configs were tuned for). `BodyAngleSensor` sees angles in [-π, π] under Box2D 3 (was unbounded in 2.x). `hopper.cfg` and `walker.cfg` still use minA = 0, maxA = 2π, so any forward lean (a negative angle) reads as 0.
+**Config sections**: `global` (NEAT params, plus optional `headFloor`, `groundLimbs`, `energyBudget`, `fitnessBase` and `survivalExponent`, read by `hopper.cpp`), `limbs`, `joints` (revolute only), `muscles`, `shapes` (named points on limbs), `sensors` (JointSensor, HeightSensor, BodyAngleSensor, AngularVelocitySensor, VelocitySensor, ContactSensor). `groundLimbs` lists the limbs allowed to touch the ground; any other limb touching ends the run, via `Creature::touchesOutside`. `kanga2.cfg` is generated by `tools/gen_kanga2.py`: edit the parameters there and regenerate, rather than editing the cfg. Joint angles start at 0 in the start pose (the reference angle is taken at creation), so limits are relative to the start pose. Shape friction defaults to 0.2 (Box2D 2.x default the configs were tuned for). `BodyAngleSensor` sees angles in [-π, π] under Box2D 3 (was unbounded in 2.x). `hopper.cfg` and `walker.cfg` still use minA = 0, maxA = 2π, so any forward lean (a negative angle) reads as 0.
 
 **Creature scale**: all configs are roughly human-sized (head at about 2 m, hopper and walker masses 0.3–0.6 kg), so muscle, force and power numbers compare across models, and everything fits the 640×480 view at 100 px/m. `hopper.cfg` was Froude-scaled down from an original 17 m design (see its header comment). The default `headFloor` (0.75 m) suits all of them.
 
-**Known objective issue**: fitness is the head's max x, so a creature can gain distance by diving forward and falling at the end of a run, or by scooting along on a tail or torso. `groundLimbs` closes the scooting route (kanga2 uses it). Energy isn't in the fitness yet; it's only tracked.
+**Objective**: plain fitness is the head's max x, so a creature can gain distance by diving forward and falling at the end of a run, or by scooting along on a tail or torso. `groundLimbs` closes the scooting route (kanga2 uses it). Early in a run diving dominates: in kanga2's first generations the mean creature falls within about 50 steps, and the best covers ~2 m by falling forward. `survivalExponent` (with a small `fitnessBase`, so balancing alone earns something) makes an early fall worth little. `energyBudget` ends a run once its muscle work is spent, so fitness becomes distance per budget. A lunge at the very end of a full-length run still pays about 2 m.
 
 **Evolving kanga2** (5–10 runs per variant, 1000 generations; the spread between runs is large):
 - without `groundLimbs`, most runs scoot on the tail

@@ -46,6 +46,10 @@ class Genome {
 	// during the objective, if the fitness function records it
 	double energy = 0;
 
+	//Task score before shaping into fitness (e.g. distance travelled),
+	// if the fitness function records it
+	double distance = 0;
+
 	// Independent deep copy (safe to evaluate on another thread while
 	// the original is in use)
 	GenomeP clone() const;
