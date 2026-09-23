@@ -18,6 +18,7 @@
 #include <libconfig.h++>
 
 #include "Creature.h"
+#include "CreatureSpec.h"
 #include "World.h"
 
 using namespace std;
@@ -50,8 +51,7 @@ static bool runPattern (const libconfig::Config &config, const char *label,
 			const function<void(int step, int m, Muscle &)> &drive)
 {
     World w(Hz);
-    CreatureP C = w.createCreature(config);
-    if (!C) return false;
+    CreatureP C = w.createCreature(parseCreatureSpec(config));
 
     //Lift everything far above the ground
     vector<Body> bodies;

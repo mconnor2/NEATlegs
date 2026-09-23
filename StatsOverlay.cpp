@@ -5,7 +5,7 @@
 
 using namespace std;
 
-static const Color White = 0xFFFFFFFF, Grey = 0x808080FF,
+static const Color Grey = 0x808080FF,
 		   MaxColor = 0x40FF40FF, MeanColor = 0xFFD040FF;
 
 static string fmt (const char *f, double a, double b = 0, double c = 0) {
@@ -14,7 +14,7 @@ static string fmt (const char *f, double a, double b = 0, double c = 0) {
     return buf;
 }
 
-static void drawChart (Display &d, const vector<GenerationStats> &h,
+static void drawChart (Canvas &d, const vector<GenerationStats> &h,
 		       float x, float y, float w, float ht)
 {
     //Frame
@@ -51,7 +51,7 @@ static void drawChart (Display &d, const vector<GenerationStats> &h,
     d.text(x + w - 30, y + ht + 3, "mean", MeanColor);
 }
 
-void drawStatsOverlay (Display &d, const string &title,
+void drawStatsOverlay (Canvas &d, const string &title,
 		       const vector<GenerationStats> &history)
 {
     const float lineH = 14;

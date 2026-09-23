@@ -14,6 +14,7 @@
 #include "BoxScreen.h"
 #include "World.h"
 #include "Creature.h"
+#include "CreatureSpec.h"
 
 using namespace std;
 
@@ -32,7 +33,7 @@ void runSimulation (Display *display, World *world, CreatureP &C) {
 	display->clear();
 	
 	//Draw and update the world
-	world->draw(&s);
+	world->draw(s);
 	world->step();
 
 	//Space resets the creature, anything else exits
@@ -99,10 +100,12 @@ int main (int argc, char **argv) {
     }
     config.setAutoConvert(true);
 
-    CreatureP walker = w.createCreature(config);
-    if (!walker) {
-	fprintf(stderr, "Couldn't init creature from file, exiting.\n");
-	exit(1);
+    CreatureP walker;
+    try {
+	walker = w.createCreature(parseCreatureSpec(config));
+    } catch (exception &e) {
+	cerr<<configFile<<": "<<e.what()<<endl;
+	return 1;
     }
 
     try {

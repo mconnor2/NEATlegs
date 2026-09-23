@@ -47,7 +47,7 @@ Building
 
     cmake -S . -B build
     cmake --build build -j
-    (cd build && ctest)      # physics checks
+    (cd build && ctest)      # tests
 
 Running
 -------
@@ -70,6 +70,8 @@ hopper runs the actual genetic algorithm, optionally displaying fittest member e
 * -o output directory for the run (default runs/<config>-<timestamp>)
 * -s snapshot the top genomes every this many generations (default 10, 0 off)
 * -k number of genomes per snapshot (default 3)
+* -S random seed; the same seed repeats a run exactly.  Without it a seed is
+  chosen, printed and saved to the run directory as seed.txt
 * -r replay a saved genome in a window instead of running the GA
 
 For example:
@@ -95,8 +97,10 @@ Genome files are plain text: a header line followed by one line per link.
 
 The rest of the many (many) algorithm parameters are specified in the configuration file, along with the specification of the walker.
 
-The NEAT-only demos (xorTest, poleBalance [-V], maxTest) are built as well, and
-testMult checks that repeated simulations of one genome are deterministic.
+The NEAT-only demos (xorTest, poleBalance [-V], maxTest) are built as well.
+The tests (ctest) check the NEAT library, creature config parsing, episodes
+and their end rules, drawing, muscle energy limits, and that a seeded run is
+fully repeatable.
 
 Configuration File
 ------------------

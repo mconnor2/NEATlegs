@@ -3,13 +3,14 @@
 
 #include <box2d/box2d.h>
 #include <vector>
-#include <libconfig.h++>
 
 #include "boxTypes.h"
 
-using namespace std;
+struct CreatureSpec;
+class Renderer;
 
-class BoxScreen;
+// Draw a body's shapes (boxes as polygons, balls as circles)
+void drawBody (BodyId b, Renderer &r);
 
 /**
  * World management class.  Owns the Box2D world, handles overall
@@ -26,9 +27,12 @@ class World {
 
 	void step ();
 
-	void draw (BoxScreen *screen) const;
+	// Ground, then each creature
+	void draw (Renderer &r) const;
 
-	CreatureP createCreature (const libconfig::Config &creatureConfig);
+	// Build a creature from a parsed spec (thread safe: the spec is
+	// only read)
+	CreatureP createCreature (const CreatureSpec &spec);
 
 	b2WorldId id () const { return b2W; }
 

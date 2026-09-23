@@ -1,6 +1,7 @@
 #ifndef _NEAT_RUNLOG_H
 #define _NEAT_RUNLOG_H
 
+#include <cstdint>
 #include <fstream>
 #include <string>
 
@@ -19,6 +20,7 @@ class GeneticAlgorithm;
  *      snapshots/      top genomes every snapshotEvery generations and at
  *                      the end, as genNNNNN_rankK.genome
  *      config.cfg      copy of the experiment config, if given
+ *      seed.txt        random seed of the run (hopper -S repeats it)
  */
 class RunLog {
     public:
@@ -27,6 +29,7 @@ class RunLog {
 	    std::string configPath;	//Copied into outputDir if set
 	    int snapshotEvery = 10;	//Generations; 0 disables
 	    int snapshotTop = 3;	//Genomes per snapshot
+	    uint64_t seed = 0;		//Written to seed.txt
 	};
 
 	// Throws std::runtime_error if the output directory can't be used

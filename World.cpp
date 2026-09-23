@@ -1,9 +1,10 @@
 #include "World.h"
 #include "Creature.h"
-#include "BoxScreen.h"
+#include "Renderer.h"
 
 #include <iostream>
 #include <mutex>
+#include <vector>
 
 const float World::fGravity = 10.0;
 
@@ -11,11 +12,6 @@ const float World::fGravity = 10.0;
 // protected, so worlds must be created and destroyed one at a time.  Once
 // created, each world is only touched by the thread that owns it.
 static std::mutex worldTableMutex;
-
-//libconfig lazily builds its C++ Setting wrappers on first access, so even
-// read-only lookups on a shared Config race.  Creature construction is cheap
-// compared to simulation, so just read configs one thread at a time.
-static std::mutex configMutex;
 
 World::World (float _hz, int _subSteps) :
 	      timeStep(1.0f/_hz), subSteps(_subSteps)
@@ -51,14 +47,8 @@ World::~World () {
     b2DestroyWorld(b2W);
 }
 
-CreatureP World::createCreature (const libconfig::Config &creatureConfig) {
-    CreatureP cp(new Creature());
-    std::unique_lock<std::mutex> lock(configMutex);
-    if (!cp->initFromFile(creatureConfig, this)) {
-	//Problem with initialization, so return empty CreatureP
-	return CreatureP();
-    }
-
+CreatureP World::createCreature (const CreatureSpec &spec) {
+    CreatureP cp(new Creature(spec, *this));
     beings.push_back(cp);
     return cp;
 }
@@ -73,9 +63,34 @@ void World::step () {
     for (auto &c : beings) c->afterStep(timeStep);
 }
 
-void World::draw (BoxScreen *screen) const {
-    //Draw the ground, and the draw all the bodies.
-    screen->drawBody(ground);
+void World::draw (Renderer &r) const {
+    drawBody(ground, r);
+    for (auto &c : beings) c->draw(r);
+}
 
-    for (auto &c : beings) c->draw(screen);
+void drawBody (BodyId b, Renderer &r) {
+    int n = b2Body_GetShapeCount(b);
+    std::vector<b2ShapeId> shapes(n);
+    b2Body_GetShapes(b, shapes.data(), n);
+    for (b2ShapeId s : shapes) {
+	switch (b2Shape_GetType(s)) {
+	    case b2_circleShape: {
+		b2Circle circle = b2Shape_GetCircle(s);
+		r.circle(b2Body_GetWorldPoint(b, circle.center), circle.radius,
+			 BallColor);
+		break;
+	    }
+	    case b2_polygonShape: {
+		b2Polygon poly = b2Shape_GetPolygon(s);
+		if (poly.count < 2) break;
+		Vec2 pts[B2_MAX_POLYGON_VERTICES];
+		for (int i = 0; i < poly.count; ++i)
+		    pts[i] = b2Body_GetWorldPoint(b, poly.vertices[i]);
+		r.polygon(pts, poly.count, BodyColor);
+		break;
+	    }
+	    default:
+		break;
+	}
+    }
 }

@@ -10,6 +10,8 @@
 #include <string>
 #include <algorithm>
 
+using namespace std;
+
 
 /** 
  * Create default link setup based on number of inputs and outputs.
@@ -25,9 +27,7 @@ Genome::Genome (ExpParameters *_P) : P(_P) {
     for (int inID = 0; inID < P->nInput; ++inID) {
 	for (int outID = P->nInput; outID < nNodes; ++outID) {
 	    links[linkID].inID = inID;
-	    links[linkID].inNode = NULL;
 	    links[linkID].outID = outID;
-	    links[linkID].outNode = NULL;
 	    
 	    //Give it an initial random weight (Gaussian?)
 	    links[linkID].weight = rand_gauss();
@@ -519,7 +519,6 @@ GenomeP Genome::clone() const {
     Link *copy = new Link[nLinks];
     for (int i = 0; i<nLinks; ++i) {
 	copy[i] = links[i];
-	copy[i].inNode = copy[i].outNode = NULL;
     }
     GenomeP g(new Genome(copy, nLinks, nNodes, P));
     g->fitness = fitness;
@@ -593,7 +592,6 @@ GenomeP Genome::load(std::istream &in, ExpParameters *P) {
 	    return GenomeP();
 	}
 	l.enabled = enabled != 0;
-	l.inNode = l.outNode = NULL;
 	++n;
     }
     if (n != count) {

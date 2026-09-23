@@ -1,6 +1,6 @@
 #include "Creature.h"
 #include "World.h"
-#include "BoxScreen.h"
+#include "Renderer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -8,18 +8,7 @@
 #include <stdexcept>
 #include <stdlib.h>
 
-using namespace libconfig;
-
-//Look up a named part, failing loudly instead of silently handing Box2D
-// a null id when the config references a name that was never defined.
-template<class Map>
-typename Map::mapped_type findPart(const Map &m, const string &name,
-				   const char *what) {
-    typename Map::const_iterator i = m.find(name);
-    if (i == m.end())
-	throw runtime_error(string("unknown ") + what + " '" + name + "'");
-    return i->second;
-}
+using namespace std;
 
 inline double limit_norm (double v, const double min, const double max) {
     if (v < min) v = min;
@@ -112,412 +101,105 @@ class ContactSensor : public Sensor {
 	const BodyId t;
 };
 
-int readLimbs(Setting &limbConfig, bodyMap &limbs, bodyPosList &parts,
-	      World *w) 
-{ 
-    //Limbs specify:
-    // name
-    // position.{x,y} 
-    // angle
-    // angularDamping
-    // list of shapes:
-    //    each has type box or ball
-    //    for box: w, h
-    //    for ball: radius
-    //	  density
-    //    optional position
-    //	  optional friction
-    int nLimbs = limbConfig.getLength();
-    for (int i = 0; i<nLimbs; ++i) {
-	try {
-	    Setting &curLimb = limbConfig[i];
-	    string name = curLimb["name"];
-	    float x = curLimb["position"]["x"], 
-		  y = curLimb["position"]["y"];
-	    
-	    float angle = 0.0f;
-	    b2BodyDef bone = b2DefaultBodyDef();
-	    bone.type = b2_dynamicBody;
-	    bone.position = {x,y};
-	    curLimb.lookupValue("angle", angle);
-	    bone.rotation = b2MakeRot(angle);
-	    curLimb.lookupValue("angularDamping", bone.angularDamping);
-	    
-	    BodyId limb = b2CreateBody(w->id(), &bone);
-	    BodyPos bp;
-	    bp.b = limb;
-	    bp.defaultPos = {x,y};
-	    bp.angle = angle;
-	    
-	    Setting &shapes = curLimb["shapes"];
-	    int nShapes = shapes.getLength();
-	    for (int j = 0; j<nShapes; ++j) {
-		Setting &curShape = shapes[j];
-		string type = curShape["type"];
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-		
-		shapeDef.density = curShape["density"];
-		
-		//Keep Box2D 2.x default friction, which the configs assume
-		shapeDef.material.friction = 0.2f;
-		curShape.lookupValue("friction", shapeDef.material.friction);
-		int groupIndex = 0;
-		curShape.lookupValue("groupIndex", groupIndex);
-		shapeDef.filter.groupIndex = groupIndex;
-		if (type == "box") {
-		    float w = curShape["w"],
-			  h = curShape["h"];
-		    b2Polygon box = b2MakeBox(w,h);
-		    b2CreatePolygonShape(limb, &shapeDef, &box);
-		} else if (type == "ball") {
-		    b2Circle ball;
-		    ball.radius = curShape["radius"];
-		    float x = curShape["position"]["x"],
-			  y = curShape["position"]["y"];
-		    ball.center = {x,y};
-		    b2CreateCircleShape(limb, &shapeDef, &ball);
-		} else {
-		    cerr<<"Creature::initFromFile limb "<<name
-			<<", shape "<<j<<" type "<<type<<" unknown."<<endl;
-		    return 0;
-		}
-	    }
-
-	    parts.push_back(bp);
-	    limbs.insert(make_pair(name, limb));
-	} catch (SettingTypeException &te) {
-	    cerr<<"Creature::readLimbs problem processing limb "<<i<<endl;
-	    cerr<<"    SettingTypeException: "<<te.what()
-		<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (SettingNotFoundException &te) {
-	    cerr<<"Creature::readLimbs problem processing limb "<<i<<endl;
-	    cerr<<"    SettingNotFoundException: "
-		<<te.what()<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (exception &e) {
-	    cerr<<"Creature::readLimbs problem processing limb "
-		<<i<<": "<<e.what()<<endl;
-	    return 0;
-	} catch (...) {
-	    cerr<<"Creature::readLimbs problem processing limb "<<i<<endl;
-	    return 0;
-	}
-    }
-    return 1;
-}
-
-int readJoints(Setting &jointConfig, jointMap &joints, bodyMap &limbs,
-	       World *w) 
-{
-    //Joints: 
-    // name = "knee";
-    // type,  
-    // XXX so far only revolute
-    //    obj1
-    //    obj2
-    //    position.{x,y}
-    //    lowerAngle
-    //    upperAngle
-    int nJoints = jointConfig.getLength();
-    for (int i = 0; i<nJoints; ++i) {
-	try {
-	    Setting &curJoint = jointConfig[i];
-	    string name = curJoint["name"];
-	    string type = curJoint["type"];
-	    if (type == "revolute") {
-		string obj1 = curJoint["obj1"];
-		string obj2 = curJoint["obj2"];
-		float x = curJoint["position"]["x"],
-		      y = curJoint["position"]["y"];
-		BodyId bodyA = findPart(limbs, obj1, "limb"),
-		       bodyB = findPart(limbs, obj2, "limb");
-		Vec2 anchor = {x, y};
-
-		//Equivalent of Box2D 2.x b2RevoluteJointDef::Initialize
-		b2RevoluteJointDef jointDef = b2DefaultRevoluteJointDef();
-		jointDef.bodyIdA = bodyA;
-		jointDef.bodyIdB = bodyB;
-		jointDef.localAnchorA = b2Body_GetLocalPoint(bodyA, anchor);
-		jointDef.localAnchorB = b2Body_GetLocalPoint(bodyB, anchor);
-		jointDef.referenceAngle =
-		    b2Rot_GetAngle(b2Body_GetRotation(bodyB)) -
-		    b2Rot_GetAngle(b2Body_GetRotation(bodyA));
-		jointDef.lowerAngle = curJoint["lowerAngle"];
-		jointDef.upperAngle = curJoint["upperAngle"];
-		//XXX default to enableLimit true
-		jointDef.enableLimit = true;
-
-		JointId joint = b2CreateRevoluteJoint(w->id(), &jointDef);
-		joints.insert(make_pair(name, joint));
-
-	    } else {
-		cerr<<"Creature::readJoints joint "<<i<<":"<<name
-		    <<", unknown type "<<type<<endl;
-		return 0;
-	    }
-	
-	} catch (SettingTypeException &te) {
-	    cerr<<"Creature::readJoints problem processing joint "<<i<<endl;
-	    cerr<<"    SettingTypeException: "<<te.what()
-		<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (SettingNotFoundException &te) {
-	    cerr<<"Creature::readJoints problem processing joint "<<i<<endl;
-	    cerr<<"    SettingNotFoundException: "
-		<<te.what()<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (exception &e) {
-	    cerr<<"Creature::readJoints problem processing joint "
-		<<i<<": "<<e.what()<<endl;
-	    return 0;
-	} catch (...) {
-	    cerr<<"Creature::readJoints problem processing joint "<<i<<endl;
-	    return 0;
-	}
-    }
-       
-    return 1;
-}
-
-int readMuscles (Setting &muscleConfig, muscleList &muscles, bodyMap &limbs)
-{
-    //Muscles:
-    // name = "hamstring";
-    //  obj1 = "shin";
-    //  pos1 = { x = -0.5; y = 1.5; };
-    //  obj2 = "thigh";
-    //  pos2 = { x = -0.5; y = 1.0; };
-    //  minK = 3000.0;
-    //  maxK = 10000.0;
-    //  minEq = 1.5;
-    //  maxEq = 4.5;
-    //  kd = 100.0;
-    //  maxForce = 30000.0;	optional, default unlimited
-    //  maxPower = 500.0;	optional, default unlimited
-    int nMuscles = muscleConfig.getLength();
-    for (int i = 0; i<nMuscles; ++i) {
-	try {
-	    Setting &curMuscle = muscleConfig[i];
-	    string name = curMuscle["name"];
-	    string obj1 = curMuscle["obj1"],
-		   obj2 = curMuscle["obj2"];
-	    float x1 = curMuscle["pos1"]["x"],
-		  y1 = curMuscle["pos1"]["y"],
-		  x2 = curMuscle["pos2"]["x"],
-		  y2 = curMuscle["pos2"]["y"];
-	    float maxForce = Muscle::Unlimited, maxPower = Muscle::Unlimited;
-	    curMuscle.lookupValue("maxForce", maxForce);
-	    if (!curMuscle.lookupValue("maxPower", maxPower)) {
-		//Warn once per config, not once per creature built
-		static bool warned = false;
-		if (!warned) {
-		    cerr<<"Warning: muscle '"<<name<<"' has no maxPower, so a "
-			  "controller can pump unbounded energy into the "
-			  "creature"<<endl;
-		    warned = true;
-		}
-	    }
-	    MuscleP muscle(new Muscle(findPart(limbs, obj1, "limb"),
-				      Vec2{x1, y1},
-				      findPart(limbs, obj2, "limb"),
-				      Vec2{x2, y2},
-				      curMuscle["minK"],
-				      curMuscle["maxK"],
-				      curMuscle["minEq"],
-				      curMuscle["maxEq"],
-				      curMuscle["kd"],
-				      maxForce, maxPower));
-	    muscles.push_back(muscle);
-	} catch (SettingTypeException &te) {
-	    cerr<<"Creature::readMuscles problem processing muscle "<<i<<endl;
-	    cerr<<"    SettingTypeException: "<<te.what()
-		<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (SettingNotFoundException &te) {
-	    cerr<<"Creature::readMuscles problem processing muscle "<<i<<endl;
-	    cerr<<"    SettingNotFoundException: "
-		<<te.what()<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (exception &e) {
-	    cerr<<"Creature::readMuscles problem processing muscle "
-		<<i<<": "<<e.what()<<endl;
-	    return 0;
-	} catch (...) {
-	    cerr<<"Creature::readMuscles problem processing muscle "<<i<<endl;
-	    return 0;
-	}
-    }
-    return 1;
-}
-
-int readShapes(Setting &shapeConfig, shapeMap &shapes, bodyMap &limbs) 
-{
-    //Shapes
-    // name = "foot";
-    //  body = "shin";
-    //  position = { x = 0.0; y = -3.0; };
-    int nShapes = shapeConfig.getLength();
-    for (int i = 0; i<nShapes; ++i) {
-	try {
-	    Setting &curShape = shapeConfig[i];
-	    string name = curShape["name"],
-		   body = curShape["body"];
-	    float x = curShape["position"]["x"],
-		  y = curShape["position"]["y"];
-	    shapePos s;
-	    s.localPos = {x,y};
-	    s.b = findPart(limbs, body, "limb");
-	    shapes.insert(make_pair(name, s));
-	} catch (exception &e) {
-	    cerr<<"Creature::readShapes problem processing shape "
-		<<i<<": "<<e.what()<<endl;
-	    return 0;
-	} catch (...) {
-	    cerr<<"Creature::readShapes problem processing shape "
-		<<i<<endl;
-	    return 0;
-	}
-    }
-    return 1;
-}
-
-
-int readSensors (Setting &sensorConfig, sensorList &sensors, 
-		 bodyMap &limbs, jointMap &joints, shapeMap &shapes,
-		 const Creature *creature)
-{ 
-    //Sensors:
-    // type = {JointSensor, HeightSensor, BodyAngleSensor,
-    //         AngularVelocitySensor, VelocitySensor, ContactSensor}
-    // target (joint, shape or limb name)
-    //   for HeightSensor: minH, maxH
-    //   for BodyAngleSensor: minA, maxA
-    //   for AngularVelocitySensor: minW, maxW (rad/s)
-    //   for VelocitySensor: axis ("x" or "y"), minV, maxV (m/s)
-    //   ContactSensor reads 1 while the limb touches the ground
-    int nSensors = sensorConfig.getLength();
-    for (int i = 0; i<nSensors; ++i) {
-	try {
-	    Setting &curSensor = sensorConfig[i];
-	    string type = curSensor["type"];
-	    string target = curSensor["target"];
-	    
-	    if (type == "JointSensor") {
-		SensorP s(new JointSensor(findPart(joints, target,
-								  "joint")));
-		sensors.push_back(s);
-	    } else if (type == "HeightSensor") {
-		double minH = curSensor["minH"],
-		       maxH = curSensor["maxH"];
-		SensorP s(new HeightSensor(findPart(shapes, target,
-								   "shape"),
-					   minH, maxH));
-		sensors.push_back(s);
-	    } else if (type == "BodyAngleSensor") {
-		double minA = curSensor["minA"],
-		       maxA = curSensor["maxA"];
-		SensorP s(new BodyAngleSensor(findPart(limbs, target,
-								      "limb"),
-					      minA, maxA));
-		sensors.push_back(s);
-	    } else if (type == "AngularVelocitySensor") {
-		double minW = curSensor["minW"], maxW = curSensor["maxW"];
-		sensors.push_back(SensorP(new AngularVelocitySensor(
-		    findPart(limbs, target, "limb"), minW, maxW)));
-	    } else if (type == "VelocitySensor") {
-		string axis = curSensor["axis"];
-		if (axis != "x" && axis != "y")
-		    throw runtime_error("VelocitySensor axis must be x or y");
-		double minV = curSensor["minV"], maxV = curSensor["maxV"];
-		sensors.push_back(SensorP(new VelocitySensor(
-		    findPart(limbs, target, "limb"), axis == "y", minV, maxV)));
-	    } else if (type == "ContactSensor") {
-		sensors.push_back(SensorP(new ContactSensor(
-		    creature, findPart(limbs, target, "limb"))));
-	    } else {
-		cerr<<"Creature::readSensors sensor "<<i
-		    <<", unknown type: "<<type<<endl;
-		return 0;
-	    }
-	} catch (SettingTypeException &te) {
-	    cerr<<"Creature::readSensors problem processing sensor "
-		<<i<<endl;
-	    cerr<<"    SettingTypeException: "<<te.what()
-		<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (SettingNotFoundException &te) {
-	    cerr<<"Creature::readSensors problem processing sensor "
-		<<i<<endl;
-	    cerr<<"    SettingNotFoundException: "
-		<<te.what()<<", "<<te.getPath()<<endl;
-	    return 0;
-	} catch (exception &e) {
-	    cerr<<"Creature::readSensors problem processing sensor "
-		<<i<<": "<<e.what()<<endl;
-	    return 0;
-	} catch (...) {
-	    cerr<<"Creature::readSensors problem processing sensor "
-		<<i<<endl;
-	    return 0;
-	}
-    }
-    return 1;
-}
-
 /**
- * Load creature definition from config file.  
- *
- * Uses libconfig for parsing config file.
- *
- * return 1 on succes, 0 on error
+ * Build the creature from a parsed spec: limbs (bodies with their shapes),
+ * then joints, muscles, named points and sensors, in spec order.
  */
-//int Creature::initFromFile (const char* configFile, World *w) {
-int Creature::initFromFile (const Config &config, World *w) {
-    //Config specifies limbs, joints, muscles and shapes
-    if (!config.exists("limbs")) {
-	cerr<<"Creature::initFromFile limbs member does not exist"<<endl;
-	return 0;
-    }
-    if (!readLimbs(config.lookup("limbs"), limbs, parts, w)) {
-	cerr<<"Creature::initFromFile problem reading limbs"<<endl;
-	return 0;
+Creature::Creature (const CreatureSpec &spec, World &w) {
+    for (const LimbSpec &l : spec.limbs) {
+	b2BodyDef bone = b2DefaultBodyDef();
+	bone.type = b2_dynamicBody;
+	bone.position = l.position;
+	bone.rotation = b2MakeRot(l.angle);
+	if (l.angularDamping) bone.angularDamping = *l.angularDamping;
+
+	BodyId limb = b2CreateBody(w.id(), &bone);
+	for (const ShapeSpec &sh : l.shapes) {
+	    b2ShapeDef shapeDef = b2DefaultShapeDef();
+	    shapeDef.density = sh.density;
+	    shapeDef.material.friction = sh.friction;
+	    shapeDef.filter.groupIndex = sh.groupIndex;
+	    if (sh.type == ShapeSpec::Box) {
+		b2Polygon box = b2MakeBox(sh.w, sh.h);
+		b2CreatePolygonShape(limb, &shapeDef, &box);
+	    } else {
+		b2Circle ball;
+		ball.radius = sh.radius;
+		ball.center = sh.position;
+		b2CreateCircleShape(limb, &shapeDef, &ball);
+	    }
+	}
+
+	BodyPos bp;
+	bp.b = limb;
+	bp.defaultPos = l.position;
+	bp.angle = l.angle;
+	parts.push_back(bp);
+	limbBodies.push_back(limb);
+	limbs.insert(make_pair(l.name, limb));
     }
 
-    if (!config.exists("joints")) {
-	cerr<<"Creature::initFromFile joints member does not exist"<<endl;
-	return 0;
-    }
-    if (!readJoints(config.lookup("joints"), joints, limbs, w)) {
-	cerr<<"Creature::initFromFile problem reading joints"<<endl;
-	return 0;
-    }
-  
-    if (!config.exists("muscles")) {
-	cerr<<"Creature::initFromFile muscles member does not exist"<<endl;
-	return 0;
-    }
-    if (!readMuscles(config.lookup("muscles"), muscles, limbs)) {
-	cerr<<"Creature::initFromFile problem reading muscles"<<endl;
-	return 0;
+    for (const JointSpec &j : spec.joints) {
+	BodyId bodyA = limbBodies[j.limb1], bodyB = limbBodies[j.limb2];
+
+	//Equivalent of Box2D 2.x b2RevoluteJointDef::Initialize
+	b2RevoluteJointDef jointDef = b2DefaultRevoluteJointDef();
+	jointDef.bodyIdA = bodyA;
+	jointDef.bodyIdB = bodyB;
+	jointDef.localAnchorA = b2Body_GetLocalPoint(bodyA, j.anchor);
+	jointDef.localAnchorB = b2Body_GetLocalPoint(bodyB, j.anchor);
+	jointDef.referenceAngle =
+	    b2Rot_GetAngle(b2Body_GetRotation(bodyB)) -
+	    b2Rot_GetAngle(b2Body_GetRotation(bodyA));
+	jointDef.lowerAngle = j.lowerAngle;
+	jointDef.upperAngle = j.upperAngle;
+	jointDef.enableLimit = true;
+
+	JointId joint = b2CreateRevoluteJoint(w.id(), &jointDef);
+	jointIds.push_back(joint);
+	joints.insert(make_pair(j.name, joint));
     }
 
-    if (config.exists("shapes") && 
-	!readShapes(config.lookup("shapes"),shapes, limbs)) 
-    {
-	cerr<<"Creature::initFromFile problem reading shapes"<<endl;
-	return 0;
-    }
-    
-    if (config.exists("sensors") &&
-	!readSensors(config.lookup("sensors"), sensors, 
-		     limbs, joints, shapes, this)) 
-    {
-	cerr<<"Creature::initFromFile problem reading sensors"<<endl;
-	return 0;
+    for (const MuscleSpec &m : spec.muscles) {
+	muscles.push_back(MuscleP(new Muscle(
+	    limbBodies[m.limb1], m.pos1, limbBodies[m.limb2], m.pos2,
+	    m.minK, m.maxK, m.minEq, m.maxEq, m.kd, m.maxForce, m.maxPower)));
     }
 
-    return 1;
+    vector<shapePos> points;
+    for (const PointSpec &p : spec.points) {
+	shapePos sp;
+	sp.localPos = p.localPos;
+	sp.b = limbBodies[p.limb];
+	points.push_back(sp);
+	shapes.insert(make_pair(p.name, sp));
+    }
+
+    for (const SensorSpec &s : spec.sensors) {
+	Sensor *sensor = nullptr;
+	switch (s.type) {
+	    case SensorSpec::Joint:
+		sensor = new JointSensor(jointIds[s.target]);
+		break;
+	    case SensorSpec::Height:
+		sensor = new HeightSensor(points[s.target], s.min, s.max);
+		break;
+	    case SensorSpec::BodyAngle:
+		sensor = new BodyAngleSensor(limbBodies[s.target], s.min, s.max);
+		break;
+	    case SensorSpec::AngularVelocity:
+		sensor = new AngularVelocitySensor(limbBodies[s.target], s.min, s.max);
+		break;
+	    case SensorSpec::Velocity:
+		sensor = new VelocitySensor(limbBodies[s.target], s.vertical,
+					    s.min, s.max);
+		break;
+	    case SensorSpec::Contact:
+		sensor = new ContactSensor(this, limbBodies[s.target]);
+		break;
+	}
+	sensors.push_back(SensorP(sensor));
+    }
 }
 
 void Creature::reset () {
@@ -545,22 +227,9 @@ void Creature::activate () {
     }
 }
 
-void Creature::draw (BoxScreen *screen) const {
-    /* Really should change this to a for_all */
-    //Draw body shapes
-    for (bodyPosList::const_iterator i = parts.begin();
-	 i != parts.end(); ++i)
-    {
-	screen->drawBody(i->b);
-    }
-
-    //Draw musculature
-    for (muscleList::const_iterator i = muscles.begin();
-	 i != muscles.end(); ++i)
-    {
-	(*i)->draw(screen);
-    }
-
+void Creature::draw (Renderer &r) const {
+    for (const BodyPos &p : parts) drawBody(p.b, r);
+    for (const MuscleP &m : muscles) m->draw(r);
 }
 
 void Creature::update () {
@@ -608,9 +277,7 @@ double Creature::negativeWork () const {
 }
 
 void Creature::setInput(double *input) const {
-    if (useBias) {
-	*input++ = 1.0;
-    }
+    *input++ = 1.0;	//Bias
     for (sensorList::const_iterator i = sensors.begin(); 
 	 i != sensors.end(); ++i) 
     {
@@ -710,12 +377,10 @@ void Muscle::afterStep (float dt) {
     }
 }
 
-void Muscle::draw (BoxScreen *screen) const {
+void Muscle::draw (Renderer &r) const {
     //Just draw line representing spring
-    Vec2 a1W = b2Body_GetWorldPoint(body1, end1L);
-    Vec2 a2W = b2Body_GetWorldPoint(body2, end2L);
-
-    screen->worldLine(a1W,a2W, 0xFF0000FF);
+    r.segment(b2Body_GetWorldPoint(body1, end1L),
+	      b2Body_GetWorldPoint(body2, end2L), MuscleColor);
 }
 
 //Set length or strength of muscle to between min and max setting,

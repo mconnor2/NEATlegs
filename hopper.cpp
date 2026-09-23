@@ -32,6 +32,8 @@
 #include "BoxScreen.h"
 #include "World.h"
 #include "Creature.h"
+#include "CreatureSpec.h"
+#include "Simulation.h"
 
 using namespace std;
 
@@ -39,166 +41,53 @@ const int Width  = 640;
 const int Height = 480;
 
 /**
- * Test for creature hopping.  Most crap is hard coded at this point.
- *
+ * Fitness for a creature: how far forward its head gets (max head x) in one
+ * episode.  Runs are defined by the creature spec and episode options
+ * (Simulation.h); this adds the network controller, the objective, and
+ * optional real-time drawing.
  */
 class hopper {
     public:
-	hopper(const int max_steps, const libconfig::Config *_config, 
-	       const ExpParameters *_P) :
-	    MAX_STEPS(max_steps), config(_config), P(_P) 
-	{
-	    //Run ends when the head drops below this (config global.headFloor)
-	    headFloor = 0.75;
-	    config->lookupValue("global.headFloor", headFloor);
-
-	    //Optional list of limbs allowed to touch the ground; the run ends
-	    // (as a fall) when any other limb does (global.groundLimbs)
-	    if (config->exists("global.groundLimbs")) {
-		const libconfig::Setting &gl = config->lookup("global.groundLimbs");
-		for (int i = 0; i < gl.getLength(); ++i)
-		    groundLimbs.push_back(gl[i].c_str());
-	    }
-	}
+	hopper(const CreatureSpec *_spec, const EpisodeOptions &_opt) :
+	    spec(_spec), opt(_opt) { }
 
 	// With a display, the run is drawn in real time and overlay (if set)
-	// is called each frame to draw on top of the simulation.
+	// is called each frame to draw on top of the simulation.  Any key
+	// ends the episode; quit is left for the caller to see via
+	// display->quitRequested().
 	double operator()(const GenomeP &g, Display *display = nullptr,
 			  const function<void(Display &)> &overlay = nullptr)
 	    const
 	{
 	    unique_ptr<Network> N(g->createNewNetwork());
-	
-	    int steps=0;
-
-	    /* Initialize the World, take default hz and substeps */
-	    World w(60.0f);
-
-	    // Create a creature that is added to the world
-	    CreatureP C = w.createCreature(*config);
-
-	    if (!C) {
-		cerr<<"Problem loading Creature, exiting."<<endl;
-		exit(1);
-	    }
-		    
-	    double *in = new double[P->nInput];  //Input loading array
-	    //Output: thigh muscle length(%max), k; shin muscle length(%max), k
-	    double *out = new double[P->nOutput];
-	    int nMuscles = C->muscles.size();
-	    
-	    for (int i = 0; i<P->nOutput; ++i) out[i] = 0.0;
+	    Controller controller = [&](const double *in, double *out) {
+		N->run(in, out);
+	    };
 
 	    // 100 pixels a meter
 	    BoxScreen s(display, 100.0f);
+	    FrameCallback frame;
+	    if (display) frame = [&](const Simulation &sim) {
+		display->clear();
+		if (overlay) overlay(*display);
+		s.keepViewable(sim.head());
+		s.drawGrid();
+		sim.draw(s);
+		display->present();
+		if (display->poll() != DisplayEvent::None) return false;
+		display->waitFrame();
+		return true;
+	    };
 
-	    if (!C->shapes.count("head")) {
-		cerr<<"Creature must define a shape named 'head', exiting."
-		    <<endl;
-		exit(1);
-	    }
-	    const shapePos headPos = C->shapes["head"];
-
-	    vector<BodyId> mustNotTouch;
-	    if (!groundLimbs.empty()) {
-		for (auto &kv : C->limbs)
-		    if (find(groundLimbs.begin(), groundLimbs.end(), kv.first) ==
-			groundLimbs.end())
-			mustNotTouch.push_back(kv.second);
-	    }
-	   
-	    C->reset();
-/*	    {
-		shapePos headPos = C->shapes["head"];
-	        Vec2 headV = headPos.b->GetWorldPoint(headPos.localPos);
-		cout<<"Head position: "<<headV.x<<", "<<headV.y<<endl;
-	    }
-*/
-	    double score = 0;
-	    double maxX = 0, maxY = 0;
-
-	    /*--- Iterate through the action-learn loop. ---*/
-	    while (steps++ < MAX_STEPS) {
-			
-		/* Read input from Creature's Sensors */
-		C->setInput(in);
-/*
-		if (screen) {
-		    for (int i = 0; i<P->nInput; ++i) {
-			cout<<in[i]<<" ";
-		    }
-		    cout<<endl;
-		}
-*/
-		//Run input through network
-		N->run(in, out);
-
-		//Update creature's muscles based on output
-		for (int m = 0; m<nMuscles; ++m) {
-		    C->muscles[m]->scaleStrength(out[m*2]);
-		    C->muscles[m]->scaleLength(out[m*2+1]);
-		}
-
-		/* Advance the world */
-		w.step();
-		
-	        Vec2 headV = b2Body_GetWorldPoint(headPos.b, headPos.localPos);
-
-		if (display) {
-		    display->clear();
-		    if (overlay) overlay(*display);
-
-//		    cout<<"Head height: "<<headV.x<<", "<<headV.y<<endl;
-		    
-		    s.keepViewable(headV);
-		    s.drawGrid();
-		    w.draw(&s);
-		    display->present();
-
-		    //Space skips ahead, quit is left for the caller to see
-		    // via display->quitRequested()
-		    if (display->poll() != DisplayEvent::None) break;
-
-		    display->waitFrame();
-		}
-
-		/*--- Check for failure.  If so, return steps ---*/
-		// For hopper, failure is if creature's head drops below
-		// some level.
-		if (headV.y < headFloor) break;
-		bool fell = false;
-		for (BodyId b : mustNotTouch)
-		    if (C->touchesOutside(b)) { fell = true; break; }
-		if (fell) break;
-		score += headV.y*headV.y;
-		if (headV.x > maxX) maxX = headV.x;
-		if (headV.y > maxY) maxY = headV.y;
-	    }
-
-	    delete [] in;
-	    delete [] out;
-
-//	cout<<"Made it "<<steps<<" steps..."
-//	    <<static_cast<double>(steps)/MAX_STEPS<<endl;
-  
-	    g->steps = steps;
-	    g->energy = C->positiveWork();
-
-	    //return (g->fitness = static_cast<double>(steps)/(MAX_STEPS+1));
-	    //return (g->fitness = score/MAX_STEPS);
-	    return (g->fitness = maxX);
-	    //return (g->fitness = maxY);
-	};
+	    EpisodeResult r = runEpisode(*spec, opt, controller, frame);
+	    g->steps = r.steps;
+	    g->energy = r.energy;
+	    return (g->fitness = r.maxHeadX);
+	}
 
     private:
-	const int MAX_STEPS;
-	//const bool random_start;
-
-	double headFloor;
-	vector<string> groundLimbs;
-
-	const libconfig::Config *config;
-	const ExpParameters *P;
+	const CreatureSpec *spec;
+	EpisodeOptions opt;
 };
 
 static void usage () {
@@ -212,6 +101,8 @@ static void usage () {
 	   "  -s gens     snapshot top genomes every this many generations\n"
 	   "              (default 10, 0 disables)\n"
 	   "  -k count    genomes per snapshot (default 3)\n"
+	   "  -S seed     random seed, to repeat a run exactly (default: from\n"
+	   "              /dev/urandom; the seed used is printed and saved)\n"
 	   "  -r genome   replay a saved genome in a window instead of\n"
 	   "              running the GA\n");
 }
@@ -266,7 +157,8 @@ static int replay (const hopper &fit, const char *genomeFile,
  */
 struct Monitor {
     std::mutex m;
-    GenomeP best;		//Clone, never touched by the GA thread
+    GenomeP best;		//Clone: replaying writes fitness/steps/energy
+				// onto the genome, which the GA thread reads
     double bestFitness = 0;
     int bestGeneration = -1;
     std::shared_ptr<const vector<GenerationStats>> history;
@@ -362,10 +254,9 @@ static void watchEvolution (const hopper &fit, Display &display,
 }
 
 int main (int argc, char **argv) {
-    //set random seed to come from udev random
-    dev_seed_rand();
-
     bool drawGen = false;
+    bool haveSeed = false;
+    uint64_t seed = 0;
     int displayEvery = 10;
 
     int maxGen = 1000;
@@ -376,7 +267,7 @@ int main (int argc, char **argv) {
     /* Process arguments */
     int opt;
     char *configFile = NULL;
-    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:d:")) != -1) {
+    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:d:S:")) != -1) {
 	switch(opt) {
 	    case 'V':
 		drawGen = true;
@@ -399,6 +290,10 @@ int main (int argc, char **argv) {
 	    case 'r':
 		replayFile = optarg;
 	    break;
+	    case 'S':
+		seed = strtoull(optarg, NULL, 10);
+		haveSeed = true;
+	    break;
 	    case 'd':
 		displayEvery = atoi(optarg);
 		drawGen = true;
@@ -413,6 +308,9 @@ int main (int argc, char **argv) {
 	}
     }
     
+    if (haveSeed) seed_rand(seed);
+    else seed = dev_seed_rand();
+
     if (!configFile) {
 	fprintf(stderr, "Must specify config file.\n");
 	usage();
@@ -441,15 +339,24 @@ int main (int argc, char **argv) {
 	exit(1);
     }
    
+    CreatureSpec spec;
     try {
-	P.nInput = config.lookup("sensors").getLength()+1;
-	P.nOutput = config.lookup("muscles").getLength()*2;
-    } catch (...) {
-	cerr<<"Must specify sensors and muscles list in config file"<<endl;
+	spec = parseCreatureSpec(config);
+    } catch (exception &e) {
+	cerr<<configFile<<": "<<e.what()<<endl;
 	return 1;
     }
+    EpisodeOptions episode = episodeOptionsFromConfig(config);
+    try {
+	Simulation check(spec, episode);	//Validates head, groundLimbs
+    } catch (exception &e) {
+	cerr<<configFile<<": "<<e.what()<<endl;
+	return 1;
+    }
+    P.nInput = spec.numInputs();
+    P.nOutput = spec.numOutputs();
 
-    hopper fit(1000, &config, &P);
+    hopper fit(&spec, episode);
 
     if (replayFile) return replay(fit, replayFile, &P);
 
@@ -467,6 +374,7 @@ int main (int argc, char **argv) {
     
     if (logOpt.outputDir.empty()) logOpt.outputDir = defaultRunDir(configFile);
     logOpt.configPath = configFile;
+    logOpt.seed = seed;
 
     GeneticAlgorithm GA(&P, &f);
     GA.setKeepTop(max(logOpt.snapshotTop, 1));
@@ -479,8 +387,9 @@ int main (int argc, char **argv) {
 	return 1;
     }
 
-    printf("Population %d, %d inputs, %d outputs.  Writing run to %s\n",
-	   P.popSize, P.nInput, P.nOutput, logOpt.outputDir.c_str());
+    printf("Population %d, %d inputs, %d outputs, seed %llu.  Writing run to %s\n",
+	   P.popSize, P.nInput, P.nOutput, (unsigned long long)seed,
+	   logOpt.outputDir.c_str());
 
     if (display) {
 	watchEvolution(fit, *display, GA, *log, maxGen, displayEvery);
