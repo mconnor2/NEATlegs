@@ -276,6 +276,12 @@ double Creature::negativeWork () const {
     return w;
 }
 
+double Creature::forceTime () const {
+    double ft = 0;
+    for (auto &m : muscles) ft += m->forceTime();
+    return ft;
+}
+
 void Creature::setInput(double *input) const {
     *input++ = 1.0;	//Bias
     for (sensorList::const_iterator i = sensors.begin(); 
@@ -299,6 +305,7 @@ void Muscle::reset () {
     appliedForce = {0, 0};
     torque1 = torque2 = 0;
     posWork = negWork = 0;
+    forceSeconds = 0;
     reserve = maxPower * ReserveSeconds;
 }
 
@@ -370,6 +377,7 @@ void Muscle::afterStep (float dt) {
 	     - b2Dot(appliedForce, d2) + torque2 * th2;
     if (w > 0) posWork += w;
     else negWork += w;
+    forceSeconds += b2Length(appliedForce) * dt;
 
     if (!std::isinf(maxPower)) {
 	reserve += maxPower * dt - (w > 0 ? w : 0);

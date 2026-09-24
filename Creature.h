@@ -48,6 +48,11 @@ class Creature {
     double positiveWork() const;
     double negativeWork() const;
 
+    // Integral of |force| over time (N s) for all muscles since the last
+    // reset(): what holding a force costs a real muscle, even when nothing
+    // moves
+    double forceTime() const;
+
     // True if body b (one of this creature's limbs) is in contact with
     // anything that isn't part of this creature, e.g. the ground
     bool touchesOutside(BodyId b) const;
@@ -117,6 +122,7 @@ class Muscle {
 
 	double positiveWork () const { return posWork; }
 	double negativeWork () const { return negWork; }
+	double forceTime () const { return forceSeconds; }
 
 	void draw (Renderer &r) const;
 
@@ -154,6 +160,7 @@ class Muscle {
 	Vec2 com1Start = {0, 0}, com2Start = {0, 0};
 	b2Rot rot1Start = b2Rot_identity, rot2Start = b2Rot_identity;
 	double posWork = 0, negWork = 0;
+	double forceSeconds = 0;	//Integral of |force| dt
 
 	float currentLength () const;
 

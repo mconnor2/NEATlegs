@@ -38,7 +38,8 @@ EpisodeOptions noFloor (int steps) {
 
 bool sameResult (const EpisodeResult &a, const EpisodeResult &b) {
     return a.steps == b.steps && a.end == b.end && a.maxHeadX == b.maxHeadX &&
-	   a.maxHeadY == b.maxHeadY && a.energy == b.energy;
+	   a.maxHeadY == b.maxHeadY && a.energy == b.energy &&
+	   a.forceTime == b.forceTime;
 }
 
 }
@@ -123,6 +124,47 @@ TEST(endsWhenEnergySpent) {
 
     o.energyBudget = full * 2;		// never reached
     CHECK(runEpisode(spec, o, wobbler(2)).end == EpisodeEnd::MaxSteps);
+}
+
+// A muscle held at maxForce accumulates exactly maxForce x time, whether
+// or not anything moves
+TEST(forceTimeOfASaturatedMuscle) {
+    std::string text = testCreature::Text;
+    const std::string from = "minK = 10.0; maxK = 50.0; minEq = 0.1; maxEq = 0.4; kd = 1.0;\n"
+			     "      maxForce = 10.0; maxPower = 5.0;",
+		      to = "minK = 1e6; maxK = 1e6; minEq = 0.4; maxEq = 0.4; kd = 1.0;\n"
+			   "      maxForce = 10.0;";
+    size_t at = text.find(from);
+    CHECK(at != std::string::npos);
+    text.replace(at, from.size(), to);
+    CreatureSpec spec = testCreature::spec(text);
+    EpisodeResult r = runEpisode(spec, noFloor(120), wobbler(2));
+    double expect = 10.0 * 120 / 60.0;
+    CHECK(fabs(r.forceTime - expect) < 1e-4 * expect);
+}
+
+// The energy cost weighs positive work, absorbed work and force-time;
+// the default is positive work alone, exactly
+TEST(energyCostCombinesWorkAndForce) {
+    CreatureSpec spec = testCreature::spec();
+    EpisodeResult plain = runEpisode(spec, noFloor(200), wobbler(2));
+    CHECK(plain.energy == plain.positiveWork);
+    CHECK(plain.positiveWork > 0 && plain.negativeWork < 0 && plain.forceTime > 0);
+
+    EpisodeOptions o = noFloor(200);
+    o.energyCost = {4.0, 0.8, 0.3};
+    EpisodeResult r = runEpisode(spec, o, wobbler(2));
+    CHECK(r.positiveWork == plain.positiveWork);	// accounting only
+    CHECK(r.energy == 4.0*r.positiveWork - 0.8*r.negativeWork + 0.3*r.forceTime);
+
+    // The budget ends the episode on the combined cost: charging only
+    // force-time, half of it runs out halfway
+    o.energyCost = {0.0, 0.0, 1.0};
+    o.energyBudget = plain.forceTime / 2;
+    EpisodeResult b = runEpisode(spec, o, wobbler(2));
+    CHECK(b.end == EpisodeEnd::EnergySpent);
+    CHECK(b.energy == b.forceTime && b.energy >= o.energyBudget);
+    CHECK(b.steps > 1 && b.steps < 200);
 }
 
 namespace {
@@ -241,8 +283,19 @@ TEST(optionsFromConfig) {
     FitnessOptions f = fitnessOptionsFromConfig(budget);
     CHECK(f.base == 0.5 && f.survivalExponent == 2.0);
 
+    libconfig::Config cost;
+    cost.readString("global: { energyCost = { positiveWork = 4.0; "
+		    "negativeWork = 0.83; forceTime = 1; }; };");
+    EnergyCost ec = episodeOptionsFromConfig(cost).energyCost;
+    libconfig::Config longer;
+    longer.readString("global: { maxSteps = 3000; };");
+    CHECK(episodeOptionsFromConfig(longer).maxSteps == 3000);
+    CHECK(ec.positiveWork == 4.0 && ec.negativeWork == 0.83 && ec.forceTime == 1.0);
+
     for (const char *bad : {"global: { energyBudget = -1.0; };",
-			    "global: { survivalExponent = -1; };"}) {
+			    "global: { survivalExponent = -1; };",
+			    "global: { energyCost = { forceTime = -0.5; }; };",
+			    "global: { maxSteps = 0; };"}) {
 	libconfig::Config c;
 	c.readString(bad);
 	bool threw = false;
@@ -255,6 +308,8 @@ TEST(optionsFromConfig) {
 
     libconfig::Config none;
     CHECK(episodeOptionsFromConfig(none).energyBudget == 0);
+    EnergyCost dc = episodeOptionsFromConfig(none).energyCost;
+    CHECK(dc.positiveWork == 1 && dc.negativeWork == 0 && dc.forceTime == 0);
     FitnessOptions nf = fitnessOptionsFromConfig(none);
     CHECK(nf.base == 0 && nf.survivalExponent == 0);
     EpisodeOptions defaults;

@@ -19,10 +19,21 @@ static void readNumber (const libconfig::Config &config, const char *path,
 
 EpisodeOptions episodeOptionsFromConfig (const libconfig::Config &config,
 					 EpisodeOptions opt) {
+    if (config.exists("global.maxSteps")) {
+	opt.maxSteps = (int)config.lookup("global.maxSteps");
+	if (opt.maxSteps <= 0)
+	    throw runtime_error("maxSteps must be positive");
+    }
     readNumber(config, "global.headFloor", opt.headFloor);
     readNumber(config, "global.energyBudget", opt.energyBudget);
     if (opt.energyBudget < 0)
 	throw runtime_error("energyBudget must not be negative");
+    EnergyCost &c = opt.energyCost;
+    readNumber(config, "global.energyCost.positiveWork", c.positiveWork);
+    readNumber(config, "global.energyCost.negativeWork", c.negativeWork);
+    readNumber(config, "global.energyCost.forceTime", c.forceTime);
+    if (c.positiveWork < 0 || c.negativeWork < 0 || c.forceTime < 0)
+	throw runtime_error("energyCost weights must not be negative");
     if (config.exists("global.groundLimbs")) {
 	const libconfig::Setting &gl = config.lookup("global.groundLimbs");
 	opt.groundLimbs.clear();
@@ -81,7 +92,11 @@ bool Simulation::step (const function<bool ()> &afterPhysics) {
 
     world.step();
     ++res.steps;
-    res.energy = body->positiveWork();
+    res.positiveWork = body->positiveWork();
+    res.negativeWork = body->negativeWork();
+    res.forceTime = body->forceTime();
+    res.energy = opt.energyCost(res.positiveWork, res.negativeWork,
+				res.forceTime);
 
     if (afterPhysics && !afterPhysics()) {
 	res.end = EpisodeEnd::Stopped;
@@ -123,6 +138,11 @@ EpisodeResult runEpisode (const CreatureSpec &spec, const EpisodeOptions &opt,
 	sim.step(afterPhysics);
     }
     return sim.result();
+}
+
+double EnergyCost::operator() (double posWork, double negWork,
+			       double ft) const {
+    return positiveWork*posWork - negativeWork*negWork + forceTime*ft;
 }
 
 FitnessOptions fitnessOptionsFromConfig (const libconfig::Config &config,

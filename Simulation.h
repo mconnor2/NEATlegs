@@ -13,6 +13,22 @@ namespace libconfig { class Config; }
 class Renderer;
 
 /**
+ * What muscle energy costs: a weighted sum of positive work, negative work
+ * (absorbed, as a positive amount) and the force-time integral.  A
+ * metabolic model uses the inverse muscle efficiencies (about 4 and 0.83)
+ * and a cost for holding force (J per N s, i.e. holding F costs like
+ * moving it at that speed).  The defaults count positive work only.
+ */
+struct EnergyCost {
+    double positiveWork = 1;	//J per J put into the body
+    double negativeWork = 0;	//J per J absorbed
+    double forceTime = 0;	//J per N s of muscle force
+
+    double operator() (double posWork, double negWork, double forceTime)
+	const;
+};
+
+/**
  * How an episode runs and when it ends.
  */
 struct EpisodeOptions {
@@ -22,12 +38,13 @@ struct EpisodeOptions {
     double headFloor = 0.75;		//Ends when the head drops below this
     std::vector<std::string> groundLimbs;	//If set, ends when any other
 						// limb touches the ground
-    double energyBudget = 0;		//Ends when positive muscle work
-					// reaches this (J); 0 for no limit
+    double energyBudget = 0;		//Ends when the energy cost reaches
+					// this (J); 0 for no limit
+    EnergyCost energyCost;
 };
 
-// Options from a config's global section (headFloor, groundLimbs,
-// energyBudget), on top of the given defaults
+// Options from a config's global section (maxSteps, headFloor,
+// groundLimbs, energyBudget, energyCost), on top of the given defaults
 EpisodeOptions episodeOptionsFromConfig (const libconfig::Config &config,
 					 EpisodeOptions defaults = {});
 
@@ -36,7 +53,7 @@ enum class EpisodeEnd {
     MaxSteps,
     HeadBelowFloor,
     ForbiddenContact,	//A limb not in groundLimbs touched the ground
-    EnergySpent,	//Used up the energy budget
+    EnergySpent,	//Energy cost reached the budget
     Stopped		//Stopped from outside (e.g. the window was closed)
 };
 
@@ -44,7 +61,10 @@ struct EpisodeResult {
     int steps = 0;			//Physics steps taken
     double maxHeadX = 0, maxHeadY = 0;	//Over steps that didn't end the
 					// episode, starting from 0
-    double energy = 0;			//Positive muscle work (J)
+    double energy = 0;			//Energy cost (EnergyCost) so far
+    double positiveWork = 0, negativeWork = 0;	//Muscle work (J; negative
+						// work <= 0)
+    double forceTime = 0;		//Integral of muscle |force| (N s)
     EpisodeEnd end = EpisodeEnd::Running;
 };
 
