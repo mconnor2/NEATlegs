@@ -22,10 +22,12 @@ struct EpisodeOptions {
     double headFloor = 0.75;		//Ends when the head drops below this
     std::vector<std::string> groundLimbs;	//If set, ends when any other
 						// limb touches the ground
+    double energyBudget = 0;		//Ends when positive muscle work
+					// reaches this (J); 0 for no limit
 };
 
-// Options from a config's global section (headFloor, groundLimbs), on top
-// of the given defaults
+// Options from a config's global section (headFloor, groundLimbs,
+// energyBudget), on top of the given defaults
 EpisodeOptions episodeOptionsFromConfig (const libconfig::Config &config,
 					 EpisodeOptions defaults = {});
 
@@ -34,6 +36,7 @@ enum class EpisodeEnd {
     MaxSteps,
     HeadBelowFloor,
     ForbiddenContact,	//A limb not in groundLimbs touched the ground
+    EnergySpent,	//Used up the energy budget
     Stopped		//Stopped from outside (e.g. the window was closed)
 };
 
@@ -86,6 +89,33 @@ class Simulation {
 	int nInputs, nOutputs;
 	EpisodeResult res;
 };
+
+/**
+ * Fitness of an episode: (maxHeadX + base) * survival^survivalExponent,
+ * where survival is the fraction of maxSteps survived.  Reaching max steps
+ * or spending the energy budget counts as surviving the whole episode;
+ * falling, a forbidden contact, or being stopped counts the steps taken.
+ * The defaults give plain maxHeadX.
+ *
+ * Multiplying by survival means an early fall (e.g. diving forward) is
+ * worth little, and base gives staying up without moving some credit
+ * without making it better than moving.
+ */
+struct FitnessOptions {
+    double base = 0;			//Metres added to the distance
+    double survivalExponent = 0;	//0 ignores survival
+};
+
+// Options from a config's global section (fitnessBase, survivalExponent),
+// on top of the given defaults
+FitnessOptions fitnessOptionsFromConfig (const libconfig::Config &config,
+					 FitnessOptions defaults = {});
+
+// Fraction of the episode survived, in [0, 1]
+double survival (const EpisodeResult &r, int maxSteps);
+
+double episodeFitness (const EpisodeResult &r, int maxSteps,
+		       const FitnessOptions &f);
 
 // Network (or any policy): sensor inputs -> muscle outputs
 typedef std::function<void (const double *in, double *out)> Controller;

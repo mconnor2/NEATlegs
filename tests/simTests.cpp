@@ -107,6 +107,67 @@ TEST(endsWhenForbiddenLimbTouches) {
     CHECK(runEpisode(spec, o, wobbler(2)).end == EpisodeEnd::MaxSteps);
 }
 
+// Once positive work reaches the budget the episode ends, counting that
+// step; a step earlier it hadn't been reached
+TEST(endsWhenEnergySpent) {
+    CreatureSpec spec = testCreature::spec();
+    double full = runEpisode(spec, noFloor(200), wobbler(2)).energy;
+    EpisodeOptions o = noFloor(200);
+    o.energyBudget = full / 3;
+    EpisodeResult r = runEpisode(spec, o, wobbler(2));
+    CHECK(r.end == EpisodeEnd::EnergySpent);
+    CHECK(r.energy >= o.energyBudget);
+    CHECK(r.steps > 1 && r.steps < 200);
+    CHECK(runEpisode(spec, noFloor(r.steps - 1), wobbler(2)).energy <
+	  o.energyBudget);
+
+    o.energyBudget = full * 2;		// never reached
+    CHECK(runEpisode(spec, o, wobbler(2)).end == EpisodeEnd::MaxSteps);
+}
+
+namespace {
+EpisodeResult ended (EpisodeEnd end, int steps, double x) {
+    EpisodeResult r;
+    r.end = end;
+    r.steps = steps;
+    r.maxHeadX = x;
+    return r;
+}
+}
+
+TEST(survivalCountsFallsOnly) {
+    CHECK(survival(ended(EpisodeEnd::MaxSteps, 1000, 0), 1000) == 1.0);
+    CHECK(survival(ended(EpisodeEnd::EnergySpent, 300, 0), 1000) == 1.0);
+    CHECK(survival(ended(EpisodeEnd::HeadBelowFloor, 250, 0), 1000) == 0.25);
+    CHECK(survival(ended(EpisodeEnd::ForbiddenContact, 500, 0), 1000) == 0.5);
+    CHECK(survival(ended(EpisodeEnd::Stopped, 100, 0), 1000) == 0.1);
+}
+
+TEST(fitnessShaping) {
+    // Defaults: plain max head x, bit for bit, however the episode ended
+    FitnessOptions plain;
+    for (EpisodeEnd e : {EpisodeEnd::MaxSteps, EpisodeEnd::HeadBelowFloor})
+	CHECK(episodeFitness(ended(e, 123, 1.2345678), 1000, plain) ==
+	      1.2345678);
+
+    FitnessOptions f;
+    f.base = 0.5;
+    f.survivalExponent = 1;
+    EpisodeResult dive = ended(EpisodeEnd::HeadBelowFloor, 100, 2.0),
+		  shuffle = ended(EpisodeEnd::HeadBelowFloor, 500, 1.0),
+		  stand = ended(EpisodeEnd::MaxSteps, 1000, 0.0),
+		  walk = ended(EpisodeEnd::MaxSteps, 1000, 3.0),
+		  budget = ended(EpisodeEnd::EnergySpent, 400, 3.0);
+    CHECK(fabs(episodeFitness(dive, 1000, f) - 0.25) < 1e-12);
+    CHECK(episodeFitness(dive, 1000, f) < episodeFitness(shuffle, 1000, f));
+    CHECK(episodeFitness(stand, 1000, f) == 0.5);	// base alone
+    CHECK(episodeFitness(walk, 1000, f) == 3.5);
+    CHECK(episodeFitness(budget, 1000, f) == 3.5);	// spending isn't falling
+
+    f.survivalExponent = 2;			// harsher on early falls
+    CHECK(fabs(episodeFitness(shuffle, 1000, f) - 0.375) < 1e-12);
+}
+
 // The frame callback runs once per step, after physics and before the end
 // rules, and can stop the episode
 TEST(frameCallbackRunsEachStepAndCanStop) {
@@ -173,7 +234,29 @@ TEST(optionsFromConfig) {
     d.readString("global: { headFloor = 1; };");	// integer
     CHECK(episodeOptionsFromConfig(d).headFloor == 1.0);
 
+    libconfig::Config budget;
+    budget.readString("global: { energyBudget = 50; fitnessBase = 0.5; "
+		      "survivalExponent = 2; };");
+    CHECK(episodeOptionsFromConfig(budget).energyBudget == 50.0);
+    FitnessOptions f = fitnessOptionsFromConfig(budget);
+    CHECK(f.base == 0.5 && f.survivalExponent == 2.0);
+
+    for (const char *bad : {"global: { energyBudget = -1.0; };",
+			    "global: { survivalExponent = -1; };"}) {
+	libconfig::Config c;
+	c.readString(bad);
+	bool threw = false;
+	try {
+	    episodeOptionsFromConfig(c);
+	    fitnessOptionsFromConfig(c);
+	} catch (std::exception &) { threw = true; }
+	CHECK(threw);
+    }
+
     libconfig::Config none;
+    CHECK(episodeOptionsFromConfig(none).energyBudget == 0);
+    FitnessOptions nf = fitnessOptionsFromConfig(none);
+    CHECK(nf.base == 0 && nf.survivalExponent == 0);
     EpisodeOptions defaults;
     defaults.maxSteps = 20;
     EpisodeOptions e = episodeOptionsFromConfig(none, defaults);

@@ -31,7 +31,7 @@ RunLog::RunLog (const Options &_opt) : opt(_opt), bestEver(-1e300)
 	      "min_fitness,stdev_fitness,diversity,compat_thresh,"
 	      "mean_hidden_nodes,mean_enabled_links,best_hidden_nodes,"
 	      "best_enabled_links,eval_seconds,steps_per_sec,mean_energy,"
-	      "best_energy\n";
+	      "best_energy,mean_steps,best_steps,mean_distance,best_distance\n";
     speciesCsv<<"generation,species_id,age,size,mean_fitness,max_fitness\n";
 
     ofstream(dir / "seed.txt")<<opt.seed<<"\n";
@@ -68,7 +68,8 @@ void RunLog::record (const GeneticAlgorithm &GA) {
 		<<st.meanHiddenNodes<<","<<st.meanEnabledLinks<<","
 		<<st.bestHiddenNodes<<","<<st.bestEnabledLinks<<","
 		<<st.evalSeconds<<","<<st.stepsPerSec<<","<<st.meanEnergy<<","
-		<<st.bestEnergy<<"\n";
+		<<st.bestEnergy<<","<<st.meanSteps<<","<<st.bestSteps<<","
+		<<st.meanDistance<<","<<st.bestDistance<<"\n";
 	statsCsv.flush();
 
 	for (const SpecieStats &ss : st.species) {

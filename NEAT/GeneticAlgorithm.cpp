@@ -203,7 +203,8 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
 	return;
     }
 
-    double sum = 0, sumSq = 0, sumHidden = 0, sumLinks = 0, sumEnergy = 0;
+    double sum = 0, sumSq = 0, sumHidden = 0, sumLinks = 0, sumEnergy = 0,
+	   sumDistance = 0;
     long totalSteps = 0;
     st.maxFitness = -1e300;
     st.minFitness = 1e300;
@@ -216,12 +217,15 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
 	sumLinks += g->numEnabledLinks();
 	totalSteps += g->steps;
 	sumEnergy += g->energy;
+	sumDistance += g->distance;
     }
     st.meanFitness = sum / n;
     st.stdevFitness = sqrt(max(0.0, sumSq / n - st.meanFitness*st.meanFitness));
     st.meanHiddenNodes = sumHidden / n;
     st.meanEnabledLinks = sumLinks / n;
     st.meanEnergy = sumEnergy / n;
+    st.meanSteps = (double)totalSteps / n;
+    st.meanDistance = sumDistance / n;
     if (totalSteps > 0 && evalSeconds > 0)
 	st.stepsPerSec = totalSteps / evalSeconds;
 
@@ -264,6 +268,8 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
     st.bestHiddenNodes = top[0].second->numHiddenNodes();
     st.bestEnabledLinks = top[0].second->numEnabledLinks();
     st.bestEnergy = top[0].second->energy;
+    st.bestSteps = top[0].second->steps;
+    st.bestDistance = top[0].second->distance;
 
     stats.push_back(st);
 }

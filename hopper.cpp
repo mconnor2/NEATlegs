@@ -42,14 +42,16 @@ const int Height = 480;
 
 /**
  * Fitness for a creature: how far forward its head gets (max head x) in one
- * episode.  Runs are defined by the creature spec and episode options
+ * episode, optionally shaped by how long it stays up (FitnessOptions).
+ * Runs are defined by the creature spec and episode options
  * (Simulation.h); this adds the network controller, the objective, and
  * optional real-time drawing.
  */
 class hopper {
     public:
-	hopper(const CreatureSpec *_spec, const EpisodeOptions &_opt) :
-	    spec(_spec), opt(_opt) { }
+	hopper(const CreatureSpec *_spec, const EpisodeOptions &_opt,
+	       const FitnessOptions &_fopt) :
+	    spec(_spec), opt(_opt), fopt(_fopt) { }
 
 	// With a display, the run is drawn in real time and overlay (if set)
 	// is called each frame to draw on top of the simulation.  Any key
@@ -58,6 +60,22 @@ class hopper {
 	double operator()(const GenomeP &g, Display *display = nullptr,
 			  const function<void(Display &)> &overlay = nullptr)
 	    const
+	{
+	    EpisodeResult r = episode(g, display, overlay);
+	    g->steps = r.steps;
+	    g->energy = r.energy;
+	    g->distance = r.maxHeadX;
+	    return (g->fitness = fitness(r));
+	}
+
+	double fitness (const EpisodeResult &r) const {
+	    return episodeFitness(r, opt.maxSteps, fopt);
+	}
+
+	// One episode of g's network, drawn if there's a display
+	EpisodeResult episode (const GenomeP &g, Display *display = nullptr,
+			       const function<void(Display &)> &overlay =
+				   nullptr) const
 	{
 	    unique_ptr<Network> N(g->createNewNetwork());
 	    Controller controller = [&](const double *in, double *out) {
@@ -79,15 +97,13 @@ class hopper {
 		return true;
 	    };
 
-	    EpisodeResult r = runEpisode(*spec, opt, controller, frame);
-	    g->steps = r.steps;
-	    g->energy = r.energy;
-	    return (g->fitness = r.maxHeadX);
+	    return runEpisode(*spec, opt, controller, frame);
 	}
 
     private:
 	const CreatureSpec *spec;
 	EpisodeOptions opt;
+	FitnessOptions fopt;
 };
 
 static void usage () {
@@ -104,7 +120,9 @@ static void usage () {
 	   "  -S seed     random seed, to repeat a run exactly (default: from\n"
 	   "              /dev/urandom; the seed used is printed and saved)\n"
 	   "  -r genome   replay a saved genome in a window instead of\n"
-	   "              running the GA\n");
+	   "              running the GA\n"
+	   "  -e genome   evaluate a saved genome once, headless, and print\n"
+	   "              its fitness, distance, steps, energy and end reason\n");
 }
 
 // Default run directory: runs/<config name>-<YYYYmmdd-HHMMSS>
@@ -116,16 +134,33 @@ static string defaultRunDir (const char *configFile) {
 	   "-" + stamp;
 }
 
+static GenomeP loadGenome (const char *genomeFile, ExpParameters *P) {
+    ifstream in(genomeFile);
+    if (!in) {
+	cerr<<"Can't open genome file "<<genomeFile<<endl;
+	return nullptr;
+    }
+    return Genome::load(in, P);
+}
+
+// Evaluate a saved genome once without a window and print the result
+static int evaluate (const hopper &fit, const char *genomeFile,
+		     ExpParameters *P)
+{
+    GenomeP g = loadGenome(genomeFile, P);
+    if (!g) return 1;
+    EpisodeResult r = fit.episode(g);
+    //Full precision, to compare with the fitness saved with the genome
+    printf("fitness %.17g distance %.17g steps %d energy %.17g end %s\n",
+	   fit.fitness(r), r.maxHeadX, r.steps, r.energy, toString(r.end));
+    return 0;
+}
+
 // Replay a saved genome until the window is closed
 static int replay (const hopper &fit, const char *genomeFile,
 		   ExpParameters *P)
 {
-    ifstream in(genomeFile);
-    if (!in) {
-	cerr<<"Can't open genome file "<<genomeFile<<endl;
-	return 1;
-    }
-    GenomeP g = Genome::load(in, P);
+    GenomeP g = loadGenome(genomeFile, P);
     if (!g) return 1;
 
     unique_ptr<Display> display;
@@ -144,7 +179,8 @@ static int replay (const hopper &fit, const char *genomeFile,
 	    drawStatsOverlay(d, title, noHistory);
 	});
 	if (!display->quitRequested())
-	    printf("Replay %d: fitness %.4f\n", run, f);
+	    printf("Replay %d: fitness %.4f (distance %.4f m, %d steps, "
+		   "%.4g J)\n", run, f, g->distance, g->steps, g->energy);
     }
     return 0;
 }
@@ -263,11 +299,12 @@ int main (int argc, char **argv) {
 
     RunLog::Options logOpt;
     const char *replayFile = NULL;
+    const char *evalFile = NULL;
 
     /* Process arguments */
     int opt;
     char *configFile = NULL;
-    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:d:S:")) != -1) {
+    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:e:d:S:")) != -1) {
 	switch(opt) {
 	    case 'V':
 		drawGen = true;
@@ -289,6 +326,9 @@ int main (int argc, char **argv) {
 	    break;
 	    case 'r':
 		replayFile = optarg;
+	    break;
+	    case 'e':
+		evalFile = optarg;
 	    break;
 	    case 'S':
 		seed = strtoull(optarg, NULL, 10);
@@ -346,8 +386,11 @@ int main (int argc, char **argv) {
 	cerr<<configFile<<": "<<e.what()<<endl;
 	return 1;
     }
-    EpisodeOptions episode = episodeOptionsFromConfig(config);
+    EpisodeOptions episode;
+    FitnessOptions fitnessOpt;
     try {
+	episode = episodeOptionsFromConfig(config);
+	fitnessOpt = fitnessOptionsFromConfig(config);
 	Simulation check(spec, episode);	//Validates head, groundLimbs
     } catch (exception &e) {
 	cerr<<configFile<<": "<<e.what()<<endl;
@@ -356,8 +399,9 @@ int main (int argc, char **argv) {
     P.nInput = spec.numInputs();
     P.nOutput = spec.numOutputs();
 
-    hopper fit(&spec, episode);
+    hopper fit(&spec, episode, fitnessOpt);
 
+    if (evalFile) return evaluate(fit, evalFile, &P);
     if (replayFile) return replay(fit, replayFile, &P);
 
     FitnessFunction f = fit;
