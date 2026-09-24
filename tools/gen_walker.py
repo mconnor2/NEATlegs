@@ -25,8 +25,9 @@ P = dict(
     # extension lets the stance leg get behind the body; knee flexion stops
     # short of where the hamstring would cross the knee.
     ankle=(-60, 30), knee=(-135, 0), hip=(-30, 120),
-    # muscles: stiffness range as fraction of maxForce per metre of stretch
-    stretchAtMaxK=0.2, kSpan=4.0, kd=1.0,
+    # muscles: maxK gives maxForce at stretchAtMaxK of the start length;
+    # minK = minKFrac * maxK (0 lets a muscle go slack)
+    stretchAtMaxK=0.2, minKFrac=0.25, kd=1.0,
     minArm=0.02,  # reject muscles whose moment arm drops below this (m)
     forcePerWeight=8.0, wattsPerKg=50.0,
     # One push-pull spring per joint, each on the inside of its joint's bend
@@ -56,6 +57,10 @@ P = dict(
     # it) without making them drag, and gives more distance per joule than
     # 256 J (26 m against 19 m within 128 J; 8 seeds each).
     fitnessBase=0.1, survivalExponent=0.5, energyBudget=128.0,
+    # What the budget counts: None for positive work alone, or weights
+    # (positiveWork, negativeWork, forceTime) for a metabolic cost
+    energyCost=None,
+    maxSteps=1000,      # episode length cap (steps at 60 Hz)
 )
 if len(sys.argv) > 2:
     P.update(json.loads(sys.argv[2]))
@@ -178,7 +183,7 @@ L.append('''global: {
     popSize = %d;
     startPopulationPercent = 0.5;
 
-    //Run ends when the head drops below this height (m)
+%s    //Run ends when the head drops below this height (m)
     headFloor = %s;
 
     //Only these limbs may touch the ground; any other touching ends the run
@@ -190,7 +195,7 @@ L.append('''global: {
     fitnessBase = %s;
     survivalExponent = %s;
     energyBudget = %s;
-
+%s
     //Mating probabilities:
     inheritAllLinks = false;
     inheritDominant = 0.9;
@@ -221,9 +226,16 @@ L.append('''global: {
     nInput = %d;
     nOutput = %d;
 };
-''' % (P['popSize'], f(P['headFloor']),
+''' % (P['popSize'],
+       ('' if P['maxSteps'] == 1000 else '    //Longest run (steps at 60 Hz)\n    maxSteps = %d;\n\n' % P['maxSteps']),
+       f(P['headFloor']),
        ', '.join('"%s"' % g for g in P['groundLimbs']),
        f(P['fitnessBase']), f(P['survivalExponent']), f(P['energyBudget']),
+       ('' if not P['energyCost'] else '''
+    //Energy cost = positiveWork * W+ + negativeWork * |W-| + forceTime *
+    // integral of |muscle force| dt (J per N s)
+    energyCost = { positiveWork = %s; negativeWork = %s; forceTime = %s; };
+''' % tuple(f(x) for x in P['energyCost'])),
        f(P['addLink']), f(P['addNode']),
        10 + len(extra) + 1, 2*len(mus)))
 
@@ -284,7 +296,7 @@ for name, jn, b1, w1, b2, w2 in mus:
       maxPower = %s;
     }''' % (name, jn, f(L0), f(marm), f(max(abs(amin), abs(amax))),
             b1.name, pt(b1.local(w1)), b2.name, pt(b2.local(w2)),
-            f(maxK/P['kSpan']), f(maxK), f(lmin), f(lmax), f(P['kd']),
+            f(maxK*P['minKFrac']), f(maxK), f(lmin), f(lmax), f(P['kd']),
             f(maxForce), f(maxPower)))
 L.append('muscles = (\n' + ',\n'.join(mb) + ');\n')
 
