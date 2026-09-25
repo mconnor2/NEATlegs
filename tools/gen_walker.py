@@ -23,11 +23,16 @@ P = dict(
     headR=0.15, headDensity=2.0,
     # joint ranges relative to the standing start pose (degrees).  Hip
     # extension lets the stance leg get behind the body; knee flexion stops
-    # short of where the hamstring would cross the knee.
-    ankle=(-60, 30), knee=(-135, 0), hip=(-30, 120),
+    # short of where the hamstring would cross the knee.  Joint stops are
+    # free braces and evolution leans on them: hip flexion stops at 60,
+    # because at 120 (and partly at 90) walkers whose muscles can relax
+    # folded the torso forward onto the stop.
+    ankle=(-60, 30), knee=(-135, 0), hip=(-30, 60),
     # muscles: maxK gives maxForce at stretchAtMaxK of the start length;
-    # minK = minKFrac * maxK (0 lets a muscle go slack)
-    stretchAtMaxK=0.2, minKFrac=0.25, kd=1.0,
+    # minK = minKFrac * maxK (0 lets a muscle go slack).  With holding
+    # force costing energy, a low minK lets muscles relax and legs lock
+    # straight; 0 couldn't stand in 250 generations.
+    stretchAtMaxK=0.2, minKFrac=0.1, kd=1.0,
     minArm=0.02,  # reject muscles whose moment arm drops below this (m)
     forcePerWeight=8.0, wattsPerKg=50.0,
     # One push-pull spring per joint, each on the inside of its joint's bend
@@ -52,15 +57,20 @@ P = dict(
     # no difference.
     extraSensors=[],
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
-    # Objective as kanga2's, with the same budget per kg of body.  At
-    # population 1000 the budget binds once gaits work (5 of 8 runs spent
-    # it) without making them drag, and gives more distance per joule than
-    # 256 J (26 m against 19 m within 128 J; 8 seeds each).
-    fitnessBase=0.1, survivalExponent=0.5, energyBudget=128.0,
-    # What the budget counts: None for positive work alone, or weights
-    # (positiveWork, negativeWork, forceTime) for a metabolic cost
-    energyCost=None,
-    maxSteps=1000,      # episode length cap (steps at 60 Hz)
+    # Objective: survival shaping as kanga2's.  What the budget counts:
+    # None for positive work alone, or weights (positiveWork, negativeWork,
+    # forceTime) for a metabolic cost.  Holding force has to cost energy or
+    # nothing favours straight, bone-supported legs over a crouch: 4 and
+    # 0.83 are the inverse muscle efficiencies, and 1 J per N s charges
+    # holding force like moving it at 1 m/s.
+    fitnessBase=0.1, survivalExponent=0.5, energyCost=(4, 0.8333, 1),
+    # The budget only matters when it, not the step cap, ends the run: with
+    # 1000 steps most winners finished with budget left.  950 J is what
+    # the evolved gaits spend per 1000 steps, and runs may last up to
+    # 3000, so every walker that stays up ends by spending it and fitness
+    # is distance on 950 J.
+    energyBudget=950.0,
+    maxSteps=3000,      # episode length cap (steps at 60 Hz)
 )
 if len(sys.argv) > 2:
     P.update(json.loads(sys.argv[2]))
