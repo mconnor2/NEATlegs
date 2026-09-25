@@ -222,7 +222,7 @@ L.append('''global: {
     compatGDiff = 1.0;
     compatWDiff = 0.4;
 
-    compatThresh = 7.0;
+    compatThresh = 3.0;
 
     singleMate = 0.2;
     specieMate = 0.99;

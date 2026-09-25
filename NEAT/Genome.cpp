@@ -486,11 +486,14 @@ void Genome::mutate() {
  * Find compatability between two genomes, a rough measure of distance
  *  of one individual from another, just looking at genes.
  *
- * Compatability is weighted sum of #mismatching genes and weight difference
- *  for matching genes.
+ * As in Stanley & Miikkulainen (2002), eq. 1: the number of mismatching
+ *  (disjoint or excess) genes plus the mean weight difference of matching
+ *  genes, each weighted.  Like Stanley's own implementation, the gene count
+ *  isn't divided by genome size (the paper's N = 1), so a new node counts
+ *  the same in a large genome as in a small one.
  */
 double Genome::compat(const GenomeP &g2) const {
-    int gDiff = 0;
+    int gDiff = 0, nMatching = 0;
     double wDiff = 0.0;
 
     int p1i = 0, p2i = 0;
@@ -509,12 +512,14 @@ double Genome::compat(const GenomeP &g2) const {
             p2i++;
         } else { //innov equal
             wDiff += fabs(links[p1i].weight - g2->links[p2i].weight);
+            nMatching++;
             p1i++;
             p2i++;
         }
     }
 
-    return (P->compatGDiff * gDiff + P->compatWDiff * wDiff);
+    double meanWDiff = nMatching ? wDiff / nMatching : 0.0;
+    return P->compatGDiff * gDiff + P->compatWDiff * meanWDiff;
 }
 
 Network *Genome::createNewNetwork() const {

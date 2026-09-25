@@ -46,10 +46,10 @@ struct ExpParameters {
     double addNodeMutationRate;         //Percent of matings that will have
                                         // a new node and two links added
 
-    double compatGDiff;                 //How much gene difference is
-                                        //weighted for compatability
-    double compatWDiff;                 //How much link weight difference is
-                                        //weighed for compatability
+    double compatGDiff;                 //Weight of the number of genes
+                                        // that don't match (c1, c2)
+    double compatWDiff;                 //Weight of the mean weight
+                                        // difference of matching genes (c3)
 
     double compatThresh;                //Compatability threshold for members
                                         // of the same specie

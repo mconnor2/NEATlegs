@@ -137,7 +137,7 @@ TEST(compatProperties) {
     CHECK(a->compat(b) == b->compat(a));
     CHECK(a->compat(b) > 0.0);
 
-    // Pure weight changes: distance is compatWDiff * total |dw|
+    // Pure weight changes: distance is compatWDiff * mean |dw|
     GenomeP c = a->clone();
     P.weightMutationRate = 1.0;
     c->mutate();
@@ -145,7 +145,24 @@ TEST(compatProperties) {
     double dw = 0;
     for (size_t i = 0; i < la.size(); ++i)
         dw += fabs(la[i].weight - lc[i].weight);
-    CHECK_NEAR(a->compat(c), P.compatWDiff * dw, 1e-9);
+    CHECK_NEAR(a->compat(c), P.compatWDiff * dw / la.size(), 1e-9);
+}
+
+// Mismatching genes are counted; matching genes' weights are averaged
+TEST(compatCountsGenesAndAveragesWeights) {
+    ExpParameters P = params(2, 1);
+    GenomeP a = loadText("genome inputs 2 outputs 1 nodes 4 links 4\n"
+                         "link 0 0 2 0.5 1\n"
+                         "link 1 1 2 0.5 1\n"
+                         "link 3 0 3 1.0 1\n"
+                         "link 4 3 2 0.5 1\n", &P);
+    GenomeP b = loadText("genome inputs 2 outputs 1 nodes 3 links 2\n"
+                         "link 0 0 2 1.5 1\n"
+                         "link 1 1 2 0.5 1\n", &P);
+    CHECK(a && b);
+    if (!a || !b) return;
+    // 2 of 4 genes don't match; matching weights differ by 1 and 0
+    CHECK_NEAR(a->compat(b), P.compatGDiff * 2 + P.compatWDiff * 0.5, 1e-12);
 }
 
 TEST(matingKeepsInnovationsSortedAndUnique) {

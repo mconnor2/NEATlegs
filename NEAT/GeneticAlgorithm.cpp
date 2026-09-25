@@ -24,7 +24,7 @@ ExpParameters::ExpParameters() :
     weightMutationRate(0.2), weightPerturbScale(0.1), weightPerturbNormal(0.6),
     weightPerturbUniform(0.39), addLinkMutationRate(0.2),
     addNodeMutationRate(0.1), compatGDiff(1.0), compatWDiff(0.4),
-    compatThresh(7.0), targetSpecies(-1), threshAdapt(0.1),
+    compatThresh(3.0), targetSpecies(-1), threshAdapt(0.1),
     singleMate(0.2), specieMate(0.99), oldAge(5), startPopulationPercent(0.5)
 { }
 
