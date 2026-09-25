@@ -26,7 +26,9 @@ struct Specie {
 
     double maxFitness() const;
 
-    bool cull(const int oldAge, double &totalFitness);
+    //champion is the population's best genome; its species is never culled
+    bool cull(const int oldAge, double &totalFitness,
+              const GenomeP &champion);
 
 };
 

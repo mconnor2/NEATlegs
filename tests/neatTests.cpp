@@ -358,6 +358,28 @@ TEST(gaIsDeterministicForASeed) {
     CHECK(c.best != a.best);
 }
 
+// Fitness is deterministic and species champions are carried over, so the
+// best fitness can never drop, even when the champion is alone in an old
+// species (which is otherwise culled)
+TEST(gaNeverLosesChampion) {
+    for (uint64_t seed = 1; seed <= 10; ++seed) {
+        seed_rand(seed);
+        ExpParameters P = params(3, 1);
+        P.popSize = 40;
+        P.compatThresh = 0.5;
+        P.targetSpecies = 15;
+        P.oldAge = 1;
+        FitnessFunction f = xorFitness;
+        GeneticAlgorithm GA(&P, &f);
+        for (int i = 0; i < 40; ++i) GA.nextGeneration();
+        bool monotone = true;
+        for (size_t i = 1; i < GA.history().size(); ++i)
+            if (GA.history()[i].maxFitness < GA.history()[i-1].maxFitness)
+                monotone = false;
+        CHECK(monotone);
+    }
+}
+
 TEST(gaStatsAreConsistent) {
     RunResult r = runGA(9, 15);
     for (size_t i = 0; i < r.history.size(); ++i) {

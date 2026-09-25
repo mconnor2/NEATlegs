@@ -347,7 +347,7 @@ double GeneticAlgorithm::nextGeneration() {
         sumFit += (*gi)->fitness;
 
     species.remove_if([&](const SpecieP &s) {
-        return s->cull(P->oldAge, sumFit);
+        return s->cull(P->oldAge, sumFit, maxFitI);
     });
 
     #ifdef _DEBUG_PRINT

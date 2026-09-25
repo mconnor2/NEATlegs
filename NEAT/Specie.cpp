@@ -34,6 +34,7 @@ double Specie::maxFitness() const {
  *   A species should be removed if:
  *      -it is above a certain age and:
  *        -There is only one viable member
+ *   unless it holds the population's champion, which would then be lost.
  *
  * When removing, subtract fitness from totalFitness and return true
  *
@@ -41,8 +42,9 @@ double Specie::maxFitness() const {
  *  subtract fitness from totalFitness and specie fitness, then set member's
  *  fitness to 0 so won't be selected to mate.
  */
-bool Specie::cull(const int oldAge, double &totalFitness) {
-    if (age >= oldAge and nMembers <= 1) {
+bool Specie::cull(const int oldAge, double &totalFitness,
+                  const GenomeP &champion) {
+    if (age >= oldAge and nMembers <= 1 and members[0] != champion) {
         totalFitness -= fitness;
         members[0]->fitness = 0;
         return true;
