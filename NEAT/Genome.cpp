@@ -114,10 +114,27 @@ void addLinkMutate (std::set<int> &neuronIDs, Link *childLinks,
     int nNeurons = neurons.size();
 
     //Input neuron can be any node,
-    //Output neuron cannot be an input node.
-    childLinks[nLinks].inID  = neurons[rand_int()%nNeurons];
-    childLinks[nLinks].outID = neurons[rand_int()%(nNeurons-P->nInput)+
-                                  P->nInput];
+    //Output neuron cannot be an input node.  The two must not already be
+    // connected (by an enabled or disabled link), so try a few pairs and
+    // give up if they're all taken.
+    const int maxTries = 20;
+    int inID = -1, outID = -1;
+    bool found = false;
+    for (int t = 0; t < maxTries && !found; ++t) {
+        inID = neurons[rand_int()%nNeurons];
+        outID = neurons[rand_int()%(nNeurons-P->nInput) + P->nInput];
+        found = true;
+        for (int i = 0; i < nLinks; ++i) {
+            if (childLinks[i].inID == inID && childLinks[i].outID == outID) {
+                found = false;
+                break;
+            }
+        }
+    }
+    if (!found) return;
+
+    childLinks[nLinks].inID = inID;
+    childLinks[nLinks].outID = outID;
 
     //Use innovation store to find if this innovation has been done before
     // and set the innovation appropriately.
@@ -323,16 +340,17 @@ GenomeP Genome::mate(const GenomeP &parent2, InnovationStore *IS) const {
 
     if (addNode) addNodeMutate(childLinks, i, nChildNodes, IS);
 
+    //May add no link if it can't find an unconnected pair, so from here
+    // on i, not nChildLinks, is the number of links
     if (addLink) addLinkMutate(neuronIDs, childLinks, i, IS, P);
 
     //XXX May have to sort childLinks because innovation store adds innovation
     //    IDs out of order, possibly?  If erasing IS every generation, then
     //    only the added links from mutation are a problem, otherwise new
     //    innovation numbers can come from anywhere.
-    stable_sort(childLinks,childLinks + nChildLinks);
+    stable_sort(childLinks,childLinks + i);
 
-    //return new Genome(childLinks, nChildLinks, nChildNodes, P);
-    GenomeP child(new Genome(childLinks, nChildLinks, nChildNodes, P));
+    GenomeP child(new Genome(childLinks, i, nChildNodes, P));
     return child;
 }
 
@@ -386,16 +404,17 @@ GenomeP Genome::singleMate(InnovationStore *IS) const {
 
     if (addNode) addNodeMutate(childLinks, i, nChildNodes, IS);
 
+    //May add no link if it can't find an unconnected pair, so from here
+    // on i, not nChildLinks, is the number of links
     if (addLink) addLinkMutate(neuronIDs, childLinks, i, IS, P);
 
     //XXX May have to sort childLinks because innovation store adds innovation
     //    IDs out of order, possibly?  If erasing IS every generation, then
     //    only the added links from mutation are a problem, otherwise new
     //    innovation numbers can come from anywhere.
-    stable_sort(childLinks,childLinks + nChildLinks);
+    stable_sort(childLinks,childLinks + i);
 
-    //return new Genome(childLinks, nChildLinks, nChildNodes, P);
-    GenomeP child(new Genome(childLinks, nChildLinks, nChildNodes, P));
+    GenomeP child(new Genome(childLinks, i, nChildNodes, P));
     return child;
 }
 

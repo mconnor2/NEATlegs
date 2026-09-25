@@ -186,6 +186,37 @@ TEST(matingKeepsInnovationsSortedAndUnique) {
     }
 }
 
+// Add-link only joins neurons that aren't connected yet (NEAT paper,
+// section 3.1), even when asked to add a link every time
+TEST(addLinkNeverDuplicates) {
+    seed_rand(5);
+    ExpParameters P = params(3, 2);
+    P.addLinkMutationRate = 1.0;
+    P.addNodeMutationRate = 0.2;
+    InnovationStore IS(&P);
+    vector<GenomeP> pop;
+    for (int i = 0; i < 10; ++i) pop.push_back(GenomeP(new Genome(&P)));
+    for (int gen = 0; gen < 40; ++gen) {
+        IS.newGeneration();
+        vector<GenomeP> next;
+        for (int i = 0; i < 10; ++i) {
+            GenomeP p1 = pop[rand_int() % pop.size()],
+                    p2 = pop[rand_int() % pop.size()];
+            next.push_back(i % 2 ? p1->mate(p2, &IS) : p1->singleMate(&IS));
+        }
+        pop.swap(next);
+    }
+    int dups = 0;
+    for (const GenomeP &g : pop) {
+        vector<LinkRec> l = linksOf(g);
+        for (size_t i = 0; i < l.size(); ++i)
+            for (size_t j = i+1; j < l.size(); ++j)
+                if (l[i].in == l[j].in && l[i].out == l[j].out) ++dups;
+        CHECK(g->numLinks() > 6);       // links were still added
+    }
+    CHECK(dups == 0);
+}
+
 TEST(networkMatchesHandCalculation) {
     ExpParameters P = params(2, 1);
     // bias(0) and x(1) -> output(2); a disabled link must be ignored
