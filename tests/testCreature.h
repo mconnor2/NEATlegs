@@ -17,14 +17,19 @@ namespace testCreature {
 inline const std::string Text = R"(
 limbs = (
     { name = "a"; position = { x = 0.0; y = 0.5; }; angle = 0.0;
-      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; } ); },
-    { name = "b"; position = { x = 0.0; y = 1.0; }; angle = 0.3; angularDamping = 0.1;
-      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; },
-                 { type = "ball"; radius = 0.05; position = { x = 0.0; y = 0.25; }; density = 2.0;
+      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0;
+                   groupIndex = -1; } ); },
+    { name = "b"; position = { x = 0.0; y = 1.0; }; angle = 0.3;
+      angularDamping = 0.1;
+      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0;
+                   groupIndex = -1; },
+                 { type = "ball"; radius = 0.05;
+                   position = { x = 0.0; y = 0.25; }; density = 2.0;
                    friction = 1.5; } ); });
 joints = (
     { name = "j"; type = "revolute"; obj1 = "a"; obj2 = "b";
-      position = { x = 0.0; y = 0.75; }; lowerAngle = -1.0; upperAngle = 1.0; });
+      position = { x = 0.0; y = 0.75; };
+      lowerAngle = -1.0; upperAngle = 1.0; });
 muscles = (
     { name = "m"; obj1 = "a"; pos1 = { x = 0.05; y = 0.1; };
       obj2 = "b"; pos2 = { x = 0.05; y = -0.1; };

@@ -11,17 +11,17 @@
  */
 class Renderer {
     public:
-	virtual ~Renderer () { }
+        virtual ~Renderer () { }
 
-	// Closed polygon through n points
-	virtual void polygon (const Vec2 *points, int n, Color c) = 0;
-	virtual void circle (Vec2 centre, float radius, Color c) = 0;
-	virtual void segment (Vec2 a, Vec2 b, Color c) = 0;
+        // Closed polygon through n points
+        virtual void polygon (const Vec2 *points, int n, Color c) = 0;
+        virtual void circle (Vec2 centre, float radius, Color c) = 0;
+        virtual void segment (Vec2 a, Vec2 b, Color c) = 0;
 };
 
 // Colors the physics draws with
-const Color BodyColor = 0x00FF00FF;	//Box outlines
-const Color BallColor = 0xFF0000FF;	//Circles
+const Color BodyColor = 0x00FF00FF;     //Box outlines
+const Color BallColor = 0xFF0000FF;     //Circles
 const Color MuscleColor = 0xFF0000FF;
 
 #endif

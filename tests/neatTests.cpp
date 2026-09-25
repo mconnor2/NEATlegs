@@ -35,13 +35,13 @@ vector<LinkRec> linksOf (const GenomeP &g) {
     istringstream in(saved(g));
     string line;
     while (getline(in, line)) {
-	if (line.compare(0, 5, "link ") != 0) continue;
-	istringstream ls(line.substr(5));
-	LinkRec l;
-	int enabled;
-	ls>>l.innov>>l.in>>l.out>>l.weight>>enabled;
-	l.enabled = enabled != 0;
-	links.push_back(l);
+        if (line.compare(0, 5, "link ") != 0) continue;
+        istringstream ls(line.substr(5));
+        LinkRec l;
+        int enabled;
+        ls>>l.innov>>l.in>>l.out>>l.weight>>enabled;
+        l.enabled = enabled != 0;
+        links.push_back(l);
     }
     return links;
 }
@@ -60,7 +60,7 @@ ExpParameters params (int nIn, int nOut) {
 }
 
 vector<double> runNet (const GenomeP &g, const vector<double> &input,
-		       int nOut, int times = 1) {
+                       int nOut, int times = 1) {
     unique_ptr<Network> N(g->createNewNetwork());
     vector<double> in(input), out(nOut, 0.0);
     for (int i = 0; i < times; ++i) N->run(in.data(), out.data());
@@ -74,9 +74,9 @@ double sigmoid (double x) { return 1.0/(1.0 + exp(-3.0*x)); }
 GenomeP grownGenome (ExpParameters *P, InnovationStore &IS, int gens = 20) {
     GenomeP g(new Genome(P));
     for (int i = 0; i < gens; ++i) {
-	IS.newGeneration();
-	g = g->singleMate(&IS);
-	g->mutate();
+        IS.newGeneration();
+        g = g->singleMate(&IS);
+        g->mutate();
     }
     return g;
 }
@@ -110,7 +110,7 @@ TEST(loadRejectsMismatchedExperiment) {
     CHECK(loadText(saved(g), &Q) == nullptr);
     CHECK(loadText("not a genome\n", &P) == nullptr);
     CHECK(loadText("genome inputs 2 outputs 1 nodes 3 links 2\n"
-		   "link 0 0 2 0.5 1\n", &P) == nullptr);	// truncated
+                   "link 0 0 2 0.5 1\n", &P) == nullptr);       // truncated
 }
 
 TEST(cloneIsEqualAndIndependent) {
@@ -123,7 +123,7 @@ TEST(cloneIsEqualAndIndependent) {
     CHECK(saved(c) == saved(g));
     string before = saved(g);
     c->mutate();
-    CHECK(saved(g) == before);		// original untouched
+    CHECK(saved(g) == before);          // original untouched
     CHECK(saved(c) != before);
 }
 
@@ -143,7 +143,8 @@ TEST(compatProperties) {
     c->mutate();
     vector<LinkRec> la = linksOf(a), lc = linksOf(c);
     double dw = 0;
-    for (size_t i = 0; i < la.size(); ++i) dw += fabs(la[i].weight - lc[i].weight);
+    for (size_t i = 0; i < la.size(); ++i)
+        dw += fabs(la[i].weight - lc[i].weight);
     CHECK_NEAR(a->compat(c), P.compatWDiff * dw, 1e-9);
 }
 
@@ -157,30 +158,31 @@ TEST(matingKeepsInnovationsSortedAndUnique) {
     for (int i = 0; i < 20; ++i) pop.push_back(GenomeP(new Genome(&P)));
 
     for (int gen = 0; gen < 30; ++gen) {
-	IS.newGeneration();		// as GeneticAlgorithm does
-	vector<GenomeP> next;
-	for (int i = 0; i < 20; ++i) {
-	    GenomeP p1 = pop[rand_int() % pop.size()], p2 = pop[rand_int() % pop.size()];
-	    GenomeP child = p1->mate(p2, &IS);
-	    child->mutate();
+        IS.newGeneration();             // as GeneticAlgorithm does
+        vector<GenomeP> next;
+        for (int i = 0; i < 20; ++i) {
+            GenomeP p1 = pop[rand_int() % pop.size()],
+                    p2 = pop[rand_int() % pop.size()];
+            GenomeP child = p1->mate(p2, &IS);
+            child->mutate();
 
-	    vector<LinkRec> lc = linksOf(child), l1 = linksOf(p1);
-	    bool sorted = true;
-	    for (size_t k = 1; k < lc.size(); ++k)
-		if (lc[k].innov <= lc[k-1].innov) sorted = false;
-	    CHECK(sorted);
+            vector<LinkRec> lc = linksOf(child), l1 = linksOf(p1);
+            bool sorted = true;
+            for (size_t k = 1; k < lc.size(); ++k)
+                if (lc[k].innov <= lc[k-1].innov) sorted = false;
+            CHECK(sorted);
 
-	    // Without inheritAllLinks the child has every gene of the
-	    // dominant parent (p1), plus at most 3 new ones
-	    size_t k = 0;
-	    for (const LinkRec &l : l1) {
-		while (k < lc.size() && lc[k].innov < l.innov) ++k;
-		CHECK(k < lc.size() && lc[k].innov == l.innov);
-	    }
-	    CHECK(lc.size() >= l1.size() && lc.size() <= l1.size() + 3);
-	    next.push_back(child);
-	}
-	pop.swap(next);
+            // Without inheritAllLinks the child has every gene of the
+            // dominant parent (p1), plus at most 3 new ones
+            size_t k = 0;
+            for (const LinkRec &l : l1) {
+                while (k < lc.size() && lc[k].innov < l.innov) ++k;
+                CHECK(k < lc.size() && lc[k].innov == l.innov);
+            }
+            CHECK(lc.size() >= l1.size() && lc.size() <= l1.size() + 3);
+            next.push_back(child);
+        }
+        pop.swap(next);
     }
 }
 
@@ -188,9 +190,9 @@ TEST(networkMatchesHandCalculation) {
     ExpParameters P = params(2, 1);
     // bias(0) and x(1) -> output(2); a disabled link must be ignored
     GenomeP g = loadText("genome inputs 2 outputs 1 nodes 3 links 3\n"
-			 "link 0 0 2 0.2 1\n"
-			 "link 1 1 2 0.4 1\n"
-			 "link 2 1 2 50 0\n", &P);
+                         "link 0 0 2 0.2 1\n"
+                         "link 1 1 2 0.4 1\n"
+                         "link 2 1 2 50 0\n", &P);
     CHECK(g != nullptr);
     if (!g) return;
     double x = 0.5;
@@ -203,9 +205,9 @@ TEST(networkHiddenNodeSettles) {
     // x -> hidden(3) -> output(2), plus bias -> output.  One propagation
     // step per run(), so with constant input it settles after two runs.
     GenomeP g = loadText("genome inputs 2 outputs 1 nodes 4 links 3\n"
-			 "link 0 0 2 0.5 1\n"
-			 "link 1 1 3 1.0 1\n"
-			 "link 2 3 2 2.0 1\n", &P);
+                         "link 0 0 2 0.5 1\n"
+                         "link 1 1 3 1.0 1\n"
+                         "link 2 3 2 2.0 1\n", &P);
     CHECK(g != nullptr);
     if (!g) return;
     double x = -0.3;
@@ -240,10 +242,10 @@ TEST(sameGenomeOnManyThreads) {
     vector<vector<double>> got(T);
     vector<thread> threads;
     for (int t = 0; t < T; ++t)
-	threads.emplace_back([&, t]() {
-	    for (int rep = 0; rep < 20; ++rep)
-		got[t] = runNet(g, {1.0, 0.3, -0.6}, 2, 50);
-	});
+        threads.emplace_back([&, t]() {
+            for (int rep = 0; rep < 20; ++rep)
+                got[t] = runNet(g, {1.0, 0.3, -0.6}, 2, 50);
+        });
     for (auto &th : threads) th.join();
     for (int t = 0; t < T; ++t) CHECK(got[t] == expected);
 }
@@ -253,9 +255,9 @@ TEST(sameGenomeOnManyThreads) {
 TEST(unreachableNeuronDoesNotHang) {
     ExpParameters P = params(2, 1);
     GenomeP g = loadText("genome inputs 2 outputs 1 nodes 4 links 3\n"
-			 "link 0 0 2 0.5 1\n"
-			 "link 1 1 3 1.0 0\n"		// only way into neuron 3
-			 "link 2 3 2 2.0 1\n", &P);
+                         "link 0 0 2 0.5 1\n"
+                         "link 1 1 3 1.0 0\n"   // only way into neuron 3
+                         "link 2 3 2 2.0 1\n", &P);
     CHECK(g != nullptr);
     if (!g) return;
     vector<double> out = runNet(g, {1.0, 0.5}, 1, 3);
@@ -268,7 +270,7 @@ TEST(innovationsSharedWithinGeneration) {
     InnovationStore IS(&P);
     int a, b, c;
     CHECK(!IS.addLink(0, 4, a));
-    CHECK(IS.addLink(0, 4, b));		// seen this generation
+    CHECK(IS.addLink(0, 4, b));         // seen this generation
     CHECK(a == b);
     CHECK(!IS.addLink(1, 4, c));
     CHECK(c != a);
@@ -277,21 +279,23 @@ TEST(innovationsSharedWithinGeneration) {
     CHECK(!IS.addNode(2, pre1, post1, n1));
     CHECK(IS.addNode(2, pre2, post2, n2));
     CHECK(pre1 == pre2 && post1 == post2 && n1 == n2);
-    CHECK(n1 == P.nInput + P.nOutput);		// first new neuron id
+    CHECK(n1 == P.nInput + P.nOutput);          // first new neuron id
 
     IS.newGeneration();
     int d;
-    CHECK(!IS.addLink(0, 4, d));		// forgotten: new innovation
+    CHECK(!IS.addLink(0, 4, d));                // forgotten: new innovation
     CHECK(d != a);
 }
 
 TEST(seededRandomIsRepeatable) {
     seed_rand(42);
     vector<double> a;
-    for (int i = 0; i < 100; ++i) a.push_back(i % 2 ? rand_double() : rand_gauss());
+    for (int i = 0; i < 100; ++i)
+        a.push_back(i % 2 ? rand_double() : rand_gauss());
     seed_rand(42);
     vector<double> b;
-    for (int i = 0; i < 100; ++i) b.push_back(i % 2 ? rand_double() : rand_gauss());
+    for (int i = 0; i < 100; ++i)
+        b.push_back(i % 2 ? rand_double() : rand_gauss());
     CHECK(a == b);
     seed_rand(43);
     CHECK(rand_double() != a[1]);
@@ -305,9 +309,9 @@ double xorFitness (const GenomeP &g) {
     unique_ptr<Network> N(g->createNewNetwork());
     double err = 0;
     for (auto &c : cases) {
-	double in[3] = {1.0, c[0], c[1]}, out[1] = {0};
-	for (int k = 0; k < 4; ++k) N->run(in, out);
-	err += (out[0] - c[2]) * (out[0] - c[2]);
+        double in[3] = {1.0, c[0], c[1]}, out[1] = {0};
+        for (int k = 0; k < 4; ++k) N->run(in, out);
+        err += (out[0] - c[2]) * (out[0] - c[2]);
     }
     return (g->fitness = 4.0 - err);
 }
@@ -330,10 +334,12 @@ RunResult runGA (uint64_t seed, int gens) {
 }
 
 bool sameStats (const GenerationStats &a, const GenerationStats &b) {
-    return a.generation == b.generation && a.populationSize == b.populationSize &&
-	   a.maxFitness == b.maxFitness && a.meanFitness == b.meanFitness &&
-	   a.minFitness == b.minFitness && a.nSpecies == b.nSpecies &&
-	   a.meanCompat == b.meanCompat && a.meanEnabledLinks == b.meanEnabledLinks;
+    return a.generation == b.generation &&
+           a.populationSize == b.populationSize &&
+           a.maxFitness == b.maxFitness && a.meanFitness == b.meanFitness &&
+           a.minFitness == b.minFitness && a.nSpecies == b.nSpecies &&
+           a.meanCompat == b.meanCompat &&
+           a.meanEnabledLinks == b.meanEnabledLinks;
 }
 
 }
@@ -344,7 +350,7 @@ TEST(gaIsDeterministicForASeed) {
     CHECK(a.history.size() == 25u && b.history.size() == 25u);
     bool same = a.history.size() == b.history.size();
     for (size_t i = 0; same && i < a.history.size(); ++i)
-	same = sameStats(a.history[i], b.history[i]);
+        same = sameStats(a.history[i], b.history[i]);
     CHECK(same);
     CHECK(a.best == b.best);
 
@@ -355,13 +361,13 @@ TEST(gaIsDeterministicForASeed) {
 TEST(gaStatsAreConsistent) {
     RunResult r = runGA(9, 15);
     for (size_t i = 0; i < r.history.size(); ++i) {
-	const GenerationStats &s = r.history[i];
-	CHECK(s.generation == (int)i);
-	CHECK(s.minFitness <= s.meanFitness && s.meanFitness <= s.maxFitness);
-	CHECK(s.nSpecies >= 1 && s.nSpecies <= s.populationSize);
-	int members = 0;
-	for (const SpecieStats &sp : s.species) members += sp.size;
-	CHECK(members == s.populationSize);
+        const GenerationStats &s = r.history[i];
+        CHECK(s.generation == (int)i);
+        CHECK(s.minFitness <= s.meanFitness && s.meanFitness <= s.maxFitness);
+        CHECK(s.nSpecies >= 1 && s.nSpecies <= s.populationSize);
+        int members = 0;
+        for (const SpecieStats &sp : s.species) members += sp.size;
+        CHECK(members == s.populationSize);
     }
 }
 

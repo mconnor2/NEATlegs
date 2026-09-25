@@ -15,7 +15,7 @@ using namespace std;
  * Rudimentary test of NEAT using XOR fitness function
  */
 
-/* Test each network with variable number of applications of XOR. 
+/* Test each network with variable number of applications of XOR.
  * Standard 3 input (1 reserved for bias), 1 output.
  * For each generation precompute the random inputs so that all members
  * of the generation get same input, but overall can't just memorize
@@ -23,101 +23,101 @@ using namespace std;
  */
 class xorTest {
     public:
-	xorTest (int N) {
-	    Rounds = N;
-	    xorInput.reserve(2*N);
-	    xorOutput.reserve(N);
-	    regenerate();
+        xorTest (int N) {
+            Rounds = N;
+            xorInput.reserve(2*N);
+            xorOutput.reserve(N);
+            regenerate();
 
-	}
+        }
 
-	double operator()(const GenomeP &g) const {
-	    unique_ptr<Network> N(g->createNewNetwork());
+        double operator()(const GenomeP &g) const {
+            unique_ptr<Network> N(g->createNewNetwork());
 
-	    double input[3] = {1,1,1};
-	    double output[1] = {0};
+            double input[3] = {1,1,1};
+            double output[1] = {0};
 
-	    double sqDiff = 0;
+            double sqDiff = 0;
 
-	    const int Passes = 32;
+            const int Passes = 32;
 
-	    for (int i = 0; i<Rounds; ++i) {
-		input[0] = xorInput[2*i];
-		input[1] = xorInput[2*i+1];
-		
-		//Instead of making one pass through the network for
-		// every input pattern, lets make some P passes (32?)
-		// and average the output over each pass, allowing the
-		// network to find a steady state.
-		double sumOut = 0;
-		for (int p = 0; p<Passes; ++p) {
-		    N->run(input, output);
-		    sumOut += output[0];
-		}
-		sumOut /= (double)Passes;
+            for (int i = 0; i<Rounds; ++i) {
+                input[0] = xorInput[2*i];
+                input[1] = xorInput[2*i+1];
 
-		sqDiff += (sumOut - xorOutput[i]) *
-			  (sumOut - xorOutput[i]);
-	    }
+                //Instead of making one pass through the network for
+                // every input pattern, lets make some P passes (32?)
+                // and average the output over each pass, allowing the
+                // network to find a steady state.
+                double sumOut = 0;
+                for (int p = 0; p<Passes; ++p) {
+                    N->run(input, output);
+                    sumOut += output[0];
+                }
+                sumOut /= (double)Passes;
 
-	    //Now return #Rounds - sqDiff, so a perfect xor will have
-	    // 0 sqDiff, and hence largest fitness (#Rounds).
-	    return (g->fitness = (Rounds-sqDiff));
-	}
-  
-	//Now run XOR, but this time instead of returning distance from
-	// correct, use 0-1 error where we threshold classification at 
-	// 0.5
-	int testError(const GenomeP &g) const {
-	    unique_ptr<Network> N(g->createNewNetwork());
+                sqDiff += (sumOut - xorOutput[i]) *
+                          (sumOut - xorOutput[i]);
+            }
 
-	    double input[3] = {1,1,1};
-	    double output[1] = {0};
+            //Now return #Rounds - sqDiff, so a perfect xor will have
+            // 0 sqDiff, and hence largest fitness (#Rounds).
+            return (g->fitness = (Rounds-sqDiff));
+        }
 
-	    const int Passes = 32;
+        //Now run XOR, but this time instead of returning distance from
+        // correct, use 0-1 error where we threshold classification at
+        // 0.5
+        int testError(const GenomeP &g) const {
+            unique_ptr<Network> N(g->createNewNetwork());
 
-	    int error = 0;
+            double input[3] = {1,1,1};
+            double output[1] = {0};
 
-	    for (int i = 0; i<Rounds; ++i) {
-		input[0] = xorInput[2*i];
-		input[1] = xorInput[2*i+1];
-		
-		//Instead of making one pass through the network for
-		// every input pattern, lets make some P passes (32?)
-		// and average the output over each pass, allowing the
-		// network to find a steady state.
-		double sumOut = 0;
-		for (int p = 0; p<Passes; ++p) {
-		    N->run(input, output);
-		    sumOut += output[0];
-		}
-		sumOut /= (double)Passes;
+            const int Passes = 32;
 
-		if ((sumOut >= 0.5 && xorOutput[i] == 0) ||
-		    (sumOut < 0.5  && xorOutput[i] == 1))
-		    error++;
-	    }
-    
-	    return error;
-	}
+            int error = 0;
 
-	void regenerate () {
-	    xorInput.clear();
-	    xorOutput.clear();
-	    for (int i = 0; i<Rounds; ++i) {
-		int a = rand_int()%2,
-		    b = rand_int()%2;
-		xorInput.push_back(a);
-		xorInput.push_back(b);
-		xorOutput.push_back(a^b);
-	    }
-	}
+            for (int i = 0; i<Rounds; ++i) {
+                input[0] = xorInput[2*i];
+                input[1] = xorInput[2*i+1];
+
+                //Instead of making one pass through the network for
+                // every input pattern, lets make some P passes (32?)
+                // and average the output over each pass, allowing the
+                // network to find a steady state.
+                double sumOut = 0;
+                for (int p = 0; p<Passes; ++p) {
+                    N->run(input, output);
+                    sumOut += output[0];
+                }
+                sumOut /= (double)Passes;
+
+                if ((sumOut >= 0.5 && xorOutput[i] == 0) ||
+                    (sumOut < 0.5  && xorOutput[i] == 1))
+                    error++;
+            }
+
+            return error;
+        }
+
+        void regenerate () {
+            xorInput.clear();
+            xorOutput.clear();
+            for (int i = 0; i<Rounds; ++i) {
+                int a = rand_int()%2,
+                    b = rand_int()%2;
+                xorInput.push_back(a);
+                xorInput.push_back(b);
+                xorOutput.push_back(a^b);
+            }
+        }
 
     private:
-	int Rounds;
+        int Rounds;
 
-	vector<int> xorInput;
-	vector<int> xorOutput;
+        vector<int> xorInput;
+        vector<int> xorOutput;
 
 };
 
@@ -129,7 +129,7 @@ int main () {
     //Setup experiment parameters:
     // Keep population small so we can watch the results at first.
     P.popSize = 100;
-    
+
     // Given vector (1,1,1) want to see largest combination weights:
     P.nInput = 3; P.nOutput = 1;
 
@@ -142,13 +142,13 @@ int main () {
     P.weightPerturbScale   = 0.1;
     P.weightPerturbNormal  = 0.6;
     P.weightPerturbUniform = 0.39;
-    
+
     P.addLinkMutationRate = 0.3;
     P.addNodeMutationRate = 0.01;
-    
+
     P.compatGDiff = 1.0;
     P.compatWDiff = 0.4;
-    
+
     P.compatThresh = 3;
     P.specieMate = 0.99;
 
@@ -162,21 +162,20 @@ int main () {
     RunLog log((RunLog::Options()));
 
     for (int gen = 0; gen < 1000; gen++) {
-	//Each generation will receive a different input, so network
-	// can't just memorize pattern
-	//fit.regenerate();
+        //Each generation will receive a different input, so network
+        // can't just memorize pattern
+        //fit.regenerate();
 
-	GA.nextGeneration();
-	log.record(GA);
-	int error = fit.testError(GA.bestIndiv());
-	
-	if (error == 0) {
-	    cout<<"Solved XOR at generation "<<gen<<endl;
-	    break;
-	}
+        GA.nextGeneration();
+        log.record(GA);
+        int error = fit.testError(GA.bestIndiv());
+
+        if (error == 0) {
+            cout<<"Solved XOR at generation "<<gen<<endl;
+            break;
+        }
     }
     log.finish(GA);
     cout<<"Best genome test error: "<<fit.testError(GA.bestIndiv())<<endl;
     return 0;
 }
-

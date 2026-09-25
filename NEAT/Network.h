@@ -14,9 +14,9 @@ struct Link {
     bool enabled;
 
     Link (int _inID = -1, int _outID = -1, int _innov = -1,
-	  double _w = 0, bool _enabled = false) :
-	  innov(_innov), inID(_inID), outID(_outID), weight(_w),
-	  enabled(_enabled) {}
+          double _w = 0, bool _enabled = false) :
+          innov(_innov), inID(_inID), outID(_outID), weight(_w),
+          enabled(_enabled) {}
 
     void copy (const Link &l, const double enableRate);
     void copy (const Link &l1, const Link &l2, const double enableRate);
@@ -25,7 +25,7 @@ struct Link {
 
     //For sorting links, go by innovation number
     bool operator< (const Link &l2) const {
-	return innov < l2.innov;
+        return innov < l2.innov;
     }
 };
 
@@ -43,34 +43,34 @@ struct Link {
  */
 class Network {
     public:
-	Network (int nInput, int nOutput, const Link *genome, int geneLength);
+        Network (int nInput, int nOutput, const Link *genome, int geneLength);
 
-	void run (const double input[], double output[]);
+        void run (const double input[], double output[]);
 
-	int numNeurons () const { return (int)neurons.size(); }
-	int numConnections () const { return (int)conns.size(); }
+        int numNeurons () const { return (int)neurons.size(); }
+        int numConnections () const { return (int)conns.size(); }
 
-	//Standard sigmoid, a little stretched
-	static double sigmoid (double x);
+        //Standard sigmoid, a little stretched
+        static double sigmoid (double x);
 
     private:
-	struct Connection {
-	    int from, to;	//Neuron indices
-	    double weight;
-	};
-	struct Neuron {
-	    double inputSum = 0;
-	    double activation = 0;
-	    bool active = false;	//Has received input
-	};
+        struct Connection {
+            int from, to;       //Neuron indices
+            double weight;
+        };
+        struct Neuron {
+            double inputSum = 0;
+            double activation = 0;
+            bool active = false;        //Has received input
+        };
 
-	std::vector<Connection> conns;	//Enabled links, in genome order
-	std::vector<Neuron> neurons;	//Inputs, outputs, then hidden
-	int nInput, nOutput;
-	bool initialized = false;
+        std::vector<Connection> conns;  //Enabled links, in genome order
+        std::vector<Neuron> neurons;    //Inputs, outputs, then hidden
+        int nInput, nOutput;
+        bool initialized = false;
 
-	bool allActive () const;
-	void propagate (bool settling);
+        bool allActive () const;
+        void propagate (bool settling);
 };
 
 #endif

@@ -14,6 +14,6 @@
  * in which case only the title is drawn.
  */
 void drawStatsOverlay (Canvas &d, const std::string &title,
-		       const std::vector<GenerationStats> &history);
+                       const std::vector<GenerationStats> &history);
 
 #endif

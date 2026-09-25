@@ -16,7 +16,7 @@ using namespace std;
 
 struct KissState {
     unsigned int x, y, z, c;
-    int haveGauss;		//rand_gauss makes deviates in pairs
+    int haveGauss;              //rand_gauss makes deviates in pairs
     double gauss;
 };
 
@@ -55,7 +55,7 @@ unsigned int devrand()
     fn = open("/dev/urandom", O_RDONLY);
     if (fn == -1) {
         cerr<<"Failed to open /dev/urandom"<<endl;
-	exit(-1); /* Failed! */
+        exit(-1); /* Failed! */
     }
     if (read(fn, &r, 4) != 4) {
        cerr<<"Failed to read 4 bytes from /dev/urandom"<<endl;
@@ -112,5 +112,3 @@ double rand_gauss()
   state.haveGauss = 1;
   return v2*fac;
 }
-
-

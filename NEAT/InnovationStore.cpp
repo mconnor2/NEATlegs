@@ -8,19 +8,19 @@ InnovationStore::InnovationStore (ExpParameters *_P) : P(_P) {
     nextNeuronID = P->nInput+P->nOutput;
     nextInnov = P->nInput*P->nOutput;
 }
-	
+
 void InnovationStore::newGeneration() {
    newLinks.clear();
    newNodes.clear();
 }
-	
-bool InnovationStore::addLink(int inNode, int outNode, 
-			      int &newInnov) 
+
+bool InnovationStore::addLink(int inNode, int outNode,
+                              int &newInnov)
 {
     newLink l = std::make_pair(inNode, outNode);
     if (newLinks.count(l) > 0) {
-	newInnov = newLinks[l];
-	return true;
+        newInnov = newLinks[l];
+        return true;
     }
     newInnov = nextInnov++;
     newLinks.insert(std::make_pair(l, newInnov));
@@ -28,22 +28,22 @@ bool InnovationStore::addLink(int inNode, int outNode,
 }
 
 bool InnovationStore::addNode(int linkInnov,
-		     int &newPreInnov, int &newPostInnov, int &newNeuron) 
+                     int &newPreInnov, int &newPostInnov, int &newNeuron)
 {
     if (newNodes.count(linkInnov) > 0) {
-	std::shared_ptr<newNode> nodeInfo = newNodes[linkInnov];
-	
-	newPreInnov = nodeInfo->preInnov;
-	newPostInnov = nodeInfo->postInnov;
-	newNeuron = nodeInfo->newNeuron;
-	return true;
+        std::shared_ptr<newNode> nodeInfo = newNodes[linkInnov];
+
+        newPreInnov = nodeInfo->preInnov;
+        newPostInnov = nodeInfo->postInnov;
+        newNeuron = nodeInfo->newNeuron;
+        return true;
     }
     newPreInnov = nextInnov++;
     newPostInnov = nextInnov++;
     newNeuron = nextNeuronID++;
-    
-    newNodes.insert( std::make_pair(linkInnov, 
-	std::shared_ptr<newNode>(new newNode(newPreInnov, newPostInnov,
-					       newNeuron))));
+
+    newNodes.insert( std::make_pair(linkInnov,
+        std::shared_ptr<newNode>(new newNode(newPreInnov, newPostInnov,
+                                               newNeuron))));
     return false;
 }

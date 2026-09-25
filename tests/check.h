@@ -28,18 +28,18 @@ inline int &failures () {
 
 struct Register {
     Register (const char *name, std::function<void()> fn) {
-	registry().push_back({name, fn});
+        registry().push_back({name, fn});
     }
 };
 
 inline int runTests () {
     int failedTests = 0;
     for (const Test &t : registry()) {
-	int before = failures();
-	t.fn();
-	bool ok = failures() == before;
-	if (!ok) ++failedTests;
-	printf("%-50s %s\n", t.name, ok ? "ok" : "FAILED");
+        int before = failures();
+        t.fn();
+        bool ok = failures() == before;
+        if (!ok) ++failedTests;
+        printf("%-50s %s\n", t.name, ok ? "ok" : "FAILED");
     }
     printf("%zu tests, %d failed\n", registry().size(), failedTests);
     return failedTests ? 1 : 0;
@@ -57,14 +57,15 @@ inline int runTests () {
 
 #define CHECK(cond) \
     do { if (!(cond)) { \
-	fprintf(stderr, "%s:%d: CHECK(%s) failed\n", __FILE__, __LINE__, #cond); \
-	++check::failures(); } } while (0)
+        fprintf(stderr, "%s:%d: CHECK(%s) failed\n", \
+                __FILE__, __LINE__, #cond); \
+        ++check::failures(); } } while (0)
 
 #define CHECK_NEAR(a, b, tol) \
     do { double va_ = (a), vb_ = (b); \
-	if (!(std::fabs(va_ - vb_) <= (tol))) { \
-	fprintf(stderr, "%s:%d: CHECK_NEAR(%s, %s) failed: %.17g vs %.17g\n", \
-		__FILE__, __LINE__, #a, #b, va_, vb_); \
-	++check::failures(); } } while (0)
+        if (!(std::fabs(va_ - vb_) <= (tol))) { \
+        fprintf(stderr, "%s:%d: CHECK_NEAR(%s, %s) failed: %.17g vs %.17g\n", \
+                __FILE__, __LINE__, #a, #b, va_, vb_); \
+        ++check::failures(); } } while (0)
 
 #endif

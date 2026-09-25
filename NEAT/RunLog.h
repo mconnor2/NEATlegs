@@ -24,38 +24,38 @@ class GeneticAlgorithm;
  */
 class RunLog {
     public:
-	struct Options {
-	    std::string outputDir;	//Empty: console only
-	    std::string configPath;	//Copied into outputDir if set
-	    int snapshotEvery = 10;	//Generations; 0 disables
-	    int snapshotTop = 3;	//Genomes per snapshot
-	    uint64_t seed = 0;		//Written to seed.txt
-	};
+        struct Options {
+            std::string outputDir;      //Empty: console only
+            std::string configPath;     //Copied into outputDir if set
+            int snapshotEvery = 10;     //Generations; 0 disables
+            int snapshotTop = 3;        //Genomes per snapshot
+            uint64_t seed = 0;          //Written to seed.txt
+        };
 
-	// Throws std::runtime_error if the output directory can't be used
-	explicit RunLog (const Options &opt);
+        // Throws std::runtime_error if the output directory can't be used
+        explicit RunLog (const Options &opt);
 
-	// Call after each GeneticAlgorithm::nextGeneration()
-	void record (const GeneticAlgorithm &GA);
+        // Call after each GeneticAlgorithm::nextGeneration()
+        void record (const GeneticAlgorithm &GA);
 
-	// Call once after the last generation to snapshot the final top
-	// genomes (if the last record() didn't already)
-	void finish (const GeneticAlgorithm &GA);
+        // Call once after the last generation to snapshot the final top
+        // genomes (if the last record() didn't already)
+        void finish (const GeneticAlgorithm &GA);
 
-	double bestFitness () const { return bestEver; }
+        double bestFitness () const { return bestEver; }
 
     private:
-	void printHeader ();
-	void snapshot (const GeneticAlgorithm &GA);
-	void saveGenome (const std::string &path, const GenomeP &g,
-			 double fitness, int generation, int rank) const;
+        void printHeader ();
+        void snapshot (const GeneticAlgorithm &GA);
+        void saveGenome (const std::string &path, const GenomeP &g,
+                         double fitness, int generation, int rank) const;
 
-	Options opt;
-	std::ofstream statsCsv, speciesCsv;
+        Options opt;
+        std::ofstream statsCsv, speciesCsv;
 
-	double bestEver;
-	int lines = 0;
-	int lastSnapshotGen = -1;
+        double bestEver;
+        int lines = 0;
+        int lastSnapshotGen = -1;
 };
 
 #endif
