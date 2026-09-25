@@ -11,6 +11,9 @@ struct Specie {
     double fitness;     //Average fitness of its members
     genomeVec members;
 
+    double bestFitness = -1e300;    //Best raw fitness a member has had
+    int staleness = 0;              //Generations since bestFitness improved
+
     Specie(int _id, int _age = 0) :
         id(_id), nMembers(0), age(_age), fitness(-1) {}
 
@@ -21,6 +24,12 @@ struct Specie {
         nMembers++;
     };
 
+
+    //Update bestFitness and staleness; call while fitness is still raw,
+    // before calculateFitness shares it
+    void updateStagnation();
+
+    bool contains(const GenomeP &g) const;
 
     double calculateFitness();
 

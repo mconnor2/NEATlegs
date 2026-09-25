@@ -59,14 +59,22 @@ struct ExpParameters {
     double threshAdapt;                 //Amount to change compatThresh with
                                         // specie number adaptation
 
-    double singleMate;                  //Chance of single specie mating, only
-                                        // mutating one parent
+    double singleMate;                  //Chance a child comes from one
+                                        // parent, by mutation alone
 
-    double specieMate;                  //Number of children whose parents
-                                        // are selected from one specie
+    double specieMate;                  //Chance a crossover's second parent
+                                        // is from the same specie (otherwise
+                                        // from another)
 
     int oldAge;                         //Age after which young species are
                                         // not safe from culling
+
+    int dropoffAge;                     //A species whose best fitness hasn't
+                                        // improved for this many generations
+                                        // stops reproducing (0 = never)
+
+    double survivalThreshold;           //Fraction of each species (its
+                                        // fittest) that breeds
 
     //double championFitnessRate;       //A species champion will continue to
                                         // next generation only if its fitness

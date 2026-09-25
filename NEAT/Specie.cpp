@@ -1,7 +1,23 @@
 #include "Specie.h"
 #include "Genome.h"
 
+#include <algorithm>
 #include <iostream>
+
+void Specie::updateStagnation() {
+    double best = -1e300;
+    for (const GenomeP &m : members) best = std::max(best, m->fitness);
+    if (best > bestFitness) {
+        bestFitness = best;
+        staleness = 0;
+    } else {
+        ++staleness;
+    }
+}
+
+bool Specie::contains(const GenomeP &g) const {
+    return std::find(members.begin(), members.end(), g) != members.end();
+}
 
 double Specie::calculateFitness() {
     fitness = 0;

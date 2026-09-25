@@ -25,7 +25,8 @@ ExpParameters::ExpParameters() :
     weightPerturbUniform(0.39), addLinkMutationRate(0.2),
     addNodeMutationRate(0.1), compatGDiff(1.0), compatWDiff(0.4),
     compatThresh(3.0), targetSpecies(-1), threshAdapt(0.1),
-    singleMate(0.2), specieMate(0.99), oldAge(5), startPopulationPercent(0.5)
+    singleMate(0.2), specieMate(0.99), oldAge(5), dropoffAge(15),
+    survivalThreshold(0.2), startPopulationPercent(0.5)
 { }
 
 int ExpParameters::loadFromFile(const libconfig::Config &config) {
@@ -64,6 +65,8 @@ int ExpParameters::loadFromFile(const libconfig::Config &config) {
         config.lookupValue("global.singleMate",singleMate);
         config.lookupValue("global.specieMate",specieMate);
         config.lookupValue("global.oldAge",oldAge);
+        config.lookupValue("global.dropoffAge",dropoffAge);
+        config.lookupValue("global.survivalThreshold",survivalThreshold);
         config.lookupValue("global.startPopulationPercent",
                             startPopulationPercent);
     } catch (libconfig::SettingTypeException e) {
@@ -157,13 +160,48 @@ void GeneticAlgorithm::adaptSpeciesThresh(const int curSpecieSize) {
     }
 }
 
-template<class FitnessIt>
-FitnessIt selectParent(FitnessIt first, FitnessIt last, double rfit) {
-    while (first != last && rfit > (*first)->fitness) {
-        rfit -= (*first)->fitness;
-        first++;
+/**
+ * Split total offspring between species in proportion to their fitness
+ * (summed shared fitness, i.e. mean raw fitness), rounding by largest
+ * remainder so the counts add up to total.  The species holding the
+ * champion gets at least one, so the champion carries over.
+ */
+static vector<int> allocateOffspring(const vector<SpecieP> &sv, int total,
+                                     const GenomeP &champion)
+{
+    size_t n = sv.size();
+    vector<int> counts(n, 0);
+    if (n == 0) return counts;
+
+    double sum = 0;
+    for (const SpecieP &sp : sv) sum += max(sp->fitness, 0.0);
+
+    vector<pair<double, size_t> > remainders;
+    int given = 0;
+    for (size_t i = 0; i < n; ++i) {
+        double exact = sum > 0 ? total * max(sv[i]->fitness, 0.0) / sum
+                               : (double)total / n;
+        counts[i] = (int)exact;
+        given += counts[i];
+        remainders.push_back(make_pair(exact - counts[i], i));
     }
-    return first;
+    stable_sort(remainders.begin(), remainders.end(),
+                [](const pair<double, size_t> &a,
+                   const pair<double, size_t> &b) {
+                    return a.first > b.first;
+                });
+    for (size_t k = 0; given < total; k = (k+1) % n) {
+        ++counts[remainders[k].second];
+        ++given;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+        if (counts[i] == 0 && sv[i]->contains(champion)) {
+            --*max_element(counts.begin(), counts.end());
+            ++counts[i];
+        }
+    }
+    return counts;
 }
 
 /**
@@ -284,18 +322,18 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
  * Run one iteration of genetic algorithm, creating new generation and
  *  deleting previous.
  *
- * Process:
- * -Go over all individuals in the population, find each of their fitness
- *      *Calculate average and max fitness, storing champion with best
- * -Create next generation
- *      -Store champion
- *      -For rest of population size:
- *              -Randomly Choose two members of current generation based on
- *               fitness
- *              -Mate and mutate child, add to new generation.
- *      -Delete previous generation (except champion...)
- *      -Next generation is now current generation
- *  -Return max fitness
+ * Process, following Stanley & Miikkulainen (2002), section 3.3:
+ * -Evaluate every genome, and record statistics
+ * -Share fitness within each species (divide by species size)
+ * -Drop species that have stagnated (no improvement in dropoffAge
+ *  generations) or that are old and down to one member, unless they hold
+ *  the population's champion
+ * -Give each species offspring in proportion to its summed shared fitness
+ * -Each species' champion carries over unchanged; its other offspring are
+ *  bred from its fittest survivalThreshold members, by mutation alone
+ *  (singleMate) or crossover, occasionally with another species
+ * -Speciate the offspring against the carried-over champions
+ * -Return max fitness
  */
 double GeneticAlgorithm::nextGeneration() {
 
@@ -327,6 +365,9 @@ double GeneticAlgorithm::nextGeneration() {
     cout<<"Specie 0 max fitness (before calculateFitness) = "
         <<firstSpecieMax<<endl;
 */
+    for_each(species.begin(), species.end(),
+             mem_fn(&Specie::updateStagnation));
+
     //Sum fitness of each species, and divide individuals by size of group
     for_each(species.begin(), species.end(),
              mem_fn(&Specie::calculateFitness));
@@ -340,13 +381,14 @@ double GeneticAlgorithm::nextGeneration() {
     //Since each individual's fitness is divided by size of the group
     // then sum of total fitness should be same as sum of the species average
     // fitness
-    //XXX May be (slightly?) faster to sum over fewer species than entire
-    //    population.  Sum should be the same
     sumFit = 0;
     for (genome_it gi = population.begin(); gi != population.end(); ++gi)
         sumFit += (*gi)->fitness;
 
     species.remove_if([&](const SpecieP &s) {
+        if (P->dropoffAge > 0 && s->staleness >= P->dropoffAge &&
+            !s->contains(maxFitI))
+            return true;
         return s->cull(P->oldAge, sumFit, maxFitI);
     });
 
@@ -358,6 +400,23 @@ double GeneticAlgorithm::nextGeneration() {
         cout<<endl;
     #endif
 
+    vector<SpecieP> breeding(species.begin(), species.end());
+    vector<int> nOffspring = allocateOffspring(breeding, P->popSize, maxFitI);
+
+    //Fittest first, so the parents are the first nParents members
+    for (const SpecieP &sp : breeding) {
+        stable_sort(sp->members.begin(), sp->members.end(),
+                    [](const GenomeP &a, const GenomeP &b) {
+                        return a->fitness > b->fitness;
+                    });
+    }
+    auto nParents = [&](const SpecieP &sp) {
+        return max(1, (int)ceil(P->survivalThreshold * sp->members.size()));
+    };
+    auto parent = [&](const SpecieP &sp) {
+        return sp->members[rand_int() % nParents(sp)];
+    };
+
     genomeVec nextGen;
     nextGen.reserve(P->popSize);
 
@@ -365,109 +424,52 @@ double GeneticAlgorithm::nextGeneration() {
 
     IS->newGeneration();
 
-    int nextGenPop = 0;
+    //Champions carry over, and represent their species next generation.
+    // All are placed before any child is speciated.
+    for (size_t si = 0; si < breeding.size(); ++si) {
+        if (nOffspring[si] == 0) continue;
+        const SpecieP &sp = breeding[si];
+        nextGen.push_back(sp->members[0]);
 
-    //Save champions for next generation
-    // stay representative member for next gen species
-    //nextGen.push_back(population[maxFitI]);
-    for (specie_it s = species.begin(); s != species.end(); s++) {
-        nextGen.push_back((*s)->representative());
-
-        nextGenSpecies.push_back(SpecieP(new Specie((*s)->id,
-                                                    (*s)->age + 1)));
-        nextGenSpecies.back()->addMember((*s)->representative());
-
-        nextGenPop++;
+        SpecieP ns(new Specie(sp->id, sp->age + 1));
+        ns->bestFitness = sp->bestFitness;
+        ns->staleness = sp->staleness;
+        ns->addMember(sp->members[0]);
+        nextGenSpecies.push_back(ns);
     }
 
-
-    //Now fill rest of population by mating random individuals, chosen by
-    // distribution of fitness.
-    while (nextGenPop<P->popSize) {
-        GenomeP child;
-        if (rand_double() < P->singleMate) {
-            //Single parent mating, go over entire population
-            // and select a single parent, although each members fitness
-            // scaled by species size
-            genome_it p1t;
-            double rfit = sumFit * rand_double();
-            p1t = selectParent(population.begin(), population.end(), rfit);
-
-            child = (*p1t)->singleMate(IS);
-        } else {
-            GenomeP p1, p2;
-            if (rand_double() < P->specieMate) {
-                //Select Species based on average fitness
-                double rfit = sumFit * rand_double();
-                specie_it sit = selectParent(species.begin(), species.end(),
-                                             rfit);
-                if (sit == species.end()) {
-                    cerr<<"Something wrong with specie selection..."<<endl;
-                    continue;
-                }
-
-                //Now choose both parents from this species
-                SpecieP sp = *sit;
-                genome_it p1t, p2t;
-                rfit = sp->fitness * rand_double();
-                p1t = selectParent(sp->members.begin(), sp->members.end(),
-                                   rfit);
-                rfit = sp->fitness * rand_double();
-                p2t = selectParent(sp->members.begin(), sp->members.end(),
-                                   rfit);
-                if (p1t == sp->members.end() or p2t == sp->members.end()) {
-                    cerr<<"Something wrong with specie selection of parents..."
-                        <<endl;
-                    continue;
-                }
-                p1 = *p1t;
-                p2 = *p2t;
+    for (size_t si = 0; si < breeding.size(); ++si) {
+        const SpecieP &sp = breeding[si];
+        for (int k = 1; k < nOffspring[si]; ++k) {
+            GenomeP child;
+            if (rand_double() < P->singleMate) {
+                child = parent(sp)->singleMate(IS);
             } else {
-                //Interspecies mating, go over entire population
-                // although each members fitness scaled by species size
-                genome_it p1t, p2t;
-                double rfit = sumFit * rand_double();
-                p1t = selectParent(population.begin(), population.end(), rfit);
-
-                rfit = sumFit * rand_double();
-                p2t = selectParent(population.begin(), population.end(), rfit);
-
-                if (p1t == population.end() or p2t == population.end()) {
-                    cerr<<"Something wrong with population selection of "
-                          "parents..."<<endl;
-                    continue;
+                GenomeP p1 = parent(sp), p2;
+                if (breeding.size() > 1 && rand_double() >= P->specieMate) {
+                    //Interspecies mating
+                    size_t other = rand_int() % (breeding.size() - 1);
+                    if (other >= si) ++other;
+                    p2 = parent(breeding[other]);
+                } else {
+                    p2 = parent(sp);
                 }
 
-                p1 = *p1t;
-                p2 = *p2t;
+                // Make sure p1 is dominant parent
+                if (p1->fitness < p2->fitness) {
+                    p1.swap(p2);
+                }
+
+                child = p1->mate(p2, IS);
             }
 
-            #ifdef _DEBUG_PRINT
-                cout<<"  Creating child "<<i<<endl;
-                cout<<"    Parents p1: fit="<<p1->fitness<<", "
-                    <<"p2: fit="<<p2->fitness<<endl;
-            #endif
+            child->mutate();
 
-            // Make sure p1 is dominant parent
-            if (p1->fitness < p2->fitness) {
-                p1.swap(p2);
-            }
+            nextGen.push_back(child);
 
-            child = p1->mate(p2, IS);
+            //Find the specie this child belongs to.
+            speciate(child, nextGenSpecies);
         }
-
-        child->mutate();
-
-        nextGen.push_back(child);
-
-        //Find the specie this child belongs to.
-        speciate(child, nextGenSpecies);
-
-        ++nextGenPop;
-
-        #ifdef _DEBUG_PRINT
-            cout<<endl;
-        #endif
     }
 
     #ifdef _DEBUG_PRINT

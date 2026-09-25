@@ -1,6 +1,8 @@
 // Unit tests for the NEAT library (no physics or graphics)
 #include <cmath>
+#include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -428,11 +430,57 @@ TEST(gaNeverLosesChampion) {
     }
 }
 
+// A species whose best fitness hasn't improved for dropoffAge generations
+// stops reproducing (and so disappears), unless it holds the champion
+TEST(gaDropsStagnantSpecies) {
+    const int dropoff = 3;
+    int dropped = 0;
+    for (uint64_t seed = 1; seed <= 5; ++seed) {
+        seed_rand(seed);
+        ExpParameters P = params(3, 1);
+        P.popSize = 60;
+        P.targetSpecies = 6;
+        P.dropoffAge = dropoff;
+        FitnessFunction f = xorFitness;
+        GeneticAlgorithm GA(&P, &f);
+        for (int i = 0; i < 40; ++i) GA.nextGeneration();
+
+        map<int, pair<double, int> > best;     //id -> best, generations
+        bool ok = true;
+        for (const GenerationStats &g : GA.history()) {
+            set<int> present;
+            for (const SpecieStats &sp : g.species) {
+                present.insert(sp.id);
+                auto it = best.find(sp.id);
+                if (it == best.end()) {
+                    best[sp.id] = make_pair(sp.maxFitness, 0);
+                    continue;
+                }
+                if (sp.maxFitness > it->second.first)
+                    it->second = make_pair(sp.maxFitness, 0);
+                else
+                    ++it->second.second;
+                if (it->second.second > dropoff &&
+                    sp.maxFitness < g.maxFitness)
+                    ok = false;
+            }
+            for (auto it = best.begin(); it != best.end(); ) {
+                if (present.count(it->first)) { ++it; continue; }
+                if (it->second.second == dropoff) ++dropped;
+                it = best.erase(it);
+            }
+        }
+        CHECK(ok);
+    }
+    CHECK(dropped > 0);         //the rule was exercised
+}
+
 TEST(gaStatsAreConsistent) {
     RunResult r = runGA(9, 15);
     for (size_t i = 0; i < r.history.size(); ++i) {
         const GenerationStats &s = r.history[i];
         CHECK(s.generation == (int)i);
+        if (i > 0) CHECK(s.populationSize == 60);
         CHECK(s.minFitness <= s.meanFitness && s.meanFitness <= s.maxFitness);
         CHECK(s.nSpecies >= 1 && s.nSpecies <= s.populationSize);
         int members = 0;

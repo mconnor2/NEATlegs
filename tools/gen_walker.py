@@ -229,6 +229,11 @@ L.append('''global: {
 
     oldAge = 5;
 
+    //A species stops reproducing after this many generations without
+    // improving; only its fittest survivalThreshold breed
+    dropoffAge = 15;
+    survivalThreshold = 0.2;
+
     targetSpecies = 10;
     threshAdapt = 0.2;
 
