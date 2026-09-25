@@ -79,15 +79,24 @@ void checkUnique (const vector<T> &items, const string &name,
 
 int resolve (int index, const char *kind, const string &name,
              const string &where) {
-    if (index < 0) throw error(where, string("unknown ") + kind + " '" + name + "'");
+    if (index < 0)
+        throw error(where, string("unknown ") + kind + " '" + name + "'");
     return index;
 }
 
 }
 
-int CreatureSpec::limbIndex (const string &name) const { return indexOf(limbs, name); }
-int CreatureSpec::jointIndex (const string &name) const { return indexOf(joints, name); }
-int CreatureSpec::pointIndex (const string &name) const { return indexOf(points, name); }
+int CreatureSpec::limbIndex (const string &name) const {
+    return indexOf(limbs, name);
+}
+
+int CreatureSpec::jointIndex (const string &name) const {
+    return indexOf(joints, name);
+}
+
+int CreatureSpec::pointIndex (const string &name) const {
+    return indexOf(points, name);
+}
 
 CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
     CreatureSpec spec;
@@ -169,11 +178,14 @@ CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
         muscle.minEq = (float)number(m, "minEq", where);
         muscle.maxEq = (float)number(m, "maxEq", where);
         muscle.kd = (float)number(m, "kd", where);
-        muscle.maxForce = optionalFloat(m, "maxForce", MuscleSpec::Unlimited, where);
-        muscle.maxPower = optionalFloat(m, "maxPower", MuscleSpec::Unlimited, where);
+        muscle.maxForce = optionalFloat(m, "maxForce", MuscleSpec::Unlimited,
+                                        where);
+        muscle.maxPower = optionalFloat(m, "maxPower", MuscleSpec::Unlimited,
+                                        where);
         if (!m.exists("maxPower") && !warned) {
             cerr<<"Warning: muscle '"<<muscle.name<<"' has no maxPower, so a "
-                  "controller can pump unbounded energy into the creature"<<endl;
+                  "controller can pump unbounded energy into the creature"
+                <<endl;
             warned = true;
         }
         spec.muscles.push_back(muscle);
@@ -206,25 +218,30 @@ CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
             where += " (" + type + ")";
             if (type == "JointSensor") {
                 sensor.type = SensorSpec::Joint;
-                sensor.target = resolve(spec.jointIndex(target), "joint", target, where);
+                sensor.target = resolve(spec.jointIndex(target), "joint",
+                                        target, where);
             } else if (type == "HeightSensor") {
                 sensor.type = SensorSpec::Height;
-                sensor.target = resolve(spec.pointIndex(target), "shape", target, where);
+                sensor.target = resolve(spec.pointIndex(target), "shape",
+                                        target, where);
                 sensor.min = number(s, "minH", where);
                 sensor.max = number(s, "maxH", where);
             } else if (type == "BodyAngleSensor") {
                 sensor.type = SensorSpec::BodyAngle;
-                sensor.target = resolve(spec.limbIndex(target), "limb", target, where);
+                sensor.target = resolve(spec.limbIndex(target), "limb",
+                                        target, where);
                 sensor.min = number(s, "minA", where);
                 sensor.max = number(s, "maxA", where);
             } else if (type == "AngularVelocitySensor") {
                 sensor.type = SensorSpec::AngularVelocity;
-                sensor.target = resolve(spec.limbIndex(target), "limb", target, where);
+                sensor.target = resolve(spec.limbIndex(target), "limb",
+                                        target, where);
                 sensor.min = number(s, "minW", where);
                 sensor.max = number(s, "maxW", where);
             } else if (type == "VelocitySensor") {
                 sensor.type = SensorSpec::Velocity;
-                sensor.target = resolve(spec.limbIndex(target), "limb", target, where);
+                sensor.target = resolve(spec.limbIndex(target), "limb",
+                                        target, where);
                 string axis = text(s, "axis", where);
                 if (axis != "x" && axis != "y")
                     throw error(where, "axis must be \"x\" or \"y\"");
@@ -233,7 +250,8 @@ CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
                 sensor.max = number(s, "maxV", where);
             } else if (type == "ContactSensor") {
                 sensor.type = SensorSpec::Contact;
-                sensor.target = resolve(spec.limbIndex(target), "limb", target, where);
+                sensor.target = resolve(spec.limbIndex(target), "limb",
+                                        target, where);
             } else {
                 throw error(where, "unknown sensor type");
             }

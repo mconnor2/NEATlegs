@@ -57,7 +57,8 @@ inline int runTests () {
 
 #define CHECK(cond) \
     do { if (!(cond)) { \
-        fprintf(stderr, "%s:%d: CHECK(%s) failed\n", __FILE__, __LINE__, #cond); \
+        fprintf(stderr, "%s:%d: CHECK(%s) failed\n", \
+                __FILE__, __LINE__, #cond); \
         ++check::failures(); } } while (0)
 
 #define CHECK_NEAR(a, b, tol) \

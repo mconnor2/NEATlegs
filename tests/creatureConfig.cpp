@@ -86,7 +86,8 @@ TEST(specDefaults) {
     CHECK(!a.angularDamping);                   // Box2D's default
     CHECK(a.shapes[0].friction == 0.2f);        // Box2D 2.x default
     CHECK(s.limbs[1].shapes[1].groupIndex == 0);
-    CHECK(std::isinf(s.muscles[0].maxForce) && std::isinf(s.muscles[0].maxPower));
+    CHECK(std::isinf(s.muscles[0].maxForce) &&
+          std::isinf(s.muscles[0].maxPower));
 
     CreatureSpec noAngle = parse(withChange("angle = 0.0;", ""));
     CHECK(noAngle.limbs[0].angle == 0.0f);
@@ -98,38 +99,50 @@ TEST(specDefaults) {
 }
 
 TEST(integersAcceptedForNumbers) {
-    CreatureSpec s = parse(withChange("lowerAngle = -1.0;", "lowerAngle = -1;"));
+    CreatureSpec s = parse(withChange("lowerAngle = -1.0;",
+                                      "lowerAngle = -1;"));
     CHECK(s.joints[0].lowerAngle == -1.0f);
 }
 
 TEST(unknownNamesAreRejected) {
-    CHECK(mentions(parseError(withChange(R"(obj2 = "b"; pos2)", R"(obj2 = "nope"; pos2)")),
+    CHECK(mentions(parseError(withChange(R"(obj2 = "b"; pos2)",
+                                         R"(obj2 = "nope"; pos2)")),
                    "muscle 0 'm': unknown limb 'nope'"));
-    CHECK(mentions(parseError(withChange(R"(obj1 = "a"; obj2 = "b";)", R"(obj1 = "nope"; obj2 = "b";)")),
+    CHECK(mentions(parseError(withChange(R"(obj1 = "a"; obj2 = "b";)",
+                                         R"(obj1 = "nope"; obj2 = "b";)")),
                    "joint 0 'j': unknown limb 'nope'"));
-    CHECK(mentions(parseError(withChange(R"(target = "j";)", R"(target = "nope";)")),
+    CHECK(mentions(parseError(withChange(R"(target = "j";)",
+                                         R"(target = "nope";)")),
                    "unknown joint 'nope'"));
-    CHECK(mentions(parseError(withChange(R"(target = "head";)", R"(target = "nope";)")),
+    CHECK(mentions(parseError(withChange(R"(target = "head";)",
+                                         R"(target = "nope";)")),
                    "unknown shape 'nope'"));
-    CHECK(mentions(parseError(withChange(R"(body = "b";)", R"(body = "nope";)")),
+    CHECK(mentions(parseError(withChange(R"(body = "b";)",
+                                         R"(body = "nope";)")),
                    "shape 0 'head': unknown limb 'nope'"));
 }
 
 TEST(badValuesAreRejected) {
-    CHECK(mentions(parseError(withChange(R"(type = "JointSensor")", R"(type = "NoSuchSensor")")),
+    CHECK(mentions(parseError(withChange(R"(type = "JointSensor")",
+                                         R"(type = "NoSuchSensor")")),
                    "unknown sensor type"));
-    CHECK(mentions(parseError(withChange(R"(type = "box"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; } ); },)",
-                                         R"(type = "cone"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; } ); },)")),
+    // The first box is limb a's only shape
+    CHECK(mentions(parseError(withChange(R"(type = "box")",
+                                         R"(type = "cone")")),
                    "limb 0 'a': shape 0: unknown shape type 'cone'"));
-    CHECK(mentions(parseError(withChange(R"(type = "revolute")", R"(type = "prismatic")")),
+    CHECK(mentions(parseError(withChange(R"(type = "revolute")",
+                                         R"(type = "prismatic")")),
                    "unknown joint type 'prismatic'"));
-    CHECK(mentions(parseError(withChange(R"(axis = "y")", R"(axis = "z")")), "axis"));
-    CHECK(mentions(parseError(withChange("minK = 10.0; ", "")), "missing 'minK'"));
+    CHECK(mentions(parseError(withChange(R"(axis = "y")", R"(axis = "z")")),
+                   "axis"));
+    CHECK(mentions(parseError(withChange("minK = 10.0; ", "")),
+                   "missing 'minK'"));
     CHECK(mentions(parseError(withChange("joints = (", "joints_missing = (")),
                    "no 'joints' section"));
     CHECK(mentions(parseError(withChange("minK = 10.0;", "minK = \"stiff\";")),
                    "'minK' must be a number"));
-    CHECK(mentions(parseError(withChange(R"({ name = "b";)", R"({ name = "a";)")),
+    CHECK(mentions(parseError(withChange(R"({ name = "b";)",
+                                         R"({ name = "a";)")),
                    "duplicate name 'a'"));
 }
 
@@ -148,7 +161,8 @@ TEST(builtCreatureMatchesSpec) {
         CHECK(p.x == s.limbs[i].position.x && p.y == s.limbs[i].position.y);
         // b2MakeRot uses an approximate sine/cosine (0.3 rad reads back as
         // about 0.3015), so only close
-        CHECK_NEAR(b2Rot_GetAngle(b2Body_GetRotation(b)), s.limbs[i].angle, 5e-3);
+        CHECK_NEAR(b2Rot_GetAngle(b2Body_GetRotation(b)), s.limbs[i].angle,
+                   5e-3);
         CHECK(b2Body_GetShapeCount(b) == (int)s.limbs[i].shapes.size());
         CHECK(B2_ID_EQUALS(b, c->limbs[s.limbs[i].name]));
     }
@@ -166,7 +180,8 @@ TEST(oneSpecBuildsManyCreatures) {
     World w1, w2;
     CreatureP a = w1.createCreature(s), b = w2.createCreature(s);
     for (int i = 0; i < 30; ++i) { w1.step(); w2.step(); }
-    Vec2 pa = b2Body_GetPosition(a->bodies()[1]), pb = b2Body_GetPosition(b->bodies()[1]);
+    Vec2 pa = b2Body_GetPosition(a->bodies()[1]),
+         pb = b2Body_GetPosition(b->bodies()[1]);
     CHECK(pa.x == pb.x && pa.y == pb.y);
 }
 

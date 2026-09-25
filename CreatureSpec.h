@@ -53,7 +53,8 @@ struct MuscleSpec {
     float maxForce = Unlimited, maxPower = Unlimited;
 };
 
-struct PointSpec {                      //Named point on a limb ("shapes" section)
+//Named point on a limb ("shapes" section)
+struct PointSpec {
     std::string name;
     int limb = -1;
     Vec2 localPos = {0, 0};

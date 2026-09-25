@@ -30,7 +30,8 @@ ExpParameters::ExpParameters() :
 
 int ExpParameters::loadFromFile(const libconfig::Config &config) {
     if (!config.exists("global")) {
-        cerr<<"ExpParameters::loadFromFile config file must have 'global' section."<<endl;
+        cerr<<"ExpParameters::loadFromFile config file must have "
+              "'global' section."<<endl;
 
         return 0;
     }
@@ -40,7 +41,8 @@ int ExpParameters::loadFromFile(const libconfig::Config &config) {
           && config.lookupValue("global.nInput", nInput)
           && config.lookupValue("global.nOutput", nOutput)))
     {
-        cerr<<"ExpParameters::loadFromFile missing one of popSize, nInput, nOutput"<<endl;
+        cerr<<"ExpParameters::loadFromFile missing one of popSize, "
+              "nInput, nOutput"<<endl;
         return 0;
     }
 
@@ -65,13 +67,16 @@ int ExpParameters::loadFromFile(const libconfig::Config &config) {
         config.lookupValue("global.startPopulationPercent",
                             startPopulationPercent);
     } catch (libconfig::SettingTypeException e) {
-        cerr<<"ExpParameters::loadFromFile SettingTypeException while loading parameters"<<endl;
+        cerr<<"ExpParameters::loadFromFile SettingTypeException "
+              "while loading parameters"<<endl;
         return 0;
     } catch (libconfig::SettingNotFoundException e) {
-        cerr<<"ExpParameters::loadFromFile SettingNotFoundException while loading parameters"<<endl;
+        cerr<<"ExpParameters::loadFromFile SettingNotFoundException "
+              "while loading parameters"<<endl;
         return 0;
     } catch (...) {
-        cerr<<"ExpParameters::loadFromFile some other exception while loading parameters"<<endl;
+        cerr<<"ExpParameters::loadFromFile some other exception "
+              "while loading parameters"<<endl;
         return 0;
     }
 
@@ -428,7 +433,8 @@ double GeneticAlgorithm::nextGeneration() {
                 p2t = selectParent(population.begin(), population.end(), rfit);
 
                 if (p1t == population.end() or p2t == population.end()) {
-                    cerr<<"Something wrong with population selection of parents..."<<endl;
+                    cerr<<"Something wrong with population selection of "
+                          "parents..."<<endl;
                     continue;
                 }
 

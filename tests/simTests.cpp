@@ -130,10 +130,11 @@ TEST(endsWhenEnergySpent) {
 // or not anything moves
 TEST(forceTimeOfASaturatedMuscle) {
     std::string text = testCreature::Text;
-    const std::string from = "minK = 10.0; maxK = 50.0; minEq = 0.1; maxEq = 0.4; kd = 1.0;\n"
-                             "      maxForce = 10.0; maxPower = 5.0;",
-                      to = "minK = 1e6; maxK = 1e6; minEq = 0.4; maxEq = 0.4; kd = 1.0;\n"
-                           "      maxForce = 10.0;";
+    const std::string
+        from = "minK = 10.0; maxK = 50.0; minEq = 0.1; maxEq = 0.4; kd = 1.0;\n"
+               "      maxForce = 10.0; maxPower = 5.0;",
+        to = "minK = 1e6; maxK = 1e6; minEq = 0.4; maxEq = 0.4; kd = 1.0;\n"
+             "      maxForce = 10.0;";
     size_t at = text.find(from);
     CHECK(at != std::string::npos);
     text.replace(at, from.size(), to);
@@ -149,13 +150,15 @@ TEST(energyCostCombinesWorkAndForce) {
     CreatureSpec spec = testCreature::spec();
     EpisodeResult plain = runEpisode(spec, noFloor(200), wobbler(2));
     CHECK(plain.energy == plain.positiveWork);
-    CHECK(plain.positiveWork > 0 && plain.negativeWork < 0 && plain.forceTime > 0);
+    CHECK(plain.positiveWork > 0 && plain.negativeWork < 0 &&
+          plain.forceTime > 0);
 
     EpisodeOptions o = noFloor(200);
     o.energyCost = {4.0, 0.8, 0.3};
     EpisodeResult r = runEpisode(spec, o, wobbler(2));
     CHECK(r.positiveWork == plain.positiveWork);        // accounting only
-    CHECK(r.energy == 4.0*r.positiveWork - 0.8*r.negativeWork + 0.3*r.forceTime);
+    CHECK(r.energy ==
+          4.0*r.positiveWork - 0.8*r.negativeWork + 0.3*r.forceTime);
 
     // The budget ends the episode on the combined cost: charging only
     // force-time, half of it runs out halfway
@@ -204,7 +207,7 @@ TEST(fitnessShaping) {
     CHECK(episodeFitness(dive, 1000, f) < episodeFitness(shuffle, 1000, f));
     CHECK(episodeFitness(stand, 1000, f) == 0.5);       // base alone
     CHECK(episodeFitness(walk, 1000, f) == 3.5);
-    CHECK(episodeFitness(budget, 1000, f) == 3.5);      // spending isn't falling
+    CHECK(episodeFitness(budget, 1000, f) == 3.5);  // spending isn't falling
 
     f.survivalExponent = 2;                     // harsher on early falls
     CHECK(fabs(episodeFitness(shuffle, 1000, f) - 0.375) < 1e-12);
@@ -257,8 +260,9 @@ TEST(invalidSetupsAreRejected) {
     try { Simulation sim(spec, o); } catch (std::exception &) { threw = true; }
     CHECK(threw);
 
+    const std::string &text = testCreature::Text;
     CreatureSpec headless = testCreature::spec(
-        testCreature::Text.substr(0, testCreature::Text.find("shapes = ( { name")));
+        text.substr(0, text.find("shapes = ( { name")));
     threw = false;
     try { Simulation sim(headless); } catch (std::exception &) { threw = true; }
     CHECK(threw);
@@ -266,7 +270,8 @@ TEST(invalidSetupsAreRejected) {
 
 TEST(optionsFromConfig) {
     libconfig::Config c;
-    c.readString("global: { headFloor = 0.35; groundLimbs = (\"foot\", \"shin\"); };");
+    c.readString("global: { headFloor = 0.35; "
+                 "groundLimbs = (\"foot\", \"shin\"); };");
     EpisodeOptions o = episodeOptionsFromConfig(c);
     CHECK(o.headFloor == 0.35);
     CHECK(o.groundLimbs.size() == 2u && o.groundLimbs[1] == "shin");
@@ -290,7 +295,8 @@ TEST(optionsFromConfig) {
     libconfig::Config longer;
     longer.readString("global: { maxSteps = 3000; };");
     CHECK(episodeOptionsFromConfig(longer).maxSteps == 3000);
-    CHECK(ec.positiveWork == 4.0 && ec.negativeWork == 0.83 && ec.forceTime == 1.0);
+    CHECK(ec.positiveWork == 4.0 && ec.negativeWork == 0.83 &&
+          ec.forceTime == 1.0);
 
     for (const char *bad : {"global: { energyBudget = -1.0; };",
                             "global: { survivalExponent = -1; };",

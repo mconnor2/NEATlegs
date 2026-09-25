@@ -143,7 +143,8 @@ TEST(compatProperties) {
     c->mutate();
     vector<LinkRec> la = linksOf(a), lc = linksOf(c);
     double dw = 0;
-    for (size_t i = 0; i < la.size(); ++i) dw += fabs(la[i].weight - lc[i].weight);
+    for (size_t i = 0; i < la.size(); ++i)
+        dw += fabs(la[i].weight - lc[i].weight);
     CHECK_NEAR(a->compat(c), P.compatWDiff * dw, 1e-9);
 }
 
@@ -160,7 +161,8 @@ TEST(matingKeepsInnovationsSortedAndUnique) {
         IS.newGeneration();             // as GeneticAlgorithm does
         vector<GenomeP> next;
         for (int i = 0; i < 20; ++i) {
-            GenomeP p1 = pop[rand_int() % pop.size()], p2 = pop[rand_int() % pop.size()];
+            GenomeP p1 = pop[rand_int() % pop.size()],
+                    p2 = pop[rand_int() % pop.size()];
             GenomeP child = p1->mate(p2, &IS);
             child->mutate();
 
@@ -254,7 +256,7 @@ TEST(unreachableNeuronDoesNotHang) {
     ExpParameters P = params(2, 1);
     GenomeP g = loadText("genome inputs 2 outputs 1 nodes 4 links 3\n"
                          "link 0 0 2 0.5 1\n"
-                         "link 1 1 3 1.0 0\n"           // only way into neuron 3
+                         "link 1 1 3 1.0 0\n"   // only way into neuron 3
                          "link 2 3 2 2.0 1\n", &P);
     CHECK(g != nullptr);
     if (!g) return;
@@ -288,10 +290,12 @@ TEST(innovationsSharedWithinGeneration) {
 TEST(seededRandomIsRepeatable) {
     seed_rand(42);
     vector<double> a;
-    for (int i = 0; i < 100; ++i) a.push_back(i % 2 ? rand_double() : rand_gauss());
+    for (int i = 0; i < 100; ++i)
+        a.push_back(i % 2 ? rand_double() : rand_gauss());
     seed_rand(42);
     vector<double> b;
-    for (int i = 0; i < 100; ++i) b.push_back(i % 2 ? rand_double() : rand_gauss());
+    for (int i = 0; i < 100; ++i)
+        b.push_back(i % 2 ? rand_double() : rand_gauss());
     CHECK(a == b);
     seed_rand(43);
     CHECK(rand_double() != a[1]);
@@ -330,10 +334,12 @@ RunResult runGA (uint64_t seed, int gens) {
 }
 
 bool sameStats (const GenerationStats &a, const GenerationStats &b) {
-    return a.generation == b.generation && a.populationSize == b.populationSize &&
+    return a.generation == b.generation &&
+           a.populationSize == b.populationSize &&
            a.maxFitness == b.maxFitness && a.meanFitness == b.meanFitness &&
            a.minFitness == b.minFitness && a.nSpecies == b.nSpecies &&
-           a.meanCompat == b.meanCompat && a.meanEnabledLinks == b.meanEnabledLinks;
+           a.meanCompat == b.meanCompat &&
+           a.meanEnabledLinks == b.meanEnabledLinks;
 }
 
 }

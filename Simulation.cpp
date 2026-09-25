@@ -52,15 +52,16 @@ Simulation::Simulation (const CreatureSpec &spec, const EpisodeOptions &_opt) :
         throw runtime_error("creature must define a shape named 'head'");
     for (const string &name : opt.groundLimbs)
         if (spec.limbIndex(name) < 0)
-            throw runtime_error("groundLimbs names unknown limb '" + name + "'");
+            throw runtime_error("groundLimbs names unknown limb '" +
+                                name + "'");
 
     body = world.createCreature(spec);
     headPoint = body->shapes[spec.points[head].name];
 
     if (!opt.groundLimbs.empty()) {
         for (auto &kv : body->limbs)
-            if (find(opt.groundLimbs.begin(), opt.groundLimbs.end(), kv.first) ==
-                opt.groundLimbs.end())
+            if (find(opt.groundLimbs.begin(), opt.groundLimbs.end(),
+                     kv.first) == opt.groundLimbs.end())
                 mustNotTouch.push_back(kv.second);
     }
 

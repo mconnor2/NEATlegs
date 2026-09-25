@@ -185,10 +185,12 @@ Creature::Creature (const CreatureSpec &spec, World &w) {
                 sensor = new HeightSensor(points[s.target], s.min, s.max);
                 break;
             case SensorSpec::BodyAngle:
-                sensor = new BodyAngleSensor(limbBodies[s.target], s.min, s.max);
+                sensor = new BodyAngleSensor(limbBodies[s.target],
+                                             s.min, s.max);
                 break;
             case SensorSpec::AngularVelocity:
-                sensor = new AngularVelocitySensor(limbBodies[s.target], s.min, s.max);
+                sensor = new AngularVelocitySensor(limbBodies[s.target],
+                                                   s.min, s.max);
                 break;
             case SensorSpec::Velocity:
                 sensor = new VelocitySensor(limbBodies[s.target], s.vertical,
@@ -255,7 +257,8 @@ bool Creature::touchesOutside (BodyId b) const {
     for (int i = 0; i < n; ++i) {
         if (contacts[i].manifold.pointCount == 0) continue;
         BodyId other = b2Shape_GetBody(contacts[i].shapeIdA);
-        if (B2_ID_EQUALS(other, b)) other = b2Shape_GetBody(contacts[i].shapeIdB);
+        if (B2_ID_EQUALS(other, b))
+            other = b2Shape_GetBody(contacts[i].shapeIdB);
         bool own = false;
         for (const BodyPos &p : parts)
             if (B2_ID_EQUALS(p.b, other)) { own = true; break; }

@@ -90,7 +90,10 @@ TEST(worldDrawsEveryShape) {
 
     // Ground: 200 x 20 m box whose top is y = 0
     float top = -1e9, left = 1e9;
-    for (Vec2 p : r.polygons[0].points) { top = max(top, p.y); left = min(left, p.x); }
+    for (Vec2 p : r.polygons[0].points) {
+        top = max(top, p.y);
+        left = min(left, p.x);
+    }
     CHECK_NEAR(top, 0.0, 1e-5);
     CHECK_NEAR(left, -100.0, 1e-4);
 
@@ -164,7 +167,8 @@ TEST(boxScreenGridCoversCanvas) {
     // One 5-point cross per metre: 7 columns x 5 rows at 100 px/m
     CHECK(canvas.points.size() == 5u * 7u * 5u);
     for (auto &p : canvas.points)
-        CHECK(p.x >= -1 && p.x <= canvas.width() && p.y >= -1 && p.y <= canvas.height());
+        CHECK(p.x >= -1 && p.x <= canvas.width() &&
+              p.y >= -1 && p.y <= canvas.height());
 }
 
 TEST(boxScreenWithoutCanvasIsSafe) {

@@ -109,10 +109,11 @@ class hopper {
 static void usage () {
     printf("Usage: hopper -C config [options]\n"
            "  -N gens     number of generations (default 1000)\n"
-           "  -V          watch evolution: a window replays the fittest member\n"
-           "              while the GA keeps running (Space: jump to newest)\n"
-           "  -d gens     with -V, publish a new best to watch every this many\n"
-           "              generations (default 10; implies -V)\n"
+           "  -V          watch evolution: a window replays the fittest\n"
+           "              member while the GA keeps running (Space: jump to\n"
+           "              newest)\n"
+           "  -d gens     with -V, publish a new best to watch every this\n"
+           "              many generations (default 10; implies -V)\n"
            "  -o dir      run output directory (default runs/<config>-<time>)\n"
            "  -s gens     snapshot top genomes every this many generations\n"
            "              (default 10, 0 disables)\n"
@@ -122,8 +123,8 @@ static void usage () {
            "  -r genome   replay a saved genome in a window instead of\n"
            "              running the GA\n"
            "  -e genome   evaluate a saved genome once, headless, and print\n"
-           "              its fitness, distance, steps, energy (and its parts)\n"
-           "              and end reason\n");
+           "              its fitness, distance, steps, energy (and its\n"
+           "              parts) and end reason\n");
 }
 
 // Default run directory: runs/<config name>-<YYYYmmdd-HHMMSS>
@@ -153,7 +154,8 @@ static int evaluate (const hopper &fit, const char *genomeFile,
     EpisodeResult r = fit.episode(g);
     //Full precision, to compare with the fitness saved with the genome
     printf("fitness %.17g distance %.17g steps %d energy %.17g end %s"
-           " (positive work %.6g J, negative work %.6g J, force-time %.6g N s)\n",
+           " (positive work %.6g J, negative work %.6g J,"
+           " force-time %.6g N s)\n",
            fit.fitness(r), r.maxHeadX, r.steps, r.energy, toString(r.end),
            r.positiveWork, r.negativeWork, r.forceTime);
     return 0;
@@ -434,7 +436,8 @@ int main (int argc, char **argv) {
         return 1;
     }
 
-    printf("Population %d, %d inputs, %d outputs, seed %llu.  Writing run to %s\n",
+    printf("Population %d, %d inputs, %d outputs, seed %llu."
+           "  Writing run to %s\n",
            P.popSize, P.nInput, P.nOutput, (unsigned long long)seed,
            logOpt.outputDir.c_str());
 

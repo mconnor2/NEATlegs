@@ -24,7 +24,7 @@ Libraries, and only `display` uses SDL:
 - `statsview`: stats overlay on a `Canvas`
 - `display`: SDL3 window implementing `Canvas`
 
-Executables `legs`, `hopper`, `xorTest`, `maxTest`, `poleBalance`; tests `neatTests`, `creatureConfig`, `simTests`, `drawTests`, `muscleEnergy`. Everything builds with `-Wall -Wextra` and should stay warning-free. Headers don't use `using namespace std`.
+Executables `legs`, `hopper`, `xorTest`, `maxTest`, `poleBalance`; tests `neatTests`, `creatureConfig`, `simTests`, `drawTests`, `muscleEnergy`. Everything builds with `-Wall -Wextra` and should stay warning-free. Headers don't use `using namespace std`. C++ is indented 4 spaces, no tabs, within 80 columns (`.editorconfig`).
 
 `ld: warning: building for macOS-X but linking with dylib ... built for newer version` comes from an outdated Command Line Tools SDK, not the project.
 
