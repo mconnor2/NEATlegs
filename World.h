@@ -18,35 +18,35 @@ void drawBody (BodyId b, Renderer &r);
  */
 class World {
     public:
-	World (float _hz = 60.0f, int _subSteps = 4);
+        World (float _hz = 60.0f, int _subSteps = 4);
 
-	~World ();
+        ~World ();
 
-	World (const World &) = delete;
-	World &operator= (const World &) = delete;
+        World (const World &) = delete;
+        World &operator= (const World &) = delete;
 
-	void step ();
+        void step ();
 
-	// Ground, then each creature
-	void draw (Renderer &r) const;
+        // Ground, then each creature
+        void draw (Renderer &r) const;
 
-	// Build a creature from a parsed spec (thread safe: the spec is
-	// only read)
-	CreatureP createCreature (const CreatureSpec &spec);
+        // Build a creature from a parsed spec (thread safe: the spec is
+        // only read)
+        CreatureP createCreature (const CreatureSpec &spec);
 
-	b2WorldId id () const { return b2W; }
+        b2WorldId id () const { return b2W; }
 
-	static const float fGravity;
+        static const float fGravity;
 
     private:
-	b2WorldId b2W;
+        b2WorldId b2W;
 
-	BodyId ground;
+        BodyId ground;
 
-	creatureList beings;
+        creatureList beings;
 
-	float timeStep;
-	int subSteps;
+        float timeStep;
+        int subSteps;
 };
 
 #endif

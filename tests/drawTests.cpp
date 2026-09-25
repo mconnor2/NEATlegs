@@ -26,13 +26,13 @@ struct RecordingRenderer : Renderer {
     vector<Seg> segments;
 
     void polygon (const Vec2 *p, int n, Color c) override {
-	polygons.push_back({vector<Vec2>(p, p + n), c});
+        polygons.push_back({vector<Vec2>(p, p + n), c});
     }
     void circle (Vec2 centre, float r, Color c) override {
-	circles.push_back({centre, r, c});
+        circles.push_back({centre, r, c});
     }
     void segment (Vec2 a, Vec2 b, Color c) override {
-	segments.push_back({a, b, c});
+        segments.push_back({a, b, c});
     }
 };
 
@@ -51,19 +51,19 @@ struct RecordingCanvas : Canvas {
     int width () const override { return w; }
     int height () const override { return h; }
     void line (float x1, float y1, float x2, float y2, Color c) override {
-	lines.push_back({x1, y1, x2, y2, c});
+        lines.push_back({x1, y1, x2, y2, c});
     }
     void circle (float x, float y, float r, Color c) override {
-	circles.push_back({x, y, r, c});
+        circles.push_back({x, y, r, c});
     }
     void point (float x, float y, Color) override { points.push_back({x, y}); }
     void text (float x, float y, const string &s, Color) override {
-	texts.push_back({x, y, s});
+        texts.push_back({x, y, s});
     }
     bool hasText (const string &part) const {
-	for (const Text &t : texts)
-	    if (t.s.find(part) != string::npos) return true;
-	return false;
+        for (const Text &t : texts)
+            if (t.s.find(part) != string::npos) return true;
+        return false;
     }
 };
 
@@ -82,7 +82,7 @@ TEST(worldDrawsEveryShape) {
     RecordingRenderer r;
     w.draw(r);
 
-    CHECK(r.polygons.size() == 1u + 2u);	// ground + two limb boxes
+    CHECK(r.polygons.size() == 1u + 2u);        // ground + two limb boxes
     CHECK(r.circles.size() == 1u);
     CHECK(r.segments.size() == 1u);
     for (auto &p : r.polygons) CHECK(p.points.size() == 4u && p.c == BodyColor);
@@ -105,12 +105,12 @@ TEST(worldDrawsEveryShape) {
     // The ball sits at its limb's local offset, in world coordinates
     BodyId b = c->bodies()[1];
     CHECK(near(r.circles[0].centre,
-	       b2Body_GetWorldPoint(b, spec.limbs[1].shapes[1].position)));
+               b2Body_GetWorldPoint(b, spec.limbs[1].shapes[1].position)));
     CHECK(r.circles[0].radius == spec.limbs[1].shapes[1].radius);
 
     // Muscle ends are its attachment points
     CHECK(near(r.segments[0].a, b2Body_GetWorldPoint(c->bodies()[0],
-						      spec.muscles[0].pos1)));
+                                                      spec.muscles[0].pos1)));
 }
 
 // 100 px/m on a 640x480 canvas: world origin at the bottom centre, y up
@@ -134,7 +134,7 @@ TEST(boxScreenMapsWorldToPixels) {
     s.polygon(sq, 4, BodyColor);
     CHECK(canvas.lines.size() == 4u);
     CHECK(canvas.lines[3].x2 == canvas.lines[0].x1 &&
-	  canvas.lines[3].y2 == canvas.lines[0].y1);
+          canvas.lines[3].y2 == canvas.lines[0].y1);
 }
 
 TEST(boxScreenCameraFollows) {
@@ -142,17 +142,17 @@ TEST(boxScreenCameraFollows) {
     BoxScreen s(&canvas, 100.0f);
     Vec2 p;
 
-    s.keepViewable({10, 0});			// far right
+    s.keepViewable({10, 0});                    // far right
     s.box2pixel({10, 0}, p);
     CHECK_NEAR(p.x, canvas.width() - BoxScreen::SideBorder, 1e-3);
 
-    s.keepViewable({10, 20});			// far above
+    s.keepViewable({10, 20});                   // far above
     s.box2pixel({10, 20}, p);
     CHECK_NEAR(p.y, BoxScreen::TopBottomBorder, 1e-3);
 
     Vec2 before;
     s.box2pixel({10, 20}, before);
-    s.keepViewable({10, 20});			// already in view: no change
+    s.keepViewable({10, 20});                   // already in view: no change
     s.box2pixel({10, 20}, p);
     CHECK(p.x == before.x && p.y == before.y);
 }
@@ -164,7 +164,7 @@ TEST(boxScreenGridCoversCanvas) {
     // One 5-point cross per metre: 7 columns x 5 rows at 100 px/m
     CHECK(canvas.points.size() == 5u * 7u * 5u);
     for (auto &p : canvas.points)
-	CHECK(p.x >= -1 && p.x <= canvas.width() && p.y >= -1 && p.y <= canvas.height());
+        CHECK(p.x >= -1 && p.x <= canvas.width() && p.y >= -1 && p.y <= canvas.height());
 }
 
 TEST(boxScreenWithoutCanvasIsSafe) {
@@ -186,7 +186,7 @@ TEST(sceneDrawsThroughBoxScreen) {
     RecordingCanvas canvas;
     BoxScreen s(&canvas, 100.0f);
     w.draw(s);
-    CHECK(canvas.lines.size() == 3u * 4u + 1u);	// 3 boxes + 1 muscle
+    CHECK(canvas.lines.size() == 3u * 4u + 1u); // 3 boxes + 1 muscle
     CHECK(canvas.circles.size() == 1u);
 }
 
@@ -200,12 +200,12 @@ TEST(statsOverlayTitleOnly) {
 TEST(statsOverlayWithHistory) {
     vector<GenerationStats> h(3);
     for (int i = 0; i < 3; ++i) {
-	h[i].generation = i;
-	h[i].maxFitness = 1.0 + i;
-	h[i].meanFitness = 0.5 + i * 0.25;
-	h[i].populationSize = 200;
-	h[i].nSpecies = 12;
-	h[i].meanCompat = 3.5;
+        h[i].generation = i;
+        h[i].maxFitness = 1.0 + i;
+        h[i].meanFitness = 0.5 + i * 0.25;
+        h[i].populationSize = 200;
+        h[i].nSpecies = 12;
+        h[i].meanCompat = 3.5;
     }
     RecordingCanvas canvas;
     drawStatsOverlay(canvas, "Gen 2", h);
@@ -216,7 +216,7 @@ TEST(statsOverlayWithHistory) {
     // Chart: 4 frame lines, then max and mean lines between the 3 points
     CHECK(canvas.lines.size() == 4u + 2u * 2u);
     for (auto &l : canvas.lines)
-	CHECK(l.x1 >= canvas.width() - 211 && l.x2 <= canvas.width());
+        CHECK(l.x1 >= canvas.width() - 211 && l.x2 <= canvas.width());
 }
 
 int main () {

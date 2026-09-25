@@ -8,7 +8,7 @@
  * (before fitness sharing divides them by species size).
  */
 struct SpecieStats {
-    int id;			//Stable across generations
+    int id;                     //Stable across generations
     int age;
     int size;
     double meanFitness;
@@ -28,8 +28,8 @@ struct GenerationStats {
 
     //Diversity
     int nSpecies = 0;
-    double meanCompat = 0;	//Mean pairwise compatibility distance
-    double compatThresh = 0;	//Species threshold in use this generation
+    double meanCompat = 0;      //Mean pairwise compatibility distance
+    double compatThresh = 0;    //Species threshold in use this generation
 
     //Network structure
     double meanHiddenNodes = 0, meanEnabledLinks = 0;

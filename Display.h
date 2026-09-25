@@ -19,46 +19,46 @@ enum class DisplayEvent { None, Space, Quit };
  */
 class Display : public Canvas {
     public:
-	// Throws std::runtime_error if SDL or the window can't be set up
-	Display (const char *title, int width, int height, int fps = 60);
-	~Display ();
+        // Throws std::runtime_error if SDL or the window can't be set up
+        Display (const char *title, int width, int height, int fps = 60);
+        ~Display ();
 
-	Display (const Display &) = delete;
-	Display &operator= (const Display &) = delete;
+        Display (const Display &) = delete;
+        Display &operator= (const Display &) = delete;
 
-	int width () const override { return w; }
-	int height () const override { return h; }
+        int width () const override { return w; }
+        int height () const override { return h; }
 
-	void clear ();
-	void present ();
+        void clear ();
+        void present ();
 
-	void line (float x1, float y1, float x2, float y2, Color c) override;
-	void circle (float cx, float cy, float r, Color c) override;
-	void point (float x, float y, Color c) override;
-	void text (float x, float y, const std::string &s,
-		   Color c = 0xFFFFFFFF) override;
+        void line (float x1, float y1, float x2, float y2, Color c) override;
+        void circle (float cx, float cy, float r, Color c) override;
+        void point (float x, float y, Color c) override;
+        void text (float x, float y, const std::string &s,
+                   Color c = 0xFFFFFFFF) override;
 
-	// Drain the event queue.  Space bar -> Space; window close or any
-	// other key -> Quit.
-	DisplayEvent poll ();
+        // Drain the event queue.  Space bar -> Space; window close or any
+        // other key -> Quit.
+        DisplayEvent poll ();
 
-	// True once poll() has seen a Quit
-	bool quitRequested () const { return quit; }
+        // True once poll() has seen a Quit
+        bool quitRequested () const { return quit; }
 
-	// Sleep so that successive calls happen at most fps times a second
-	void waitFrame ();
+        // Sleep so that successive calls happen at most fps times a second
+        void waitFrame ();
 
     private:
-	void setColor (Color c);
+        void setColor (Color c);
 
-	int w, h;
-	SDL_Window *window = nullptr;
-	SDL_Renderer *renderer = nullptr;
-	TTF_Font *font = nullptr;
+        int w, h;
+        SDL_Window *window = nullptr;
+        SDL_Renderer *renderer = nullptr;
+        TTF_Font *font = nullptr;
 
-	uint64_t frameNS;
-	uint64_t lastFrame = 0;
-	bool quit = false;
+        uint64_t frameNS;
+        uint64_t lastFrame = 0;
+        bool quit = false;
 };
 
 #endif

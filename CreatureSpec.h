@@ -20,11 +20,11 @@ namespace libconfig { class Config; }
  */
 struct ShapeSpec {
     enum Type { Box, Ball } type = Box;
-    float w = 0, h = 0;			//Box half extents
-    float radius = 0;			//Ball
-    Vec2 position = {0, 0};		//Ball centre, local to the limb
+    float w = 0, h = 0;                 //Box half extents
+    float radius = 0;                   //Ball
+    Vec2 position = {0, 0};             //Ball centre, local to the limb
     float density = 0;
-    float friction = 0.2f;		//Box2D 2.x default the configs assume
+    float friction = 0.2f;              //Box2D 2.x default the configs assume
     int groupIndex = 0;
 };
 
@@ -32,14 +32,14 @@ struct LimbSpec {
     std::string name;
     Vec2 position = {0, 0};
     float angle = 0;
-    std::optional<float> angularDamping;	//Box2D default if unset
+    std::optional<float> angularDamping;        //Box2D default if unset
     std::vector<ShapeSpec> shapes;
 };
 
-struct JointSpec {			//Revolute, limits always enabled
+struct JointSpec {                      //Revolute, limits always enabled
     std::string name;
     int limb1 = -1, limb2 = -1;
-    Vec2 anchor = {0, 0};		//World position
+    Vec2 anchor = {0, 0};               //World position
     float lowerAngle = 0, upperAngle = 0;
 };
 
@@ -48,12 +48,12 @@ struct MuscleSpec {
 
     std::string name;
     int limb1 = -1, limb2 = -1;
-    Vec2 pos1 = {0, 0}, pos2 = {0, 0};	//Attachment points, limb local
+    Vec2 pos1 = {0, 0}, pos2 = {0, 0};  //Attachment points, limb local
     float minK = 0, maxK = 0, minEq = 0, maxEq = 0, kd = 0;
     float maxForce = Unlimited, maxPower = Unlimited;
 };
 
-struct PointSpec {			//Named point on a limb ("shapes" section)
+struct PointSpec {                      //Named point on a limb ("shapes" section)
     std::string name;
     int limb = -1;
     Vec2 localPos = {0, 0};
@@ -62,10 +62,10 @@ struct PointSpec {			//Named point on a limb ("shapes" section)
 struct SensorSpec {
     enum Type { Joint, Height, BodyAngle, AngularVelocity, Velocity, Contact };
     Type type = Joint;
-    int target = -1;	//Joint index for Joint, point index for Height,
-			// limb index otherwise
-    double min = 0, max = 0;		//Unused for Joint and Contact
-    bool vertical = false;		//Velocity: y axis instead of x
+    int target = -1;    //Joint index for Joint, point index for Height,
+                        // limb index otherwise
+    double min = 0, max = 0;            //Unused for Joint and Contact
+    bool vertical = false;              //Velocity: y axis instead of x
 };
 
 struct CreatureSpec {

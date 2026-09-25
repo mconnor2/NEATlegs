@@ -14,22 +14,22 @@
 using namespace std;
 
 Display::Display (const char *title, int width, int height, int fps) :
-		  w(width), h(height), frameNS(1000000000ull / fps)
+                  w(width), h(height), frameNS(1000000000ull / fps)
 {
     if (!SDL_Init(SDL_INIT_VIDEO))
-	throw runtime_error(string("Couldn't initialize SDL: ") +
-			    SDL_GetError());
+        throw runtime_error(string("Couldn't initialize SDL: ") +
+                            SDL_GetError());
 
     if (!SDL_CreateWindowAndRenderer(title, w, h, 0, &window, &renderer))
-	throw runtime_error(string("Couldn't create window: ") +
-			    SDL_GetError());
+        throw runtime_error(string("Couldn't create window: ") +
+                            SDL_GetError());
 
     if (TTF_Init()) {
-	font = TTF_OpenFont(NEATLEGS_FONT_PATH, 12);
-	if (!font) font = TTF_OpenFont("ProggyClean.ttf", 12);
-	if (!font) cerr<<"TTF_OpenFont: "<<SDL_GetError()<<endl;
+        font = TTF_OpenFont(NEATLEGS_FONT_PATH, 12);
+        if (!font) font = TTF_OpenFont("ProggyClean.ttf", 12);
+        if (!font) cerr<<"TTF_OpenFont: "<<SDL_GetError()<<endl;
     } else {
-	cerr<<"TTF_Init: "<<SDL_GetError()<<endl;
+        cerr<<"TTF_Init: "<<SDL_GetError()<<endl;
     }
 }
 
@@ -43,7 +43,7 @@ Display::~Display () {
 
 void Display::setColor (Color c) {
     SDL_SetRenderDrawColor(renderer, (c >> 24) & 0xFF, (c >> 16) & 0xFF,
-			   (c >> 8) & 0xFF, c & 0xFF);
+                           (c >> 8) & 0xFF, c & 0xFF);
 }
 
 void Display::clear () {
@@ -64,9 +64,9 @@ void Display::circle (float cx, float cy, float r, Color c) {
     const int N = 32;
     SDL_FPoint pts[N + 1];
     for (int i = 0; i <= N; ++i) {
-	float a = 2.0f * (float)M_PI * i / N;
-	pts[i].x = cx + r * cosf(a);
-	pts[i].y = cy + r * sinf(a);
+        float a = 2.0f * (float)M_PI * i / N;
+        pts[i].x = cx + r * cosf(a);
+        pts[i].y = cy + r * sinf(a);
     }
     setColor(c);
     SDL_RenderLines(renderer, pts, N + 1);
@@ -81,16 +81,16 @@ void Display::text (float x, float y, const string &s, Color c) {
     if (!font || s.empty()) return;
 
     SDL_Color fg = {(Uint8)(c >> 24), (Uint8)(c >> 16), (Uint8)(c >> 8),
-		    (Uint8)c};
+                    (Uint8)c};
     SDL_Surface *surf = TTF_RenderText_Blended(font, s.c_str(), s.size(),
-					       fg);
+                                               fg);
     if (!surf) return;
 
     SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
     if (tex) {
-	SDL_FRect dst = {x, y, (float)surf->w, (float)surf->h};
-	SDL_RenderTexture(renderer, tex, NULL, &dst);
-	SDL_DestroyTexture(tex);
+        SDL_FRect dst = {x, y, (float)surf->w, (float)surf->h};
+        SDL_RenderTexture(renderer, tex, NULL, &dst);
+        SDL_DestroyTexture(tex);
     }
     SDL_DestroySurface(surf);
 }
@@ -99,19 +99,19 @@ DisplayEvent Display::poll () {
     DisplayEvent result = DisplayEvent::None;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-	switch (event.type) {
-	    case SDL_EVENT_KEY_DOWN:
-		if (event.key.key == SDLK_SPACE) {
-		    if (result == DisplayEvent::None)
-			result = DisplayEvent::Space;
-		    break;
-		}
-		quit = true;
-		return DisplayEvent::Quit;
-	    case SDL_EVENT_QUIT:
-		quit = true;
-		return DisplayEvent::Quit;
-	}
+        switch (event.type) {
+            case SDL_EVENT_KEY_DOWN:
+                if (event.key.key == SDLK_SPACE) {
+                    if (result == DisplayEvent::None)
+                        result = DisplayEvent::Space;
+                    break;
+                }
+                quit = true;
+                return DisplayEvent::Quit;
+            case SDL_EVENT_QUIT:
+                quit = true;
+                return DisplayEvent::Quit;
+        }
     }
     return result;
 }
@@ -119,6 +119,6 @@ DisplayEvent Display::poll () {
 void Display::waitFrame () {
     uint64_t now = SDL_GetTicksNS();
     if (lastFrame && now - lastFrame < frameNS)
-	SDL_DelayNS(frameNS - (now - lastFrame));
+        SDL_DelayNS(frameNS - (now - lastFrame));
     lastFrame = SDL_GetTicksNS();
 }

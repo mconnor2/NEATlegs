@@ -22,7 +22,7 @@ namespace {
 // Deterministic "policy" that depends on the sensors, so trajectories do too
 void wobble (const double *in, double *out, int nOut) {
     for (int i = 0; i < nOut; ++i)
-	out[i] = 0.5 + 0.5 * sin(3.0 * in[1 + i % 6] + i);
+        out[i] = 0.5 + 0.5 * sin(3.0 * in[1 + i % 6] + i);
 }
 
 Controller wobbler (int nOut) {
@@ -32,14 +32,14 @@ Controller wobbler (int nOut) {
 EpisodeOptions noFloor (int steps) {
     EpisodeOptions o;
     o.maxSteps = steps;
-    o.headFloor = -100;			//never
+    o.headFloor = -100;                 //never
     return o;
 }
 
 bool sameResult (const EpisodeResult &a, const EpisodeResult &b) {
     return a.steps == b.steps && a.end == b.end && a.maxHeadX == b.maxHeadX &&
-	   a.maxHeadY == b.maxHeadY && a.energy == b.energy &&
-	   a.forceTime == b.forceTime;
+           a.maxHeadY == b.maxHeadY && a.energy == b.energy &&
+           a.forceTime == b.forceTime;
 }
 
 }
@@ -52,7 +52,7 @@ TEST(inputsAndOutputsMatchSpec) {
 
     vector<double> in(sim.numInputs(), -1.0);
     sim.readSensors(in.data());
-    CHECK(in[0] == 1.0);			// bias
+    CHECK(in[0] == 1.0);                        // bias
     for (double v : in) CHECK(v >= 0.0 && v <= 1.0);
 }
 
@@ -89,22 +89,22 @@ TEST(runsToMaxSteps) {
 TEST(endsWhenHeadBelowFloor) {
     CreatureSpec spec = testCreature::spec();
     EpisodeOptions o = noFloor(100);
-    o.headFloor = 100;			// head starts ~1.2 m up
+    o.headFloor = 100;                  // head starts ~1.2 m up
     EpisodeResult r = runEpisode(spec, o, wobbler(2));
     CHECK(r.steps == 1);
     CHECK(r.end == EpisodeEnd::HeadBelowFloor);
-    CHECK(r.maxHeadX == 0 && r.maxHeadY == 0);	// the ending step doesn't count
+    CHECK(r.maxHeadX == 0 && r.maxHeadY == 0);  // the ending step doesn't count
 }
 
 TEST(endsWhenForbiddenLimbTouches) {
     CreatureSpec spec = testCreature::spec();
     EpisodeOptions o = noFloor(600);
-    o.groundLimbs = {"b"};		// "a" starts 0.25 m up and falls
+    o.groundLimbs = {"b"};              // "a" starts 0.25 m up and falls
     EpisodeResult r = runEpisode(spec, o, wobbler(2));
     CHECK(r.end == EpisodeEnd::ForbiddenContact);
     CHECK(r.steps > 1 && r.steps < 600);
 
-    o.groundLimbs = {"a", "b"};		// everything allowed
+    o.groundLimbs = {"a", "b"};         // everything allowed
     CHECK(runEpisode(spec, o, wobbler(2)).end == EpisodeEnd::MaxSteps);
 }
 
@@ -120,9 +120,9 @@ TEST(endsWhenEnergySpent) {
     CHECK(r.energy >= o.energyBudget);
     CHECK(r.steps > 1 && r.steps < 200);
     CHECK(runEpisode(spec, noFloor(r.steps - 1), wobbler(2)).energy <
-	  o.energyBudget);
+          o.energyBudget);
 
-    o.energyBudget = full * 2;		// never reached
+    o.energyBudget = full * 2;          // never reached
     CHECK(runEpisode(spec, o, wobbler(2)).end == EpisodeEnd::MaxSteps);
 }
 
@@ -131,9 +131,9 @@ TEST(endsWhenEnergySpent) {
 TEST(forceTimeOfASaturatedMuscle) {
     std::string text = testCreature::Text;
     const std::string from = "minK = 10.0; maxK = 50.0; minEq = 0.1; maxEq = 0.4; kd = 1.0;\n"
-			     "      maxForce = 10.0; maxPower = 5.0;",
-		      to = "minK = 1e6; maxK = 1e6; minEq = 0.4; maxEq = 0.4; kd = 1.0;\n"
-			   "      maxForce = 10.0;";
+                             "      maxForce = 10.0; maxPower = 5.0;",
+                      to = "minK = 1e6; maxK = 1e6; minEq = 0.4; maxEq = 0.4; kd = 1.0;\n"
+                           "      maxForce = 10.0;";
     size_t at = text.find(from);
     CHECK(at != std::string::npos);
     text.replace(at, from.size(), to);
@@ -154,7 +154,7 @@ TEST(energyCostCombinesWorkAndForce) {
     EpisodeOptions o = noFloor(200);
     o.energyCost = {4.0, 0.8, 0.3};
     EpisodeResult r = runEpisode(spec, o, wobbler(2));
-    CHECK(r.positiveWork == plain.positiveWork);	// accounting only
+    CHECK(r.positiveWork == plain.positiveWork);        // accounting only
     CHECK(r.energy == 4.0*r.positiveWork - 0.8*r.negativeWork + 0.3*r.forceTime);
 
     // The budget ends the episode on the combined cost: charging only
@@ -189,24 +189,24 @@ TEST(fitnessShaping) {
     // Defaults: plain max head x, bit for bit, however the episode ended
     FitnessOptions plain;
     for (EpisodeEnd e : {EpisodeEnd::MaxSteps, EpisodeEnd::HeadBelowFloor})
-	CHECK(episodeFitness(ended(e, 123, 1.2345678), 1000, plain) ==
-	      1.2345678);
+        CHECK(episodeFitness(ended(e, 123, 1.2345678), 1000, plain) ==
+              1.2345678);
 
     FitnessOptions f;
     f.base = 0.5;
     f.survivalExponent = 1;
     EpisodeResult dive = ended(EpisodeEnd::HeadBelowFloor, 100, 2.0),
-		  shuffle = ended(EpisodeEnd::HeadBelowFloor, 500, 1.0),
-		  stand = ended(EpisodeEnd::MaxSteps, 1000, 0.0),
-		  walk = ended(EpisodeEnd::MaxSteps, 1000, 3.0),
-		  budget = ended(EpisodeEnd::EnergySpent, 400, 3.0);
+                  shuffle = ended(EpisodeEnd::HeadBelowFloor, 500, 1.0),
+                  stand = ended(EpisodeEnd::MaxSteps, 1000, 0.0),
+                  walk = ended(EpisodeEnd::MaxSteps, 1000, 3.0),
+                  budget = ended(EpisodeEnd::EnergySpent, 400, 3.0);
     CHECK(fabs(episodeFitness(dive, 1000, f) - 0.25) < 1e-12);
     CHECK(episodeFitness(dive, 1000, f) < episodeFitness(shuffle, 1000, f));
-    CHECK(episodeFitness(stand, 1000, f) == 0.5);	// base alone
+    CHECK(episodeFitness(stand, 1000, f) == 0.5);       // base alone
     CHECK(episodeFitness(walk, 1000, f) == 3.5);
-    CHECK(episodeFitness(budget, 1000, f) == 3.5);	// spending isn't falling
+    CHECK(episodeFitness(budget, 1000, f) == 3.5);      // spending isn't falling
 
-    f.survivalExponent = 2;			// harsher on early falls
+    f.survivalExponent = 2;                     // harsher on early falls
     CHECK(fabs(episodeFitness(shuffle, 1000, f) - 0.375) < 1e-12);
 }
 
@@ -216,10 +216,10 @@ TEST(frameCallbackRunsEachStepAndCanStop) {
     CreatureSpec spec = testCreature::spec();
     int frames = 0;
     EpisodeResult r = runEpisode(spec, noFloor(50), wobbler(2),
-				 [&](const Simulation &sim) {
-	++frames;
-	CHECK(sim.result().steps == frames);
-	return frames < 5;
+                                 [&](const Simulation &sim) {
+        ++frames;
+        CHECK(sim.result().steps == frames);
+        return frames < 5;
     });
     CHECK(frames == 5 && r.steps == 5);
     CHECK(r.end == EpisodeEnd::Stopped);
@@ -227,7 +227,7 @@ TEST(frameCallbackRunsEachStepAndCanStop) {
     // Drawing in the callback must not change the outcome
     EpisodeResult quiet = runEpisode(spec, noFloor(50), wobbler(2));
     EpisodeResult watched = runEpisode(spec, noFloor(50), wobbler(2),
-				       [](const Simulation &) { return true; });
+                                       [](const Simulation &) { return true; });
     CHECK(sameResult(quiet, watched));
 }
 
@@ -237,14 +237,14 @@ TEST(stepByStepMatchesRunEpisode) {
     Simulation sim(spec, o);
     vector<double> in(sim.numInputs()), out(sim.numOutputs(), 0.0);
     while (sim.running()) {
-	sim.readSensors(in.data());
-	wobble(in.data(), out.data(), sim.numOutputs());
-	sim.applyOutputs(out.data());
-	sim.step();
+        sim.readSensors(in.data());
+        wobble(in.data(), out.data(), sim.numOutputs());
+        sim.applyOutputs(out.data());
+        sim.step();
     }
     CHECK(sameResult(sim.result(), runEpisode(spec, o, wobbler(2))));
     CHECK(sim.result().energy == sim.creature().positiveWork());
-    CHECK(!sim.step());			// finished episodes stay finished
+    CHECK(!sim.step());                 // finished episodes stay finished
     sim.stop();
     CHECK(sim.result().end == EpisodeEnd::MaxSteps);
 }
@@ -258,7 +258,7 @@ TEST(invalidSetupsAreRejected) {
     CHECK(threw);
 
     CreatureSpec headless = testCreature::spec(
-	testCreature::Text.substr(0, testCreature::Text.find("shapes = ( { name")));
+        testCreature::Text.substr(0, testCreature::Text.find("shapes = ( { name")));
     threw = false;
     try { Simulation sim(headless); } catch (std::exception &) { threw = true; }
     CHECK(threw);
@@ -273,19 +273,19 @@ TEST(optionsFromConfig) {
     CHECK(o.maxSteps == 1000);
 
     libconfig::Config d;
-    d.readString("global: { headFloor = 1; };");	// integer
+    d.readString("global: { headFloor = 1; };");        // integer
     CHECK(episodeOptionsFromConfig(d).headFloor == 1.0);
 
     libconfig::Config budget;
     budget.readString("global: { energyBudget = 50; fitnessBase = 0.5; "
-		      "survivalExponent = 2; };");
+                      "survivalExponent = 2; };");
     CHECK(episodeOptionsFromConfig(budget).energyBudget == 50.0);
     FitnessOptions f = fitnessOptionsFromConfig(budget);
     CHECK(f.base == 0.5 && f.survivalExponent == 2.0);
 
     libconfig::Config cost;
     cost.readString("global: { energyCost = { positiveWork = 4.0; "
-		    "negativeWork = 0.83; forceTime = 1; }; };");
+                    "negativeWork = 0.83; forceTime = 1; }; };");
     EnergyCost ec = episodeOptionsFromConfig(cost).energyCost;
     libconfig::Config longer;
     longer.readString("global: { maxSteps = 3000; };");
@@ -293,17 +293,17 @@ TEST(optionsFromConfig) {
     CHECK(ec.positiveWork == 4.0 && ec.negativeWork == 0.83 && ec.forceTime == 1.0);
 
     for (const char *bad : {"global: { energyBudget = -1.0; };",
-			    "global: { survivalExponent = -1; };",
-			    "global: { energyCost = { forceTime = -0.5; }; };",
-			    "global: { maxSteps = 0; };"}) {
-	libconfig::Config c;
-	c.readString(bad);
-	bool threw = false;
-	try {
-	    episodeOptionsFromConfig(c);
-	    fitnessOptionsFromConfig(c);
-	} catch (std::exception &) { threw = true; }
-	CHECK(threw);
+                            "global: { survivalExponent = -1; };",
+                            "global: { energyCost = { forceTime = -0.5; }; };",
+                            "global: { maxSteps = 0; };"}) {
+        libconfig::Config c;
+        c.readString(bad);
+        bool threw = false;
+        try {
+            episodeOptionsFromConfig(c);
+            fitnessOptionsFromConfig(c);
+        } catch (std::exception &) { threw = true; }
+        CHECK(threw);
     }
 
     libconfig::Config none;
@@ -321,7 +321,7 @@ TEST(optionsFromConfig) {
 TEST(episodesAreDeterministic) {
     CreatureSpec spec = testCreature::spec();
     EpisodeResult a = runEpisode(spec, noFloor(300), wobbler(2)),
-		  b = runEpisode(spec, noFloor(300), wobbler(2));
+                  b = runEpisode(spec, noFloor(300), wobbler(2));
     CHECK(sameResult(a, b));
 }
 
@@ -333,10 +333,10 @@ TEST(threadsShareOneSpec) {
     CreatureSpec spec = testCreature::spec();
     EpisodeOptions o = noFloor(200);
     if (realConfig) {
-	libconfig::Config c;
-	c.readFile(realConfig);
-	spec = parseCreatureSpec(c);
-	o = episodeOptionsFromConfig(c, noFloor(200));
+        libconfig::Config c;
+        c.readFile(realConfig);
+        spec = parseCreatureSpec(c);
+        o = episodeOptionsFromConfig(c, noFloor(200));
     }
     int nOut = spec.numOutputs();
     EpisodeResult expected = runEpisode(spec, o, wobbler(nOut));
@@ -345,13 +345,13 @@ TEST(threadsShareOneSpec) {
     vector<vector<EpisodeResult>> got(T);
     vector<thread> threads;
     for (int t = 0; t < T; ++t)
-	threads.emplace_back([&, t]() {
-	    for (int rep = 0; rep < 10; ++rep)
-		got[t].push_back(runEpisode(spec, o, wobbler(nOut)));
-	});
+        threads.emplace_back([&, t]() {
+            for (int rep = 0; rep < 10; ++rep)
+                got[t].push_back(runEpisode(spec, o, wobbler(nOut)));
+        });
     for (auto &th : threads) th.join();
     for (auto &results : got)
-	for (auto &r : results) CHECK(sameResult(r, expected));
+        for (auto &r : results) CHECK(sameResult(r, expected));
 }
 
 int main (int argc, const char **argv) {

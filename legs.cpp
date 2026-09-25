@@ -30,29 +30,29 @@ void runSimulation (Display *display, World *world, CreatureP &C) {
     uint64_t ticks = SDL_GetTicks(), nt;
     double sec;
     while (1) {
-	display->clear();
-	
-	//Draw and update the world
-	world->draw(s);
-	world->step();
+        display->clear();
 
-	//Space resets the creature, anything else exits
-	DisplayEvent e = display->poll();
-	if (e == DisplayEvent::Quit) return;
-	if (e == DisplayEvent::Space) C->reset();
+        //Draw and update the world
+        world->draw(s);
+        world->step();
 
-	display->present();
+        //Space resets the creature, anything else exits
+        DisplayEvent e = display->poll();
+        if (e == DisplayEvent::Quit) return;
+        if (e == DisplayEvent::Space) C->reset();
 
-	++frames;
-	if (frames%nFrames == 0) {
-	    nt = SDL_GetTicks();
-	    sec = (nt-ticks)/1000.0;
-	    printf("%d frames in %0.4f seconds, %0.4f fps\n", 
-		    nFrames, sec, nFrames/sec);
-	    ticks = nt;
-	}
+        display->present();
 
-	display->waitFrame();
+        ++frames;
+        if (frames%nFrames == 0) {
+            nt = SDL_GetTicks();
+            sec = (nt-ticks)/1000.0;
+            printf("%d frames in %0.4f seconds, %0.4f fps\n",
+                    nFrames, sec, nFrames/sec);
+            ticks = nt;
+        }
+
+        display->waitFrame();
     }
 }
 
@@ -63,21 +63,21 @@ int main (int argc, char **argv) {
     int opt;
     char *configFile = NULL;
     while ((opt = getopt(argc, argv, "C:N:h")) != -1) {
-	switch(opt) {
-	    case 'N':
-	    break;
-	    case 'C':
-		configFile = optarg;
-	    break;
-	    default:
-		printf("Usage: legs [-N ?] [-h this?]\n");
-		exit(1);
-	}
+        switch(opt) {
+            case 'N':
+            break;
+            case 'C':
+                configFile = optarg;
+            break;
+            default:
+                printf("Usage: legs [-N ?] [-h this?]\n");
+                exit(1);
+        }
     }
-    
+
     if (!configFile) {
-	fprintf(stderr, "Must specify config file.\n");
-	exit(1);
+        fprintf(stderr, "Must specify config file.\n");
+        exit(1);
     }
 
     /* Initialize the World, take default hz and substeps */
@@ -85,35 +85,35 @@ int main (int argc, char **argv) {
 
     libconfig::Config config;
     try {
-	config.readFile(configFile);
+        config.readFile(configFile);
     } catch (libconfig::ParseException &pe) {
-	cerr<<"Config parse error"<<endl;
-	cerr<<"   config file "<<configFile<<endl;
-	cerr<<"   line number "<<pe.getLine()<<endl;
-	cerr<<"   error: "<<pe.getError()<<endl;
+        cerr<<"Config parse error"<<endl;
+        cerr<<"   config file "<<configFile<<endl;
+        cerr<<"   line number "<<pe.getLine()<<endl;
+        cerr<<"   error: "<<pe.getError()<<endl;
 
-	return 1;
+        return 1;
     } catch (...) {
-	cerr<<"Config error reading from file."<<endl;
+        cerr<<"Config error reading from file."<<endl;
 
-	return 1;
+        return 1;
     }
     config.setAutoConvert(true);
 
     CreatureP walker;
     try {
-	walker = w.createCreature(parseCreatureSpec(config));
+        walker = w.createCreature(parseCreatureSpec(config));
     } catch (exception &e) {
-	cerr<<configFile<<": "<<e.what()<<endl;
-	return 1;
+        cerr<<configFile<<": "<<e.what()<<endl;
+        return 1;
     }
 
     try {
-	Display display("Walkabout!", Width, Height, 120);
-	runSimulation(&display, &w, walker);
+        Display display("Walkabout!", Width, Height, 120);
+        runSimulation(&display, &w, walker);
     } catch (exception &e) {
-	cerr<<e.what()<<endl;
-	return 1;
+        cerr<<e.what()<<endl;
+        return 1;
     }
     return 0;
 }

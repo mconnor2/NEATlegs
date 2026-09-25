@@ -6,7 +6,7 @@
 using namespace std;
 
 static const Color Grey = 0x808080FF,
-		   MaxColor = 0x40FF40FF, MeanColor = 0xFFD040FF;
+                   MaxColor = 0x40FF40FF, MeanColor = 0xFFD040FF;
 
 static string fmt (const char *f, double a, double b = 0, double c = 0) {
     char buf[128];
@@ -15,7 +15,7 @@ static string fmt (const char *f, double a, double b = 0, double c = 0) {
 }
 
 static void drawChart (Canvas &d, const vector<GenerationStats> &h,
-		       float x, float y, float w, float ht)
+                       float x, float y, float w, float ht)
 {
     //Frame
     d.line(x, y, x+w, y, Grey);
@@ -25,24 +25,24 @@ static void drawChart (Canvas &d, const vector<GenerationStats> &h,
 
     double lo = h[0].meanFitness, hi = h[0].maxFitness;
     for (const GenerationStats &s : h) {
-	lo = min(lo, s.meanFitness);
-	hi = max(hi, s.maxFitness);
+        lo = min(lo, s.meanFitness);
+        hi = max(hi, s.maxFitness);
     }
     if (hi - lo < 1e-9) hi = lo + 1;
 
     size_t n = h.size();
     auto px = [&](size_t i) {
-	return n > 1 ? x + w * i / (float)(n-1) : x + w/2;
+        return n > 1 ? x + w * i / (float)(n-1) : x + w/2;
     };
     auto py = [&](double v) {
-	return y + ht - (float)((v - lo) / (hi - lo)) * ht;
+        return y + ht - (float)((v - lo) / (hi - lo)) * ht;
     };
 
     for (size_t i = 1; i < n; ++i) {
-	d.line(px(i-1), py(h[i-1].meanFitness), px(i), py(h[i].meanFitness),
-	       MeanColor);
-	d.line(px(i-1), py(h[i-1].maxFitness), px(i), py(h[i].maxFitness),
-	       MaxColor);
+        d.line(px(i-1), py(h[i-1].meanFitness), px(i), py(h[i].meanFitness),
+               MeanColor);
+        d.line(px(i-1), py(h[i-1].maxFitness), px(i), py(h[i].maxFitness),
+               MaxColor);
     }
 
     d.text(x + 3, y + 2, fmt("%.3g", hi), Grey);
@@ -52,7 +52,7 @@ static void drawChart (Canvas &d, const vector<GenerationStats> &h,
 }
 
 void drawStatsOverlay (Canvas &d, const string &title,
-		       const vector<GenerationStats> &history)
+                       const vector<GenerationStats> &history)
 {
     const float lineH = 14;
     float y = 8;
@@ -65,13 +65,13 @@ void drawStatsOverlay (Canvas &d, const string &title,
     d.text(110, y, fmt("mean %.4f", s.meanFitness), MeanColor);
     y += lineH;
     d.text(10, y, fmt("pop %.0f  species %.0f  diversity %.2f",
-		      s.populationSize, s.nSpecies, s.meanCompat));
+                      s.populationSize, s.nSpecies, s.meanCompat));
     y += lineH;
     d.text(10, y, fmt("best net: %.0f hidden, %.0f links",
-		      s.bestHiddenNodes, s.bestEnabledLinks));
+                      s.bestHiddenNodes, s.bestEnabledLinks));
     if (s.bestEnergy > 0) {
-	y += lineH;
-	d.text(10, y, fmt("best energy: %.4g J", s.bestEnergy));
+        y += lineH;
+        d.text(10, y, fmt("best energy: %.4g J", s.bestEnergy));
     }
 
     const float w = 200, h = 80;

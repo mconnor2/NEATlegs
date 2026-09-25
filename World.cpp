@@ -14,7 +14,7 @@ const float World::fGravity = 10.0;
 static std::mutex worldTableMutex;
 
 World::World (float _hz, int _subSteps) :
-	      timeStep(1.0f/_hz), subSteps(_subSteps)
+              timeStep(1.0f/_hz), subSteps(_subSteps)
 {
     //Set gravity pointing downward
     b2WorldDef worldDef = b2DefaultWorldDef();
@@ -23,8 +23,8 @@ World::World (float _hz, int _subSteps) :
 
     //Create world
     {
-	std::lock_guard<std::mutex> lock(worldTableMutex);
-	b2W = b2CreateWorld(&worldDef);
+        std::lock_guard<std::mutex> lock(worldTableMutex);
+        b2W = b2CreateWorld(&worldDef);
     }
 
     //Create ground
@@ -73,24 +73,24 @@ void drawBody (BodyId b, Renderer &r) {
     std::vector<b2ShapeId> shapes(n);
     b2Body_GetShapes(b, shapes.data(), n);
     for (b2ShapeId s : shapes) {
-	switch (b2Shape_GetType(s)) {
-	    case b2_circleShape: {
-		b2Circle circle = b2Shape_GetCircle(s);
-		r.circle(b2Body_GetWorldPoint(b, circle.center), circle.radius,
-			 BallColor);
-		break;
-	    }
-	    case b2_polygonShape: {
-		b2Polygon poly = b2Shape_GetPolygon(s);
-		if (poly.count < 2) break;
-		Vec2 pts[B2_MAX_POLYGON_VERTICES];
-		for (int i = 0; i < poly.count; ++i)
-		    pts[i] = b2Body_GetWorldPoint(b, poly.vertices[i]);
-		r.polygon(pts, poly.count, BodyColor);
-		break;
-	    }
-	    default:
-		break;
-	}
+        switch (b2Shape_GetType(s)) {
+            case b2_circleShape: {
+                b2Circle circle = b2Shape_GetCircle(s);
+                r.circle(b2Body_GetWorldPoint(b, circle.center), circle.radius,
+                         BallColor);
+                break;
+            }
+            case b2_polygonShape: {
+                b2Polygon poly = b2Shape_GetPolygon(s);
+                if (poly.count < 2) break;
+                Vec2 pts[B2_MAX_POLYGON_VERTICES];
+                for (int i = 0; i < poly.count; ++i)
+                    pts[i] = b2Body_GetWorldPoint(b, poly.vertices[i]);
+                r.polygon(pts, poly.count, BodyColor);
+                break;
+            }
+            default:
+                break;
+        }
     }
 }

@@ -13,29 +13,29 @@
  */
 class BoxScreen : public Renderer {
     public:
-	// World origin starts at the bottom centre of the canvas.  A null
-	// canvas makes every call a no-op.
-	BoxScreen (Canvas *c, float _pM = 10.0f);
+        // World origin starts at the bottom centre of the canvas.  A null
+        // canvas makes every call a no-op.
+        BoxScreen (Canvas *c, float _pM = 10.0f);
 
-	void polygon (const Vec2 *points, int n, Color c) override;
-	void circle (Vec2 centre, float radius, Color c) override;
-	void segment (Vec2 a, Vec2 b, Color c) override;
+        void polygon (const Vec2 *points, int n, Color c) override;
+        void circle (Vec2 centre, float radius, Color c) override;
+        void segment (Vec2 a, Vec2 b, Color c) override;
 
-	// A dot grid, one metre apart
-	void drawGrid ();
+        // A dot grid, one metre apart
+        void drawGrid ();
 
-	// Shift the camera so this world point stays within the borders
-	void keepViewable (const Vec2 &pW);
+        // Shift the camera so this world point stays within the borders
+        void keepViewable (const Vec2 &pW);
 
-	inline void box2pixel (const Vec2 &boxV, Vec2 &screenV) const;
+        inline void box2pixel (const Vec2 &boxV, Vec2 &screenV) const;
 
-	//Pixel border kept around a followed point
-	static const int SideBorder = 300, TopBottomBorder = 32;
+        //Pixel border kept around a followed point
+        static const int SideBorder = 300, TopBottomBorder = 32;
     private:
-	float pM;		//pixels/meter
-	Vec2 BoxOriginP;	//location of box origin in pixel space
+        float pM;               //pixels/meter
+        Vec2 BoxOriginP;        //location of box origin in pixel space
 
-	Canvas *canvas;
+        Canvas *canvas;
 };
 
 inline void BoxScreen::box2pixel (const Vec2 &boxV, Vec2 &screenV) const {

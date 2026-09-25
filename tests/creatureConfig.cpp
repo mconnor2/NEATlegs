@@ -38,9 +38,9 @@ CreatureSpec parse (const string &text) {
 // The parse error message, or "" if the text parses
 string parseError (const string &text) {
     try {
-	parse(text);
+        parse(text);
     } catch (std::exception &e) {
-	return e.what();
+        return e.what();
     }
     return "";
 }
@@ -48,7 +48,7 @@ string parseError (const string &text) {
 bool mentions (const string &message, const string &part) {
     if (message.find(part) != string::npos) return true;
     fprintf(stderr, "  error \"%s\" doesn't mention \"%s\"\n",
-	    message.c_str(), part.c_str());
+            message.c_str(), part.c_str());
     return false;
 }
 
@@ -83,8 +83,8 @@ TEST(specHasEverythingResolved) {
 TEST(specDefaults) {
     CreatureSpec s = parse(withChange("maxForce = 10.0; maxPower = 5.0; ", ""));
     const LimbSpec &a = s.limbs[0];
-    CHECK(!a.angularDamping);			// Box2D's default
-    CHECK(a.shapes[0].friction == 0.2f);	// Box2D 2.x default
+    CHECK(!a.angularDamping);                   // Box2D's default
+    CHECK(a.shapes[0].friction == 0.2f);        // Box2D 2.x default
     CHECK(s.limbs[1].shapes[1].groupIndex == 0);
     CHECK(std::isinf(s.muscles[0].maxForce) && std::isinf(s.muscles[0].maxPower));
 
@@ -104,33 +104,33 @@ TEST(integersAcceptedForNumbers) {
 
 TEST(unknownNamesAreRejected) {
     CHECK(mentions(parseError(withChange(R"(obj2 = "b"; pos2)", R"(obj2 = "nope"; pos2)")),
-		   "muscle 0 'm': unknown limb 'nope'"));
+                   "muscle 0 'm': unknown limb 'nope'"));
     CHECK(mentions(parseError(withChange(R"(obj1 = "a"; obj2 = "b";)", R"(obj1 = "nope"; obj2 = "b";)")),
-		   "joint 0 'j': unknown limb 'nope'"));
+                   "joint 0 'j': unknown limb 'nope'"));
     CHECK(mentions(parseError(withChange(R"(target = "j";)", R"(target = "nope";)")),
-		   "unknown joint 'nope'"));
+                   "unknown joint 'nope'"));
     CHECK(mentions(parseError(withChange(R"(target = "head";)", R"(target = "nope";)")),
-		   "unknown shape 'nope'"));
+                   "unknown shape 'nope'"));
     CHECK(mentions(parseError(withChange(R"(body = "b";)", R"(body = "nope";)")),
-		   "shape 0 'head': unknown limb 'nope'"));
+                   "shape 0 'head': unknown limb 'nope'"));
 }
 
 TEST(badValuesAreRejected) {
     CHECK(mentions(parseError(withChange(R"(type = "JointSensor")", R"(type = "NoSuchSensor")")),
-		   "unknown sensor type"));
+                   "unknown sensor type"));
     CHECK(mentions(parseError(withChange(R"(type = "box"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; } ); },)",
-					 R"(type = "cone"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; } ); },)")),
-		   "limb 0 'a': shape 0: unknown shape type 'cone'"));
+                                         R"(type = "cone"; w = 0.05; h = 0.25; density = 1.0; groupIndex = -1; } ); },)")),
+                   "limb 0 'a': shape 0: unknown shape type 'cone'"));
     CHECK(mentions(parseError(withChange(R"(type = "revolute")", R"(type = "prismatic")")),
-		   "unknown joint type 'prismatic'"));
+                   "unknown joint type 'prismatic'"));
     CHECK(mentions(parseError(withChange(R"(axis = "y")", R"(axis = "z")")), "axis"));
     CHECK(mentions(parseError(withChange("minK = 10.0; ", "")), "missing 'minK'"));
     CHECK(mentions(parseError(withChange("joints = (", "joints_missing = (")),
-		   "no 'joints' section"));
+                   "no 'joints' section"));
     CHECK(mentions(parseError(withChange("minK = 10.0;", "minK = \"stiff\";")),
-		   "'minK' must be a number"));
+                   "'minK' must be a number"));
     CHECK(mentions(parseError(withChange(R"({ name = "b";)", R"({ name = "a";)")),
-		   "duplicate name 'a'"));
+                   "duplicate name 'a'"));
 }
 
 TEST(builtCreatureMatchesSpec) {
@@ -143,20 +143,20 @@ TEST(builtCreatureMatchesSpec) {
     CHECK(c->numSensors() == s.numInputs());
 
     for (size_t i = 0; i < s.limbs.size(); ++i) {
-	BodyId b = c->bodies()[i];
-	Vec2 p = b2Body_GetPosition(b);
-	CHECK(p.x == s.limbs[i].position.x && p.y == s.limbs[i].position.y);
-	// b2MakeRot uses an approximate sine/cosine (0.3 rad reads back as
-	// about 0.3015), so only close
-	CHECK_NEAR(b2Rot_GetAngle(b2Body_GetRotation(b)), s.limbs[i].angle, 5e-3);
-	CHECK(b2Body_GetShapeCount(b) == (int)s.limbs[i].shapes.size());
-	CHECK(B2_ID_EQUALS(b, c->limbs[s.limbs[i].name]));
+        BodyId b = c->bodies()[i];
+        Vec2 p = b2Body_GetPosition(b);
+        CHECK(p.x == s.limbs[i].position.x && p.y == s.limbs[i].position.y);
+        // b2MakeRot uses an approximate sine/cosine (0.3 rad reads back as
+        // about 0.3015), so only close
+        CHECK_NEAR(b2Rot_GetAngle(b2Body_GetRotation(b)), s.limbs[i].angle, 5e-3);
+        CHECK(b2Body_GetShapeCount(b) == (int)s.limbs[i].shapes.size());
+        CHECK(B2_ID_EQUALS(b, c->limbs[s.limbs[i].name]));
     }
     CHECK(c->muscles[0]->maxPowerLimit() == 5.0f);
 
     double in[7];
     c->setInput(in);
-    CHECK(in[0] == 1.0);			// bias first
+    CHECK(in[0] == 1.0);                        // bias first
     for (double v : in) CHECK(v >= 0.0 && v <= 1.0);
 }
 
@@ -175,17 +175,17 @@ static int nExtra;
 
 TEST(shippedConfigsBuild) {
     for (int i = 0; i < nExtra; ++i) {
-	libconfig::Config config;
-	config.readFile(extraConfigs[i]);
-	try {
-	    CreatureSpec s = parseCreatureSpec(config);
-	    World w;
-	    CreatureP c = w.createCreature(s);
-	    CHECK(c->numSensors() == s.numInputs());
-	} catch (std::exception &e) {
-	    fprintf(stderr, "  %s: %s\n", extraConfigs[i], e.what());
-	    CHECK(false);
-	}
+        libconfig::Config config;
+        config.readFile(extraConfigs[i]);
+        try {
+            CreatureSpec s = parseCreatureSpec(config);
+            World w;
+            CreatureP c = w.createCreature(s);
+            CHECK(c->numSensors() == s.numInputs());
+        } catch (std::exception &e) {
+            fprintf(stderr, "  %s: %s\n", extraConfigs[i], e.what());
+            CHECK(false);
+        }
     }
 }
 
