@@ -89,6 +89,9 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 - Champion and duplicate-link fixes alone: kanga2 21.0 / 33.8, walker 8.8 / 35.2. With the old summed distance, the walker still had 30–57 species at generation 250 against a target of 10.
 - Adding the paper's distance: kanga2 13.0 / 26.2, walker 13.2 / 30.0. Ten species froze once the threshold settled, and offspring were shared almost evenly between mediocre species.
 - Adding stagnation and per-species breeding (the current GA): walker **25.1 / 47.5** (7 of 8 runs above 14), kanga2 16.0 / 23.5. For kanga2, `survivalThreshold` 0.4 gave 7.7 / 27.7 and `dropoffAge` 30 gave 16.4 / 23.6. kanga2's networks grew to 150–280 links, against ~120 before. kanga2's settings were tuned under the old GA.
+- kanga2 at population 400: current GA 22.1 / 36.2, old GA 26.2 / 36.8 (all 8 old-GA runs above 18; current-GA networks 145–300 links, old 127–188).
+- Weight mutation, kanga2 at population 400 under the current GA (control 22.1 / 36.2): `weightMutationRate` 0.8 gave **30.6 / 34.4**, with all 8 runs between 27.8 and 34.4; `weightPerturbScale` 0.5 gave 25.0 / 28.4; both 24.8 / 29.4; both plus a 10% reset share (the paper's mix) 24.5 / 25.9. Every variant removed the stuck runs (worst ≥ 21, against 7.3 in the control).
+- The walker at `weightMutationRate` 0.8: 34.4 / 38.1 (worst 15.0), against 25.1 / 47.5 (worst 6.2) at 0.2. Both generators now use 0.8, and kanga2 uses population 400. At both settings and on both creatures, the best run is somewhat lower but the median and worst runs are much better.
 - XOR (`xorTest`, 30 runs): the old GA solved 14 within 1000 generations; the current one solves 27–30.
 - Outcomes are bimodal (runs stuck at ~3 or reaching 20–30), so 8 seeds only shows large effects.
 

@@ -211,7 +211,7 @@ L.append('''global: {
     inheritDominant = 0.9;
     linkEnabledRate = 0.1;
 
-    weightMutationRate   = 0.2;
+    weightMutationRate   = 0.8;
     weightPerturbScale   = 0.1;
     weightPerturbNormal  = 0.6;
     weightPerturbUniform = 0.39;
