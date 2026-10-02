@@ -124,6 +124,18 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 - Every run lasts the full 1000 steps, upright with the head near 1.57 m. 1000 generations gave 15 m (best 22 m). In that run, before `stagger` and with the hind lower leg slightly stretched, seed 107 evolved a clean four-beat walk.
 - The rest are lopsided. One leg of a pair is held up for the whole run while its partner works or skids, or a hoof stays down and slides. In 2D the legs of a pair occupy the same plane, so one can retire. Contact sensors (median 5.7 m), a 1500 J budget with 3000-step runs, hoof friction 1.0, population 2000, and a planar version with one leg per pair (`pairs = False`) didn't fix it.
 - A rule ending the run once a hoof slid more than 0.1–1.0 m in one contact (prototyped, not kept) trapped every run standing still (median 1.2–3 m).
-- Starting mid-stride (`stagger` 0.15 m, the default) raised the median from 10 m to 12 m, with gaits no cleaner. The likely fix is the mirror controller: one network per side.
+- Starting mid-stride (`stagger` 0.15 m, the default) raised the median from 10 m to 12 m, with gaits no cleaner.
+- Clock inputs (`clocks` in `gen_horse.py`: a sine and a cosine per frequency, so any phase is a weighted sum) make the gaits much cleaner. A clean hoof steps at least 10 times and spends at most half its travel sliding. A pair alternates when its left and right touchdowns are 0.3–0.7 of a stride apart, consistently.
+
+  | clocks (Hz) | median distance | clean hooves of 32 | runs with all 4 clean | pairs alternating of 16 |
+  |---|---|---|---|---|
+  | none (horse v1) | 12.2 m | 6 | 0 | 0 |
+  | 0.7 | 9.1 m | 17 | 0 | 3 |
+  | 1.3 | 13.2 m | 23 | 2 | 3 |
+  | 2.5 | 16.0 m | 20 | 2 | 6 |
+  | 0.7 + 1.3 + 2.5 | 7.1 m | 17 | 1 | 2 |
+  | 1 + 2 | 12.6 m | 21 | 0 | 2 |
+
+  `horse.cfg` uses 2.5 Hz (horse v2). Gaits lock onto a clock: strides of 0.40 or 0.80 s at 2.5 Hz, 0.77 s at 1.3 Hz, and 0.51 or 0.97 s with 1 + 2 Hz. The best (2.5 Hz, seed 108, 22.6 m) is a brisk walk: duty 0.5–0.65 on every hoof, slide 4–28%, forelegs half a stride apart. The three-clock mix did worst, probably because its 6 extra inputs add 96 starting links for NEAT to tune (not tested).
 
 `legs.notes` holds the original design notes.

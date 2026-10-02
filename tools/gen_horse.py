@@ -71,6 +71,13 @@ P = dict(
     # of 'spin' (barrel angular velocity), 'velocity' (barrel x and y),
     # 'contact' (each hoof on the ground), 'hoofHeight' (each hoof)
     extraSensors=[],
+    # Clock inputs: for each frequency (Hz), a sine and a cosine, so any
+    # phase is a weighted sum of the two.  Gaits lock onto the clock and
+    # use all four legs far more often (8 seeds, 250 generations): with
+    # 2.5 Hz, 20 of 32 hooves stepped cleanly against 6 without a clock,
+    # and the median distance rose from 12 to 16 m.  1.3 Hz did nearly as
+    # well, 0.7 Hz and three clocks at once worse.
+    clocks=[2.5],
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
     # Objective, as the walker's: survival shaping, and a metabolic
     # energy cost (positiveWork, negativeWork, forceTime weights; None
@@ -261,6 +268,9 @@ extraDefs = dict(
     hoofHeight=['{ type = "HeightSensor"; target = "%s"; '
                 'minH = 0; maxH = 0.5; }' % hoofName(g) for g in legs])
 extra = [d for k in P['extraSensors'] for d in extraDefs[k]]
+extra += ['{ type = "ClockSensor"; frequency = %s; phase = %s; }'
+          % ('%g' % hz, '%.4f' % ph) for hz in P['clocks']
+          for ph in (0, math.pi/2)]
 nSensors = 2*len(legs) + 2 + len(extra)
 
 maxForce = P['forcePerWeight']*weight
