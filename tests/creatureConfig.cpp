@@ -174,6 +174,21 @@ TEST(builtCreatureMatchesSpec) {
     for (double v : in) CHECK(v >= 0.0 && v <= 1.0);
 }
 
+// Joint angles start at 0 even when the limbs' angles differ by more than
+// pi (two segments of a leg pointing down, at about -170 and +170 degrees)
+TEST(jointsStartAtZeroWhateverTheLimbAngles) {
+    string text = withChange("angle = 0.0;", "angle = -2.8;");
+    size_t i = text.find("angle = 0.3;");
+    CHECK(i != string::npos);
+    if (i != string::npos) text.replace(i, 12, "angle = 2.8;");
+    World w;
+    CreatureP c = w.createCreature(parse(text));
+    JointId j = c->joints["j"];
+    CHECK_NEAR(b2RevoluteJoint_GetAngle(j), 0.0, 1e-3);
+    w.step();       // and don't snap away from it (by 1.5 rad when it did)
+    CHECK_NEAR(b2RevoluteJoint_GetAngle(j), 0.0, 0.1);
+}
+
 // One spec, many creatures: the spec is read-only once parsed
 TEST(oneSpecBuildsManyCreatures) {
     CreatureSpec s = parse(Base);

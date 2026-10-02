@@ -148,9 +148,13 @@ Creature::Creature (const CreatureSpec &spec, World &w) {
         jointDef.bodyIdB = bodyB;
         jointDef.localAnchorA = b2Body_GetLocalPoint(bodyA, j.anchor);
         jointDef.localAnchorB = b2Body_GetLocalPoint(bodyB, j.anchor);
-        jointDef.referenceAngle =
-            b2Rot_GetAngle(b2Body_GetRotation(bodyB)) -
-            b2Rot_GetAngle(b2Body_GetRotation(bodyA));
+        //Box2D measures the joint angle in [-pi, pi] and clamps the
+        // reference angle to that range, so wrap it there
+        float ref = b2Rot_GetAngle(b2Body_GetRotation(bodyB)) -
+                    b2Rot_GetAngle(b2Body_GetRotation(bodyA));
+        if (ref > B2_PI) ref -= 2 * B2_PI;
+        if (ref < -B2_PI) ref += 2 * B2_PI;
+        jointDef.referenceAngle = ref;
         jointDef.lowerAngle = j.lowerAngle;
         jointDef.upperAngle = j.upperAngle;
         jointDef.enableLimit = true;
