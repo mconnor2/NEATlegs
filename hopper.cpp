@@ -40,6 +40,19 @@ using namespace std;
 const int Width  = 640;
 const int Height = 480;
 
+// Colors for the champions of the second, third, ... fittest species when
+// several are shown together (the fittest keeps the normal colors), dim so
+// the best stands out
+static const Color SpeciesColors[] = {
+    0x4F86C6FF, 0xC9A23FFF, 0xA35BA8FF, 0x3FA3A0FF, 0xC66A3FFF, 0x8C8C8CFF
+};
+
+static Color speciesColor (int rank) {
+    if (rank == 0) return BodyColor;
+    const int n = sizeof(SpeciesColors) / sizeof(SpeciesColors[0]);
+    return SpeciesColors[(rank - 1) % n];
+}
+
 /**
  * Fitness for a creature: how far forward its head gets (max head x) in one
  * episode, optionally shaped by how long it stays up (FitnessOptions).
@@ -100,6 +113,49 @@ class hopper {
             return runEpisode(*spec, opt, controller, frame);
         }
 
+        // Episodes of several genomes at once, each in its own world, drawn
+        // over each other: the first in the normal colors, followed by the
+        // camera, the rest tinted (speciesColor) behind it.  Each steps
+        // exactly as in a single episode, and one that has ended stays
+        // where it stopped.  Runs until all have ended or a key is pressed.
+        void together (const vector<GenomeP> &gs, Display &display,
+                       const function<void(Display &)> &overlay) const
+        {
+            vector<unique_ptr<Network>> nets;
+            vector<unique_ptr<Simulation>> sims;
+            for (const GenomeP &g : gs) {
+                nets.emplace_back(g->createNewNetwork());
+                sims.emplace_back(new Simulation(*spec, opt));
+            }
+            vector<double> in(spec->numInputs()),
+                           out(spec->numOutputs(), 0.0);
+            BoxScreen s(&display, 100.0f);
+            for (bool running = true; running; ) {
+                running = false;
+                for (size_t i = 0; i < sims.size(); ++i) {
+                    Simulation &sim = *sims[i];
+                    if (!sim.running()) continue;
+                    sim.readSensors(in.data());
+                    nets[i]->run(in.data(), out.data());
+                    sim.applyOutputs(out.data());
+                    running |= sim.step();
+                }
+
+                display.clear();
+                if (overlay) overlay(display);
+                s.keepViewable(sims[0]->head());
+                s.drawGrid();
+                for (size_t i = sims.size() - 1; i >= 1; --i) {
+                    TintRenderer tint(s, speciesColor(i));
+                    sims[i]->creature().draw(tint);
+                }
+                sims[0]->draw(s);
+                display.present();
+                if (display.poll() != DisplayEvent::None) return;
+                display.waitFrame();
+            }
+        }
+
     private:
         const CreatureSpec *spec;
         EpisodeOptions opt;
@@ -114,6 +170,9 @@ static void usage () {
            "              newest)\n"
            "  -d gens     with -V, publish a new best to watch every this\n"
            "              many generations (default 10; implies -V)\n"
+           "  -n count    with -V, show the champions of the fittest count\n"
+           "              species together, the others tinted behind the\n"
+           "              best (default 1; implies -V)\n"
            "  -o dir      run output directory (default runs/<config>-<time>)\n"
            "  -s gens     snapshot top genomes every this many generations\n"
            "              (default 10, 0 disables)\n"
@@ -193,14 +252,20 @@ static int replay (const hopper &fit, const char *genomeFile,
 /**
  * Shared state between the GA thread and the display (main) thread when
  * watching a run.  The GA publishes a copy of its stats every generation
- * and a clone of the best genome every displayEvery generations; the
- * display thread replays the newest published genome over and over.
+ * and clones of the best genomes every displayEvery generations: the best
+ * one, or each of the fittest species' champions.  The display thread
+ * replays the newest published ones over and over.
  */
 struct Monitor {
-    std::mutex m;
-    GenomeP best;               //Clone: replaying writes fitness/steps/energy
+    struct Shown {
+        GenomeP genome;         //Clone: replaying writes fitness/steps/energy
                                 // onto the genome, which the GA thread reads
-    double bestFitness = 0;
+        double fitness;
+        int specieId;           //-1 if unknown
+    };
+
+    std::mutex m;
+    vector<Shown> shown;        //Fittest first
     int bestGeneration = -1;
     std::shared_ptr<const vector<GenerationStats>> history;
 
@@ -214,12 +279,21 @@ struct Monitor {
         history = h;
     }
 
-    void publishBest (const GeneticAlgorithm &GA) {
-        const GeneticAlgorithm::RankedGenome &top = GA.topGenomes().at(0);
-        GenomeP g = top.second->clone();
+    // The best genome, or with nSpecies > 1 the champions of the fittest
+    // nSpecies species
+    void publishBest (const GeneticAlgorithm &GA, int nSpecies) {
+        vector<Shown> s;
+        if (nSpecies <= 1) {
+            const GeneticAlgorithm::RankedGenome &top = GA.topGenomes().at(0);
+            s.push_back({top.second->clone(), top.first, -1});
+        } else {
+            for (const auto &c : GA.speciesChampions()) {
+                if ((int)s.size() == nSpecies) break;
+                s.push_back({c.genome->clone(), c.fitness, c.specieId});
+            }
+        }
         std::lock_guard<std::mutex> lock(m);
-        best = g;
-        bestFitness = top.first;
+        shown = s;
         bestGeneration = GA.history().back().generation;
     }
 };
@@ -229,7 +303,7 @@ struct Monitor {
 // the GA after its current generation.
 static void watchEvolution (const hopper &fit, Display &display,
                             GeneticAlgorithm &GA, RunLog &log, int maxGen,
-                            int displayEvery)
+                            int displayEvery, int showSpecies)
 {
     Monitor mon;
 
@@ -239,21 +313,19 @@ static void watchEvolution (const hopper &fit, Display &display,
             log.record(GA);
             mon.publishStats(GA);
             if (gen % displayEvery == 0 || gen == maxGen-1)
-                mon.publishBest(GA);
+                mon.publishBest(GA, showSpecies);
         }
         log.finish(GA);
         mon.done = true;
     });
 
     while (!display.quitRequested()) {
-        GenomeP g;
+        vector<Monitor::Shown> shown;
         int shownGen;
-        double shownFit;
         {
             std::lock_guard<std::mutex> lock(mon.m);
-            g = mon.best;
+            shown = mon.shown;
             shownGen = mon.bestGeneration;
-            shownFit = mon.bestFitness;
         }
 
         auto overlay = [&](Display &d) {
@@ -265,20 +337,34 @@ static void watchEvolution (const hopper &fit, Display &display,
             char title[128];
             const char *status = mon.done ? "run finished, close to exit"
                                           : "evolving";
-            if (g) {
+            if (!shown.empty()) {
                 snprintf(title, sizeof(title),
                          "Gen %d best (%.3f)   now: gen %d, %s",
-                         shownGen, shownFit,
+                         shownGen, shown[0].fitness,
                          h && !h->empty() ? h->back().generation : 0, status);
             } else {
                 snprintf(title, sizeof(title), "Waiting for generation 0...");
             }
             static const vector<GenerationStats> none;
             drawStatsOverlay(d, title, h ? *h : none);
+
+            //Legend for several species, below the stats
+            if (shown.size() > 1) {
+                for (size_t i = 0; i < shown.size(); ++i) {
+                    char line[64];
+                    snprintf(line, sizeof(line), "species %d  %.3f",
+                             shown[i].specieId, shown[i].fitness);
+                    d.text(10, 96 + 14 * i, line, speciesColor(i));
+                }
+            }
         };
 
-        if (g) {
-            fit(g, &display, overlay);
+        if (shown.size() > 1) {
+            vector<GenomeP> gs;
+            for (const Monitor::Shown &s : shown) gs.push_back(s.genome);
+            fit.together(gs, display, overlay);
+        } else if (!shown.empty()) {
+            fit(shown[0].genome, &display, overlay);
         } else {
             display.clear();
             overlay(display);
@@ -299,6 +385,7 @@ int main (int argc, char **argv) {
     bool haveSeed = false;
     uint64_t seed = 0;
     int displayEvery = 10;
+    int showSpecies = 1;
 
     int maxGen = 1000;
 
@@ -309,7 +396,7 @@ int main (int argc, char **argv) {
     /* Process arguments */
     int opt;
     char *configFile = NULL;
-    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:e:d:S:")) != -1) {
+    while ((opt = getopt(argc, argv, "VC:hN:o:s:k:r:e:d:n:S:")) != -1) {
         switch(opt) {
             case 'V':
                 drawGen = true;
@@ -344,6 +431,14 @@ int main (int argc, char **argv) {
                 drawGen = true;
                 if (displayEvery < 1) {
                     fprintf(stderr, "-d needs a positive generation count\n");
+                    exit(1);
+                }
+            break;
+            case 'n':
+                showSpecies = atoi(optarg);
+                drawGen = true;
+                if (showSpecies < 1) {
+                    fprintf(stderr, "-n needs a positive species count\n");
                     exit(1);
                 }
             break;
@@ -442,7 +537,8 @@ int main (int argc, char **argv) {
            logOpt.outputDir.c_str());
 
     if (display) {
-        watchEvolution(fit, *display, GA, *log, maxGen, displayEvery);
+        watchEvolution(fit, *display, GA, *log, maxGen, displayEvery,
+                       showSpecies);
         return 0;
     }
 

@@ -116,6 +116,27 @@ TEST(worldDrawsEveryShape) {
                                                       spec.muscles[0].pos1)));
 }
 
+// A tint draws the same shapes, all in its color
+TEST(tintRendererRecolorsEverything) {
+    CreatureSpec spec = testCreature::spec();
+    World w;
+    CreatureP c = w.createCreature(spec);
+    RecordingRenderer plain, tinted;
+    TintRenderer tint(tinted, 0x336699FF);
+    c->draw(plain);
+    c->draw(tint);
+    CHECK(tinted.polygons.size() == plain.polygons.size());
+    CHECK(tinted.circles.size() == plain.circles.size());
+    CHECK(tinted.segments.size() == plain.segments.size());
+    for (size_t i = 0; i < plain.polygons.size(); ++i)
+        CHECK(tinted.polygons[i].points.size() ==
+              plain.polygons[i].points.size() &&
+              near(tinted.polygons[i].points[0], plain.polygons[i].points[0]));
+    for (auto &p : tinted.polygons) CHECK(p.c == 0x336699FF);
+    for (auto &p : tinted.circles) CHECK(p.c == 0x336699FF);
+    for (auto &p : tinted.segments) CHECK(p.c == 0x336699FF);
+}
+
 // 100 px/m on a 640x480 canvas: world origin at the bottom centre, y up
 TEST(boxScreenMapsWorldToPixels) {
     RecordingCanvas canvas;
