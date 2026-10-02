@@ -42,6 +42,9 @@ class Creature {
 
     void setInput(double *input) const;
 
+    // Seconds simulated since the last reset()
+    double time() const { return elapsed; }
+
     // Mechanical work done by all muscles since the last reset().
     // positiveWork is energy put into the body, negativeWork (<= 0) is
     // energy absorbed (damping, braking).
@@ -78,6 +81,8 @@ class Creature {
 
     std::vector<BodyId> limbBodies;
     std::vector<JointId> jointIds;
+
+    double elapsed = 0;
 };
 
 class Muscle {

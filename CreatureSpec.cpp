@@ -213,9 +213,20 @@ CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
             const Setting &s = sensors[i];
             string where = entry("sensor", i);
             SensorSpec sensor;
-            string type = text(s, "type", where),
-                   target = text(s, "target", where);
+            string type = text(s, "type", where);
             where += " (" + type + ")";
+            //A clock reads time, not the body, so it has no target
+            if (type == "ClockSensor") {
+                sensor.type = SensorSpec::Clock;
+                sensor.frequency = number(s, "frequency", where);
+                if (!(sensor.frequency > 0))
+                    throw error(where, "frequency must be positive");
+                if (s.exists("phase"))
+                    sensor.phase = number(s, "phase", where);
+                spec.sensors.push_back(sensor);
+                continue;
+            }
+            string target = text(s, "target", where);
             if (type == "JointSensor") {
                 sensor.type = SensorSpec::Joint;
                 sensor.target = resolve(spec.jointIndex(target), "joint",

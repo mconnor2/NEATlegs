@@ -91,6 +91,18 @@ class VelocitySensor : public Sensor {
         const double minV, maxV;
 };
 
+//A clock: 0.5 + 0.5 sin(2 pi f t + phase), t being the creature's time
+// since its last reset, so a controller can keep a rhythm
+class ClockSensor : public Sensor {
+    public:
+        ClockSensor(const Creature *_c, double f, double _phase) :
+            c(_c), omega(2 * M_PI * f), phase(_phase) { }
+        double read() { return 0.5 + 0.5 * sin(omega * c->time() + phase); }
+    private:
+        const Creature *c;
+        const double omega, phase;
+};
+
 //1 while a limb touches anything outside the creature (the ground), else 0
 class ContactSensor : public Sensor {
     public:
@@ -203,6 +215,9 @@ Creature::Creature (const CreatureSpec &spec, World &w) {
             case SensorSpec::Contact:
                 sensor = new ContactSensor(this, limbBodies[s.target]);
                 break;
+            case SensorSpec::Clock:
+                sensor = new ClockSensor(this, s.frequency, s.phase);
+                break;
         }
         sensors.push_back(SensorP(sensor));
     }
@@ -223,6 +238,7 @@ void Creature::reset () {
     {
         (*i)->reset();
     }
+    elapsed = 0;
 }
 
 void Creature::activate () {
@@ -250,6 +266,7 @@ void Creature::update () {
 }
 
 void Creature::afterStep (float dt) {
+    elapsed += dt;
     for (auto &m : muscles) m->afterStep(dt);
 }
 

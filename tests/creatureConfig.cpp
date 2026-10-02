@@ -146,6 +146,29 @@ TEST(badValuesAreRejected) {
                    "duplicate name 'a'"));
 }
 
+// Clocks have a frequency and an optional phase, and no target
+TEST(clockSensors) {
+    const string contact = R"({ type = "ContactSensor"; target = "a"; })";
+    auto withClocks = [&](const string &clocks) {
+        return withChange(contact, contact + ", " + clocks);
+    };
+    CreatureSpec s = parse(withClocks(
+        R"({ type = "ClockSensor"; frequency = 1.5; },
+           { type = "ClockSensor"; frequency = 2; phase = 1.5708; })"));
+    CHECK(s.sensors.size() == 8u && s.numInputs() == 9);
+    CHECK(s.sensors[6].type == SensorSpec::Clock);
+    CHECK(s.sensors[6].frequency == 1.5 && s.sensors[6].phase == 0);
+    CHECK(s.sensors[7].frequency == 2.0 && s.sensors[7].phase == 1.5708);
+
+    CHECK(mentions(parseError(withClocks(R"({ type = "ClockSensor"; })")),
+                   "missing 'frequency'"));
+    CHECK(mentions(parseError(withClocks(
+                       R"({ type = "ClockSensor"; frequency = 0.0; })")),
+                   "frequency must be positive"));
+    CHECK(mentions(parseError(withChange(R"(target = "a"; })", "}")),
+                   "missing 'target'"));
+}
+
 TEST(builtCreatureMatchesSpec) {
     CreatureSpec s = parse(Base);
     World w;
