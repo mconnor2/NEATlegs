@@ -76,7 +76,7 @@ target_link_libraries(poleBalance PRIVATE neat statsview display)
 
 # Tests, run with ctest
 enable_testing()
-set(CREATURES hopper walker kanga kanga2)
+set(CREATURES hopper walker kanga kanga2 horse)
 
 add_executable(neatTests tests/neatTests.cpp)
 target_link_libraries(neatTests PRIVATE neat)
