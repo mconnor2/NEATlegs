@@ -43,6 +43,10 @@ struct GenerationStats {
     int bestSteps = 0;
     double bestDistance = 0;
 
+    //Mean share of a genome's links tied to their mirror image (0 without
+    // a mirror map)
+    double tiedFraction = 0;
+
     //Evaluation cost.  stepsPerSec is 0 if the fitness function doesn't
     // record Genome::steps.
     double evalSeconds = 0;

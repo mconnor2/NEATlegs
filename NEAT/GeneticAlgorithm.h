@@ -83,6 +83,22 @@ struct ExpParameters {
     double startPopulationPercent;      //How many members to start with, as
                                         // percent of total desired population
 
+    //Mirror symmetry (empty = off).  mirror[n] is the input or output
+    // neuron that mirrors neuron n (inputs first, then outputs), e.g. a
+    // left leg's sensor and muscles to the right leg's; neurons on the
+    // midline map to themselves.  It must be its own inverse.  A link and
+    // its mirror image can be tied: they keep one weight and enabled state,
+    // and are mutated as one.  Hidden neurons get mirrors when tied
+    // structure is split.
+    std::vector<int> mirror;
+    double mirrorInitTied;              //Share of initial link pairs tied
+    double mirrorStructure;             //Chance that a new node or link is
+                                        // added with its mirror, tied to it
+                                        // (splitting a tied link, or joining
+                                        // neurons that have mirrors)
+    double untieRate;                   //Chance per child that each tied
+                                        // pair is untied for good
+
     int loadFromFile (const libconfig::Config &config);
     ExpParameters();
 };

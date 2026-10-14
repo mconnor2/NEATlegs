@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <stdexcept>
 
 #include "Specie.h"
 #include "Genome.h"
@@ -26,7 +27,8 @@ ExpParameters::ExpParameters() :
     addNodeMutationRate(0.1), compatGDiff(1.0), compatWDiff(0.4),
     compatThresh(3.0), targetSpecies(-1), threshAdapt(0.1),
     singleMate(0.2), specieMate(0.99), oldAge(5), dropoffAge(15),
-    survivalThreshold(0.2), startPopulationPercent(0.5)
+    survivalThreshold(0.2), startPopulationPercent(0.5),
+    mirrorInitTied(1.0), mirrorStructure(1.0), untieRate(0.0)
 { }
 
 int ExpParameters::loadFromFile(const libconfig::Config &config) {
@@ -69,6 +71,9 @@ int ExpParameters::loadFromFile(const libconfig::Config &config) {
         config.lookupValue("global.survivalThreshold",survivalThreshold);
         config.lookupValue("global.startPopulationPercent",
                             startPopulationPercent);
+        config.lookupValue("global.mirrorInitTied",mirrorInitTied);
+        config.lookupValue("global.mirrorStructure",mirrorStructure);
+        config.lookupValue("global.untieRate",untieRate);
     } catch (libconfig::SettingTypeException e) {
         cerr<<"ExpParameters::loadFromFile SettingTypeException "
               "while loading parameters"<<endl;
@@ -92,6 +97,20 @@ int ExpParameters::loadFromFile(const libconfig::Config &config) {
 GeneticAlgorithm::GeneticAlgorithm (ExpParameters *_P, FitnessFunction* _f) :
                                     P(_P), fitnessF(_f)
 {
+    if (!P->mirror.empty()) {
+        int nNeurons = P->nInput + P->nOutput;
+        bool ok = (int)P->mirror.size() == nNeurons;
+        for (int i = 0; ok && i < nNeurons; ++i) {
+            int m = P->mirror[i];
+            ok = m >= 0 && m < nNeurons && P->mirror[m] == i &&
+                 (m < P->nInput) == (i < P->nInput);
+        }
+        if (!ok)
+            throw invalid_argument("GeneticAlgorithm: mirror map must pair "
+                                   "inputs with inputs and outputs with "
+                                   "outputs, and be its own inverse");
+    }
+
     int initialPopulation = P->startPopulationPercent * P->popSize;
 //    cout<<"Start population = "<<P->popSize<<"*"
 //                             <<P->startPopulationPercent<<endl;
@@ -247,7 +266,7 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
     }
 
     double sum = 0, sumSq = 0, sumHidden = 0, sumLinks = 0, sumEnergy = 0,
-           sumDistance = 0;
+           sumDistance = 0, sumTied = 0;
     long totalSteps = 0;
     st.maxFitness = -1e300;
     st.minFitness = 1e300;
@@ -261,6 +280,8 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
         totalSteps += g->steps;
         sumEnergy += g->energy;
         sumDistance += g->distance;
+        if (g->numLinks() > 0)
+            sumTied += (double)g->numTiedLinks() / g->numLinks();
     }
     st.meanFitness = sum / n;
     st.stdevFitness = sqrt(max(0.0, sumSq / n - st.meanFitness*st.meanFitness));
@@ -269,6 +290,7 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
     st.meanEnergy = sumEnergy / n;
     st.meanSteps = (double)totalSteps / n;
     st.meanDistance = sumDistance / n;
+    st.tiedFraction = sumTied / n;
     if (totalSteps > 0 && evalSeconds > 0)
         st.stepsPerSec = totalSteps / evalSeconds;
 

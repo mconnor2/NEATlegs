@@ -498,6 +498,7 @@ int main (int argc, char **argv) {
     }
     P.nInput = spec.numInputs();
     P.nOutput = spec.numOutputs();
+    P.mirror = spec.neuronMirror();
 
     hopper fit(&spec, episode, fitnessOpt);
 

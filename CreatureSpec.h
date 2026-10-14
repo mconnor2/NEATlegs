@@ -83,12 +83,31 @@ struct CreatureSpec {
     int jointIndex (const std::string &name) const;
     int pointIndex (const std::string &name) const;
 
+    // Mirror symmetry, from the optional "mirror" section; both empty
+    // without it.  The sensor and muscle that mirror each one (itself if
+    // it's on the midline).
+    std::vector<int> sensorMirror, muscleMirror;
+
     // Network inputs (sensors plus bias) and outputs (two per muscle)
     int numInputs () const { return (int)sensors.size() + 1; }
     int numOutputs () const { return 2 * (int)muscles.size(); }
+
+    // Each network neuron's mirror (inputs, bias first, then outputs), for
+    // ExpParameters::mirror; empty without a mirror section
+    std::vector<int> neuronMirror () const;
 };
 
-// Parse the limbs, joints, muscles, shapes and sensors sections.  Throws
+// Parse the limbs, joints, muscles, shapes, sensors and mirror sections.
+//
+// The mirror section pairs names (limbs, joints, muscles or shapes) of the
+// left and right sides; anything unpaired is its own mirror:
+//   mirror = { pairs = ( ["thighL", "thighR"], ["hipL", "hipR"], ... );
+//              clock = "shift"; };
+// A sensor's mirror is the sensor of the same type and range on the
+// mirrored target.  A clock's mirror is the clock half a cycle later
+// (phase + pi) with clock = "shift" (the default), so a mirrored
+// controller drives one side half a stride behind the other, or itself
+// with clock = "same".  Every mirror must exist.  Throws
 // std::runtime_error naming the offending entry if anything is missing,
 // malformed or refers to an unknown name.
 CreatureSpec parseCreatureSpec (const libconfig::Config &config);
