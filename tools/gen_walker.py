@@ -56,6 +56,12 @@ P = dict(
     # distance, foot contact alone hurt nearly as much, and spin alone made
     # no difference.
     extraSensors=[],
+    # Clock inputs: for each frequency (Hz), a sine and a cosine, so any
+    # phase is a weighted sum of the two.  Gaits lock onto the clock (8
+    # seeds each): 1-1.25 Hz walk, 5-7 runs alternating feet against 5
+    # without a clock, at some cost in distance (30 m at 1.25 Hz against
+    # 34 m); from 1.5 Hz they leap, both feet landing together.
+    clocks=[1.25],
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
     # Objective: survival shaping as kanga2's.  What the budget counts:
     # None for positive work alone, or weights (positiveWork, negativeWork,
@@ -173,6 +179,9 @@ extraDefs = dict(
     contact=['{ type = "ContactSensor"; target = "footL"; }',
              '{ type = "ContactSensor"; target = "footR"; }'])
 extra = [d for k in P['extraSensors'] for d in extraDefs[k]]
+extra += ['{ type = "ClockSensor"; frequency = %s; phase = %s; }'
+          % ('%g' % hz, '%.4f' % ph) for hz in P['clocks']
+          for ph in (0, math.pi/2)]
 
 maxForce = P['forcePerWeight']*weight
 maxPower = P['wattsPerKg']*mass/len(mus)

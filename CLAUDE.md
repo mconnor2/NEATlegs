@@ -118,11 +118,27 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 - With `minK` at 0.05–0.1 of maxK and c = 1, knees lock straight (56–73% of stance) and the lunge goes, but at hip flexion 120° most runs jackknifed, torso folded onto the flexion stop (head ~1.1 m). Joint stops are free braces, and evolution moves to whichever one is left.
 - Hip flexion to 60° with `minK` 0.1 gave the most natural walkers so far, and is what the walker uses: head 1.73 m (median), better knee locked 70% of stance, hips 63° apart instead of 140°, the least dragging (0.66) and the most left/right switching. Median distance 12 m on 950 J, best runs 40–45 m. What remains is lopsided control: the best run walks fully upright (head 1.89 m) but skates one foot; another alternates properly with one knee bent.
 
+- Clock inputs (`clocks` in `gen_walker.py`, a sine and a cosine per frequency; current GA, population 1000, 250 generations, 8 seeds, 950 J budget). Each run's gait is classed by its left/right touchdown phase: alternating (0.3–0.7 of a stride), together (below 0.2 or above 0.8), or neither. Distance is on the budget.
+
+  | clock | median distance | alternating / together | median worse-foot slide | median head |
+  |---|---|---|---|---|
+  | none (the walker before) | 34.3 m | 5 / 3 | 0.43 | 1.78 m |
+  | 1 Hz | 27.7 m | 7 / 0 | 0.45 | 1.73 m |
+  | 1.25 Hz | 29.8 m | 5 / 0 | 0.50 | 1.70 m |
+  | 1.5 Hz | 27.9 m | 2 / 3 | 0.28 | 1.75 m |
+  | 2 Hz | 35.2 m | 1 / 6 | 0.25 | 1.80 m |
+  | 4 Hz | 21.2 m | 0 / 4 | 0.59 | 1.74 m |
+  | 6 Hz | 20.4 m | 0 / 4 | ~0.6 | 1.73 m |
+
+  Gaits lock onto the clock, as the horse's do. 1 Hz gives a walk in 7 of 8 runs (strides mostly 0.95–1.06 s, rarely airborne), but it covers less ground on the budget. 2 Hz gives leaping: both feet land together from a split stance, about twice a second, airborne 26–53% of the time in most runs. Its low slide comes from that flight. Two control runs leap too. 4 and 6 Hz give quick, shuffling two-footed hops. Walking gives way to leaping between 1.25 and 1.5 Hz: at 1.25 Hz one run of 8 is airborne more than 10% of the time, at 1.5 Hz six are. No clock beats the control's distance except 2 Hz, by leaping. walker.cfg uses 1.25 Hz, the most walk-like clock that keeps most of the distance.
+- Without a clock each run still finds one rhythm: the dominant frequency of the hip angles (DFT peak over 0.25–8 Hz, after the first 2 s) is the same for both hips and carries 50–90% of their motion. Runs differ, though: 0.5, 0.8–0.9 (2 runs), 1.3–1.5 (3) and 1.9–2.2 Hz (2, the leapers). Faster runs went further on the budget. A 1.06 m leg swinging freely as a pendulum would cycle at about 0.6 Hz, so every evolved gait is driven faster than that.
+
 **The horse** (`gen_horse.py`; 8 seeds, population 1000, 250 generations unless noted; median distance in 1000 steps):
 - A barrel with the neck and head as balls on it, and four two-segment legs. The hind stifle points forward and the fore elbow back. Each hoof is its own body, locked to its leg by a zero-range "pastern" joint, so `groundLimbs` can be the hooves alone. While the lower legs counted as ground limbs, runs crawled on legs folded flat.
 - Each leg carries about a quarter of the weight, so muscles get 4× body weight, not 8×, and legs are heavier (0.08 m wide, density 2). Light legs at 8× gave 7.7 m, against 10 m.
 - Every run lasts the full 1000 steps, upright with the head near 1.57 m. 1000 generations gave 15 m (best 22 m). In that run, before `stagger` and with the hind lower leg slightly stretched, seed 107 evolved a clean four-beat walk.
 - The rest are lopsided. One leg of a pair is held up for the whole run while its partner works or skids, or a hoof stays down and slides. In 2D the legs of a pair occupy the same plane, so one can retire. Contact sensors (median 5.7 m), a 1500 J budget with 3000-step runs, hoof friction 1.0, population 2000, and a planar version with one leg per pair (`pairs = False`) didn't fix it.
+- One leg per end with 8× muscles (`pairs = False`), no clock, 2.5 Hz and 1.25 Hz: median 8.0, 10.3 and 6.6 m. Joints lock onto the clock (no clock: scattered, the best runs at 4.1–4.7 Hz). Both legs step cleanly (at least 10 touchdowns, at most 60% sliding) in 0, 2 and 0 runs of 8. The usual gait plants the hind hoof for the whole run, sliding 89–100%, while the foreleg paddles. Only one run had a flight phase (13% airborne, both hooves landing together), with its head down at 1.28 m. With no partner leg to hold an end up, skidding one end is a much nearer optimum than bounding, and a clock doesn't move evolution past it.
 - A rule ending the run once a hoof slid more than 0.1–1.0 m in one contact (prototyped, not kept) trapped every run standing still (median 1.2–3 m).
 - Starting mid-stride (`stagger` 0.15 m, the default) raised the median from 10 m to 12 m, with gaits no cleaner.
 - Clock inputs (`clocks` in `gen_horse.py`: a sine and a cosine per frequency, so any phase is a weighted sum) make the gaits much cleaner. A clean hoof steps at least 10 times and spends at most half its travel sliding. A pair alternates when its left and right touchdowns are 0.3–0.7 of a stride apart, consistently.
@@ -136,6 +152,6 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
   | 0.7 + 1.3 + 2.5 | 7.1 m | 17 | 1 | 2 |
   | 1 + 2 | 12.6 m | 21 | 0 | 2 |
 
-  `horse.cfg` uses 2.5 Hz (horse v2). Gaits lock onto a clock: strides of 0.40 or 0.80 s at 2.5 Hz, 0.77 s at 1.3 Hz, and 0.51 or 0.97 s with 1 + 2 Hz. The best (2.5 Hz, seed 108, 22.6 m) is a brisk walk: duty 0.5–0.65 on every hoof, slide 4–28%, forelegs half a stride apart. The three-clock mix did worst, probably because its 6 extra inputs add 96 starting links for NEAT to tune (not tested).
+  `horse.cfg` uses 2.5 Hz (horse v2). Gaits lock onto a clock: strides of 0.40 or 0.80 s at 2.5 Hz, 0.77 s at 1.3 Hz, and 0.51 or 0.97 s with 1 + 2 Hz. The best (2.5 Hz, seed 108, 22.6 m) is a brisk walk: duty 0.5–0.65 on every hoof, slide 4–28%, forelegs half a stride apart. Without a clock, the dominant hip and shoulder frequencies (as for the walker) fall into two families over 16 runs (horse v1 and the 1000-generation runs): 11 vibrate at 5.5–6.7 Hz (about 10 physics steps), all four upper joints together. Those are the skidding, tucked-leg gaits, moving like a vibrating toy rather than stepping. The 3 clean walks run at 1.1–1.4 Hz. With the 2.5 Hz clock no run vibrates: every one moves at 2.5 Hz or half of it, 1.25 Hz, the clean walks' rhythm. That may be why 2.5 Hz beat 1.3 Hz. The three-clock mix did worst, probably because its 6 extra inputs add 96 starting links for NEAT to tune (not tested).
 
 `legs.notes` holds the original design notes.
