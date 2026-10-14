@@ -126,6 +126,30 @@ TEST(endsWhenEnergySpent) {
     CHECK(runEpisode(spec, o, wobbler(2)).end == EpisodeEnd::MaxSteps);
 }
 
+// A clock reads 0.5 + 0.5 sin(2 pi f t + phase), t starting at 0 each
+// episode
+TEST(clockFollowsSimulatedTime) {
+    const std::string &text = testCreature::Text;
+    const std::string contact = R"({ type = "ContactSensor"; target = "a"; })";
+    std::string clocks = text;
+    clocks.replace(clocks.find(contact), contact.size(), contact +
+        R"(, { type = "ClockSensor"; frequency = 2.0; },
+             { type = "ClockSensor"; frequency = 0.5; phase = 1.0; })");
+    CreatureSpec spec = testCreature::spec(clocks);
+    for (int episode = 0; episode < 2; ++episode) {
+        Simulation sim(spec, noFloor(100));
+        vector<double> in(sim.numInputs());
+        for (int step = 0; step < 50; ++step) {
+            sim.readSensors(in.data());
+            double t = step / 60.0;
+            CHECK_NEAR(in[7], 0.5 + 0.5 * sin(2 * M_PI * 2.0 * t), 1e-5);
+            CHECK_NEAR(in[8], 0.5 + 0.5 * sin(2 * M_PI * 0.5 * t + 1.0),
+                       1e-5);
+            sim.step();
+        }
+    }
+}
+
 // A muscle held at maxForce accumulates exactly maxForce x time, whether
 // or not anything moves
 TEST(forceTimeOfASaturatedMuscle) {

@@ -146,6 +146,29 @@ TEST(badValuesAreRejected) {
                    "duplicate name 'a'"));
 }
 
+// Clocks have a frequency and an optional phase, and no target
+TEST(clockSensors) {
+    const string contact = R"({ type = "ContactSensor"; target = "a"; })";
+    auto withClocks = [&](const string &clocks) {
+        return withChange(contact, contact + ", " + clocks);
+    };
+    CreatureSpec s = parse(withClocks(
+        R"({ type = "ClockSensor"; frequency = 1.5; },
+           { type = "ClockSensor"; frequency = 2; phase = 1.5708; })"));
+    CHECK(s.sensors.size() == 8u && s.numInputs() == 9);
+    CHECK(s.sensors[6].type == SensorSpec::Clock);
+    CHECK(s.sensors[6].frequency == 1.5 && s.sensors[6].phase == 0);
+    CHECK(s.sensors[7].frequency == 2.0 && s.sensors[7].phase == 1.5708);
+
+    CHECK(mentions(parseError(withClocks(R"({ type = "ClockSensor"; })")),
+                   "missing 'frequency'"));
+    CHECK(mentions(parseError(withClocks(
+                       R"({ type = "ClockSensor"; frequency = 0.0; })")),
+                   "frequency must be positive"));
+    CHECK(mentions(parseError(withChange(R"(target = "a"; })", "}")),
+                   "missing 'target'"));
+}
+
 TEST(builtCreatureMatchesSpec) {
     CreatureSpec s = parse(Base);
     World w;
@@ -172,6 +195,21 @@ TEST(builtCreatureMatchesSpec) {
     c->setInput(in);
     CHECK(in[0] == 1.0);                        // bias first
     for (double v : in) CHECK(v >= 0.0 && v <= 1.0);
+}
+
+// Joint angles start at 0 even when the limbs' angles differ by more than
+// pi (two segments of a leg pointing down, at about -170 and +170 degrees)
+TEST(jointsStartAtZeroWhateverTheLimbAngles) {
+    string text = withChange("angle = 0.0;", "angle = -2.8;");
+    size_t i = text.find("angle = 0.3;");
+    CHECK(i != string::npos);
+    if (i != string::npos) text.replace(i, 12, "angle = 2.8;");
+    World w;
+    CreatureP c = w.createCreature(parse(text));
+    JointId j = c->joints["j"];
+    CHECK_NEAR(b2RevoluteJoint_GetAngle(j), 0.0, 1e-3);
+    w.step();       // and don't snap away from it (by 1.5 rad when it did)
+    CHECK_NEAR(b2RevoluteJoint_GetAngle(j), 0.0, 0.1);
 }
 
 // One spec, many creatures: the spec is read-only once parsed

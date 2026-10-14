@@ -61,12 +61,14 @@ struct PointSpec {
 };
 
 struct SensorSpec {
-    enum Type { Joint, Height, BodyAngle, AngularVelocity, Velocity, Contact };
+    enum Type { Joint, Height, BodyAngle, AngularVelocity, Velocity, Contact,
+                Clock };
     Type type = Joint;
     int target = -1;    //Joint index for Joint, point index for Height,
-                        // limb index otherwise
-    double min = 0, max = 0;            //Unused for Joint and Contact
+                        // none for Clock, limb index otherwise
+    double min = 0, max = 0;            //Unused for Joint, Contact, Clock
     bool vertical = false;              //Velocity: y axis instead of x
+    double frequency = 0, phase = 0;    //Clock: Hz, radians
 };
 
 struct CreatureSpec {
