@@ -68,8 +68,12 @@ P = dict(
     # mirrors each clock to itself half a cycle later (and adds the phases
     # pi and 3pi/2 for it), so a tied network drives one leg half a stride
     # behind the other; 'same' mirrors it to itself, so a fully tied
-    # network can only move both legs together.
-    mirror=False, mirrorClock='shift',
+    # network can only move both legs together.  Fully tied and never
+    # untied, the walker evolves a straight-legged jog with the feet half
+    # a stride apart and little sliding, going much further on the budget
+    # (median 44 m against 30 m untied, 8 seeds); untying at 0.001 or 0.005
+    # per pair lost most of that (25 m and 23 m).
+    mirror=True, mirrorClock='shift',
     mirrorInitTied=1.0, mirrorStructure=1.0, untieRate=0.0,
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
     # Objective: survival shaping as kanga2's.  What the budget counts:
