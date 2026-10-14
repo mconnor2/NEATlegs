@@ -12,11 +12,15 @@ struct Link {
     int inID, outID;
     double weight;
     bool enabled;
+    //Innovation of the link this one is tied to, its mirror image (see
+    // ExpParameters::mirror): -1 if untied, innov if it is its own mirror.
+    // Tied links keep equal weights and enabled states.
+    int mirror;
 
     Link (int _inID = -1, int _outID = -1, int _innov = -1,
           double _w = 0, bool _enabled = false) :
           innov(_innov), inID(_inID), outID(_outID), weight(_w),
-          enabled(_enabled) {}
+          enabled(_enabled), mirror(-1) {}
 
     void copy (const Link &l, const double enableRate);
     void copy (const Link &l1, const Link &l2, const double enableRate);

@@ -1,6 +1,8 @@
 #include "CreatureSpec.h"
 
+#include <cmath>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 
 #include <libconfig.h++>
@@ -96,6 +98,156 @@ int CreatureSpec::jointIndex (const string &name) const {
 
 int CreatureSpec::pointIndex (const string &name) const {
     return indexOf(points, name);
+}
+
+vector<int> CreatureSpec::neuronMirror () const {
+    if (sensorMirror.empty() && muscleMirror.empty()) return {};
+    int nIn = numInputs();
+    vector<int> m(nIn + numOutputs());
+    m[0] = 0;                                   //Bias
+    for (size_t i = 0; i < sensors.size(); ++i)
+        m[1 + i] = 1 + sensorMirror[i];
+    for (size_t i = 0; i < muscles.size(); ++i)
+        for (int k = 0; k < 2; ++k)
+            m[nIn + 2*i + k] = nIn + 2*muscleMirror[i] + k;
+    return m;
+}
+
+namespace {
+
+//The mirror index of each item, by name through pairs (unpaired names map
+// to themselves); throws if a mirrored name is missing
+template<class T>
+vector<int> mirrorByName (const vector<T> &items, const char *kind,
+                          const map<string, string> &pairs) {
+    vector<int> m(items.size());
+    for (size_t i = 0; i < items.size(); ++i) {
+        auto p = pairs.find(items[i].name);
+        if (p == pairs.end()) {
+            m[i] = (int)i;
+            continue;
+        }
+        m[i] = indexOf(items, p->second);
+        if (m[i] < 0)
+            throw error("mirror", string(kind) + " '" + items[i].name +
+                        "' is paired with '" + p->second +
+                        "', which is no " + kind);
+    }
+    return m;
+}
+
+//Equal angles, to the precision configs write them in
+bool sameAngle (double a, double b) {
+    return fabs(remainder(a - b, 2*M_PI)) < 1e-3;
+}
+
+void parseMirror (const Setting &section, CreatureSpec &spec) {
+    const string where = "mirror";
+    const Setting &pairList = child(section, "pairs", where);
+    if (!pairList.isList() && !pairList.isArray())
+        throw error(where, "'pairs' must be a list");
+
+    map<string, string> pairs;
+    for (int i = 0; i < pairList.getLength(); ++i) {
+        const Setting &p = pairList[i];
+        string at = where + ": " + entry("pair", i);
+        if (!(p.isArray() || p.isList()) || p.getLength() != 2 ||
+            p[0].getType() != Setting::TypeString ||
+            p[1].getType() != Setting::TypeString)
+            throw error(at, "must be two names");
+        string a = p[0].c_str(), b = p[1].c_str();
+        if (a == b) throw error(at, "pairs '" + a + "' with itself");
+        for (const string &n : {a, b}) {
+            if (pairs.count(n))
+                throw error(at, "'" + n + "' is already paired");
+            if (spec.limbIndex(n) < 0 && spec.jointIndex(n) < 0 &&
+                spec.pointIndex(n) < 0 && indexOf(spec.muscles, n) < 0)
+                throw error(at, "unknown name '" + n + "'");
+        }
+        pairs[a] = b;
+        pairs[b] = a;
+    }
+
+    bool shift = true;
+    if (section.exists("clock")) {
+        string clock = text(section, "clock", where);
+        if (clock != "shift" && clock != "same")
+            throw error(where, "clock must be \"shift\" or \"same\"");
+        shift = clock == "shift";
+    }
+
+    vector<int> limb = mirrorByName(spec.limbs, "limb", pairs);
+    vector<int> joint = mirrorByName(spec.joints, "joint", pairs);
+    vector<int> point = mirrorByName(spec.points, "shape", pairs);
+    vector<int> muscle = mirrorByName(spec.muscles, "muscle", pairs);
+
+    //The mirror of a joint, muscle or shape must join the mirrored limbs
+    for (size_t i = 0; i < spec.joints.size(); ++i) {
+        const JointSpec &j = spec.joints[i], &m = spec.joints[joint[i]];
+        if (m.limb1 != limb[j.limb1] || m.limb2 != limb[j.limb2])
+            throw error(where, "joint '" + j.name + "' and its mirror '" +
+                        m.name + "' don't join mirrored limbs");
+    }
+    for (size_t i = 0; i < spec.muscles.size(); ++i) {
+        const MuscleSpec &u = spec.muscles[i], &m = spec.muscles[muscle[i]];
+        if (m.limb1 != limb[u.limb1] || m.limb2 != limb[u.limb2])
+            throw error(where, "muscle '" + u.name + "' and its mirror '" +
+                        m.name + "' don't join mirrored limbs");
+        //A tied network drives both the same way, so they must be built
+        // alike
+        if (u.pos1.x != m.pos1.x || u.pos1.y != m.pos1.y ||
+            u.pos2.x != m.pos2.x || u.pos2.y != m.pos2.y ||
+            u.minK != m.minK || u.maxK != m.maxK || u.minEq != m.minEq ||
+            u.maxEq != m.maxEq || u.kd != m.kd ||
+            u.maxForce != m.maxForce || u.maxPower != m.maxPower)
+            throw error(where, "muscle '" + u.name + "' and its mirror '" +
+                        m.name + "' differ");
+    }
+    for (size_t i = 0; i < spec.points.size(); ++i) {
+        const PointSpec &p = spec.points[i], &m = spec.points[point[i]];
+        if (m.limb != limb[p.limb])
+            throw error(where, "shape '" + p.name + "' and its mirror '" +
+                        m.name + "' aren't on mirrored limbs");
+    }
+
+    //A sensor's mirror reads the mirrored target the same way
+    const vector<SensorSpec> &sensors = spec.sensors;
+    vector<int> sensor(sensors.size(), -1);
+    for (size_t i = 0; i < sensors.size(); ++i) {
+        const SensorSpec &s = sensors[i];
+        int target = s.target;
+        switch (s.type) {
+            case SensorSpec::Joint: target = joint[s.target]; break;
+            case SensorSpec::Height: target = point[s.target]; break;
+            case SensorSpec::Clock: break;
+            default: target = limb[s.target]; break;
+        }
+        for (size_t j = 0; j < sensors.size() && sensor[i] < 0; ++j) {
+            const SensorSpec &t = sensors[j];
+            bool match = t.type == s.type && t.target == target &&
+                         t.min == s.min && t.max == s.max &&
+                         t.vertical == s.vertical &&
+                         t.frequency == s.frequency;
+            if (s.type == SensorSpec::Clock)
+                match = match &&
+                        sameAngle(t.phase, s.phase + (shift ? M_PI : 0));
+            if (match) sensor[i] = (int)j;
+        }
+        if (sensor[i] < 0)
+            throw error(where, entry("sensor", (int)i) +
+                        " has no mirror image" +
+                        (s.type == SensorSpec::Clock && shift ?
+                         " (a clock needs one half a cycle later)" : ""));
+    }
+    for (size_t i = 0; i < sensors.size(); ++i)
+        if (sensor[sensor[i]] != (int)i)
+            throw error(where, entry("sensor", (int)i) +
+                        " and another sensor share a mirror image");
+
+    spec.sensorMirror = sensor;
+    spec.muscleMirror = muscle;
+}
+
 }
 
 CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
@@ -269,6 +421,8 @@ CreatureSpec parseCreatureSpec (const libconfig::Config &config) {
             spec.sensors.push_back(sensor);
         }
     }
+
+    if (config.exists("mirror")) parseMirror(config.lookup("mirror"), spec);
 
     return spec;
 }

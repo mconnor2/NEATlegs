@@ -62,6 +62,19 @@ P = dict(
     # without a clock, at some cost in distance (30 m at 1.25 Hz against
     # 34 m); from 1.5 Hz they leap, both feet landing together.
     clocks=[1.25],
+    # Mirror symmetry: pair the left and right legs, so NEAT ties each link
+    # to its mirror image (same weight, mutated as one) until untied, with
+    # probability untieRate per tied pair per child.  mirrorClock 'shift'
+    # mirrors each clock to itself half a cycle later (and adds the phases
+    # pi and 3pi/2 for it), so a tied network drives one leg half a stride
+    # behind the other; 'same' mirrors it to itself, so a fully tied
+    # network can only move both legs together.  Fully tied and never
+    # untied, the walker evolves a straight-legged jog with the feet half
+    # a stride apart and little sliding, going much further on the budget
+    # (median 44 m against 30 m untied, 8 seeds); untying at 0.001 or 0.005
+    # per pair lost most of that (25 m and 23 m).
+    mirror=True, mirrorClock='shift',
+    mirrorInitTied=1.0, mirrorStructure=1.0, untieRate=0.0,
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
     # Objective: survival shaping as kanga2's.  What the budget counts:
     # None for positive work alone, or weights (positiveWork, negativeWork,
@@ -181,7 +194,9 @@ extraDefs = dict(
 extra = [d for k in P['extraSensors'] for d in extraDefs[k]]
 extra += ['{ type = "ClockSensor"; frequency = %s; phase = %s; }'
           % ('%g' % hz, '%.4f' % ph) for hz in P['clocks']
-          for ph in (0, math.pi/2)]
+          for ph in ((0, math.pi/2, math.pi, 3*math.pi/2)
+                     if P['mirror'] and P['mirrorClock'] == 'shift'
+                     else (0, math.pi/2))]
 
 maxForce = P['forcePerWeight']*weight
 maxPower = P['wattsPerKg']*mass/len(mus)
@@ -227,7 +242,7 @@ L.append('''global: {
 
     addLinkMutationRate = %s;
     addNodeMutationRate = %s;
-
+%s
     compatGDiff = 1.0;
     compatWDiff = 0.4;
 
@@ -261,6 +276,14 @@ L.append('''global: {
     energyCost = { positiveWork = %s; negativeWork = %s; forceTime = %s; };
 ''' % tuple(f(x) for x in P['energyCost'])),
        f(P['addLink']), f(P['addNode']),
+       ('' if not P['mirror'] else '''
+    //Mirror symmetry (the mirror section): share of initial link pairs
+    // tied, chance a new node or link comes with its tied mirror image,
+    // and chance per child that each tied pair is untied for good
+    mirrorInitTied = %s;
+    mirrorStructure = %s;
+    untieRate = %s;
+''' % (f(P['mirrorInitTied']), f(P['mirrorStructure']), f(P['untieRate']))),
        10 + len(extra) + 1, 2*len(mus)))
 
 L.append('limbs = (')
@@ -352,6 +375,17 @@ L.append('''sensors = (
     # Box2D angles are in [-pi, pi]; lean either way must be visible
     { type = "BodyAngleSensor"; target = "back"; minA = -1.5708; maxA = 1.5708; }%s);
 ''' % ''.join(',\n    ' + d for d in extra))
+if P['mirror']:
+    L.append('''# Left and right mirror each other; unpaired names (the torso, head) are
+# on the midline.
+mirror = {
+    pairs = (%s);
+    clock = "%s";
+};
+''' % (',\n             '.join('["%sL", "%sR"]' % (n, n) for n in
+          ('foot', 'shin', 'thigh', 'ankle', 'knee', 'hip',
+           'tibialis', 'hamstring', 'hipFlexor')),
+       P['mirrorClock']))
 open(out, 'w').write('\n'.join(L))
 
 print('mass %.3f kg  weight %.2f N  maxForce %.1f N  maxPower %.2f W/muscle  budget %.0f J'

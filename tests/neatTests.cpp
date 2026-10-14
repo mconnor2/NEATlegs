@@ -4,6 +4,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -24,6 +25,7 @@ struct LinkRec {
     int innov, in, out;
     double weight;
     bool enabled;
+    int mirror;             //-1 if untied or not saved
 };
 
 string saved (const GenomeP &g) {
@@ -43,6 +45,7 @@ vector<LinkRec> linksOf (const GenomeP &g) {
         int enabled;
         ls>>l.innov>>l.in>>l.out>>l.weight>>enabled;
         l.enabled = enabled != 0;
+        if (!(ls>>l.mirror)) l.mirror = -1;
         links.push_back(l);
     }
     return links;
@@ -515,6 +518,250 @@ TEST(gaKeepsSpeciesChampions) {
         CHECK(!champs.empty() &&
               champs[0].fitness == GA.topGenomes().at(0).first);
     }
+}
+
+namespace {
+
+// 5 inputs (bias, a left/right pair, a midline input, a clock pair) and
+// 4 outputs (two left/right pairs)
+ExpParameters mirrorParams () {
+    ExpParameters P = params(6, 4);
+    P.mirror = {0, 2, 1, 3, 5, 4, 7, 6, 9, 8};
+    return P;
+}
+
+// Every tied link's partner is there, tied back, with the same weight and
+// enabled state, joining the mirrors of its ends; hidden neurons get one
+// mirror each, and the mirror of a mirror is the neuron itself
+bool tiesConsistent (const vector<LinkRec> &links, const ExpParameters &P) {
+    map<int, const LinkRec *> byInnov;
+    for (const LinkRec &l : links) byInnov[l.innov] = &l;
+    map<int, int> sigma;
+    for (int i = 0; i < (int)P.mirror.size(); ++i) sigma[i] = P.mirror[i];
+    auto maps = [&](int a, int b) {
+        auto it = sigma.insert(make_pair(a, b)).first;
+        return it->second == b;
+    };
+    for (const LinkRec &l : links) {
+        if (l.mirror < 0) continue;
+        auto p = byInnov.find(l.mirror);
+        if (p == byInnov.end()) return false;
+        const LinkRec &m = *p->second;
+        if (m.mirror != l.innov || m.weight != l.weight ||
+            m.enabled != l.enabled) return false;
+        if (!maps(l.in, m.in) || !maps(l.out, m.out)) return false;
+    }
+    for (auto &kv : sigma)
+        if (sigma.count(kv.second) == 0 || sigma[kv.second] != kv.first)
+            return false;
+    return true;
+}
+
+int tiedCount (const vector<LinkRec> &links) {
+    int n = 0;
+    for (const LinkRec &l : links) n += l.mirror >= 0;
+    return n;
+}
+
+}
+
+TEST(mirrorInitialGenomeIsTied) {
+    ExpParameters P = mirrorParams();
+    seed_rand(21);
+    GenomeP g(new Genome(&P));
+    vector<LinkRec> l = linksOf(g);
+    CHECK(l.size() == 24u && tiedCount(l) == 24);
+    CHECK(tiesConsistent(l, P));
+    // bias -> output 6 mirrors bias -> output 7
+    CHECK(l[0].mirror == 1 && l[0].weight == l[1].weight);
+
+    // Untied, it's the genome the same seed gives without a mirror map
+    ExpParameters Q = params(6, 4);
+    P.mirrorInitTied = 0;
+    seed_rand(21);
+    GenomeP u(new Genome(&P));
+    seed_rand(21);
+    GenomeP plain(new Genome(&Q));
+    vector<LinkRec> lu = linksOf(u), lp = linksOf(plain);
+    CHECK(tiedCount(lu) == 0);
+    bool same = lu.size() == lp.size();
+    for (size_t i = 0; same && i < lu.size(); ++i)
+        same = lu[i].weight == lp[i].weight;
+    CHECK(same);
+}
+
+// Through mutation, structural growth and crossover the ties stay
+// consistent, and nearly everything stays tied without untying
+TEST(mirrorTiesSurviveEvolution) {
+    seed_rand(22);
+    ExpParameters P = mirrorParams();
+    P.addNodeMutationRate = 0.3;
+    P.addLinkMutationRate = 0.3;
+    P.weightMutationRate = 0.8;
+    P.linkEnabledRate = 0.3;
+    P.inheritDominant = 0.5;            //average matching genes often
+    InnovationStore IS(&P);
+    vector<GenomeP> pop;
+    for (int i = 0; i < 20; ++i) pop.push_back(GenomeP(new Genome(&P)));
+    bool consistent = true, sorted = true, noDups = true;
+    int hidden = 0;
+    for (int gen = 0; gen < 30; ++gen) {
+        IS.newGeneration();
+        vector<GenomeP> next;
+        for (int i = 0; i < 20; ++i) {
+            GenomeP p1 = pop[rand_int() % pop.size()],
+                    p2 = pop[rand_int() % pop.size()];
+            GenomeP child = i % 3 ? p1->mate(p2, &IS) : p1->singleMate(&IS);
+            child->mutate();
+            vector<LinkRec> l = linksOf(child);
+            consistent = consistent && tiesConsistent(l, P);
+            set<pair<int, int> > ends;
+            for (size_t k = 0; k < l.size(); ++k) {
+                if (k && l[k].innov <= l[k-1].innov) sorted = false;
+                if (!ends.insert(make_pair(l[k].in, l[k].out)).second)
+                    noDups = false;
+            }
+            next.push_back(child);
+        }
+        pop.swap(next);
+    }
+    int tied = 0, links = 0;
+    for (const GenomeP &g : pop) {
+        tied += g->numTiedLinks();
+        links += g->numLinks();
+        hidden += g->numHiddenNodes();
+    }
+    CHECK(consistent);
+    CHECK(sorted);
+    CHECK(noDups);
+    CHECK(hidden > 0);
+    CHECK(tied > 0.9 * links);
+}
+
+// A fully tied network treats mirrored inputs the same way: run on the
+// mirror image of an input sequence, it gives the mirror image of the
+// outputs (to rounding, since sums are added in a different order)
+TEST(mirrorTiedNetworkIsEquivariant) {
+    seed_rand(23);
+    ExpParameters P = mirrorParams();
+    P.addNodeMutationRate = 0.4;
+    P.addLinkMutationRate = 0.4;
+    P.weightMutationRate = 0.8;
+    InnovationStore IS(&P);
+    GenomeP g = grownGenome(&P, IS, 40);
+    CHECK(g->numHiddenNodes() >= 4);
+    CHECK(g->numTiedLinks() == g->numLinks());
+    CHECK(tiesConsistent(linksOf(g), P));
+
+    unique_ptr<Network> a(g->createNewNetwork()), b(g->createNewNetwork());
+    double worst = 0;
+    for (int t = 0; t < 20; ++t) {
+        vector<double> in(6), mirrored(6), outA(4), outB(4);
+        in[0] = 1.0;
+        for (int k = 1; k < 6; ++k) in[k] = rand_double();
+        for (int k = 0; k < 6; ++k) mirrored[P.mirror[k]] = in[k];
+        a->run(in.data(), outA.data());
+        b->run(mirrored.data(), outB.data());
+        for (int k = 0; k < 4; ++k)
+            worst = max(worst, fabs(outB[P.mirror[6 + k] - 6] - outA[k]));
+    }
+    CHECK(worst < 1e-12);
+
+    // Untie everything and it no longer holds
+    P.untieRate = 1.0;
+    g->mutate();
+    CHECK(g->numTiedLinks() == 0);
+}
+
+// For speciation a tied pair is one gene: a mirrored add-node (4 links)
+// is as far as a plain one (2 links)
+TEST(mirrorCompatCountsPairsOnce) {
+    for (bool mirror : {false, true}) {
+        seed_rand(27);
+        ExpParameters P = mirror ? mirrorParams() : params(6, 4);
+        P.addNodeMutationRate = 1.0;
+        P.addLinkMutationRate = 0;
+        InnovationStore IS(&P);
+        GenomeP g(new Genome(&P));
+        GenomeP c = g->singleMate(&IS);
+        CHECK(c->numLinks() == g->numLinks() + (mirror ? 4 : 2));
+        CHECK_NEAR(g->compat(c), 2 * P.compatGDiff, 1e-12);
+    }
+}
+
+TEST(mirrorSaveLoadKeepsTies) {
+    seed_rand(24);
+    ExpParameters P = mirrorParams();
+    P.addNodeMutationRate = 0.5;
+    InnovationStore IS(&P);
+    GenomeP g = grownGenome(&P, IS, 10);
+    GenomeP back = loadText(saved(g), &P);
+    CHECK(back && saved(back) == saved(g));
+    CHECK(back && back->numTiedLinks() == g->numTiedLinks());
+    // Files without the column load untied
+    ExpParameters Q = params(6, 4);
+    GenomeP old = loadText(saved(GenomeP(new Genome(&Q))), &P);
+    CHECK(old && old->numTiedLinks() == 0);
+}
+
+// With nothing tied and no mirrored structure, a mirror map changes nothing
+TEST(mirrorRatesZeroLeaveRunsUnchanged) {
+    auto run = [](bool mirror) {
+        seed_rand(25);
+        ExpParameters P = params(3, 1);
+        P.popSize = 60;
+        P.targetSpecies = 5;
+        if (mirror) {
+            P.mirror = {0, 2, 1, 3};
+            P.mirrorInitTied = 0;
+            P.mirrorStructure = 0;
+        }
+        FitnessFunction f = xorFitness;
+        GeneticAlgorithm GA(&P, &f);
+        for (int i = 0; i < 20; ++i) GA.nextGeneration();
+        RunResult r = {GA.history(), ""};
+        for (const LinkRec &l : linksOf(GA.topGenomes().at(0).second))
+            r.best += to_string(l.innov) + " " + to_string(l.weight) + "\n";
+        return r;
+    };
+    RunResult a = run(false), b = run(true);
+    bool same = a.history.size() == b.history.size();
+    for (size_t i = 0; same && i < a.history.size(); ++i)
+        same = sameStats(a.history[i], b.history[i]);
+    CHECK(same);
+    CHECK(a.best == b.best);
+    CHECK(b.history.back().tiedFraction == 0);
+}
+
+TEST(mirrorGaRunsAndRejectsBadMaps) {
+    seed_rand(26);
+    ExpParameters P = params(3, 1);
+    P.popSize = 60;
+    P.targetSpecies = 5;
+    P.mirror = {0, 2, 1, 3};
+    P.untieRate = 0.01;
+    FitnessFunction f = xorFitness;
+    GeneticAlgorithm GA(&P, &f);
+    for (int i = 0; i < 10; ++i) GA.nextGeneration();
+    CHECK(GA.history()[0].tiedFraction == 1.0);
+    CHECK(GA.history().back().tiedFraction > 0.5);
+
+    auto rejects = [](vector<int> m) {
+        ExpParameters Q = params(3, 2);
+        Q.popSize = 10;
+        Q.mirror = m;
+        FitnessFunction f = xorFitness;
+        try {
+            GeneticAlgorithm GA(&Q, &f);
+        } catch (std::invalid_argument &) {
+            return true;
+        }
+        return false;
+    };
+    CHECK(rejects({0, 2, 1, 3}));               //wrong size
+    CHECK(rejects({0, 2, 0, 3, 4}));            //not its own inverse
+    CHECK(rejects({0, 3, 2, 1, 4}));            //input to output
+    CHECK(!rejects({0, 2, 1, 4, 3}));
 }
 
 int main () {

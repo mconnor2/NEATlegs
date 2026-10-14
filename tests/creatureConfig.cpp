@@ -169,6 +169,106 @@ TEST(clockSensors) {
                    "missing 'target'"));
 }
 
+namespace {
+
+// A torso "t" with two one-segment legs, "l" and "r", mirroring each other
+const string Twin = R"(
+limbs = (
+    { name = "t"; position = { x = 0.0; y = 1.0; };
+      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0; } ); },
+    { name = "l"; position = { x = 0.0; y = 0.5; };
+      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0;
+                   groupIndex = -1; } ); },
+    { name = "r"; position = { x = 0.0; y = 0.5; };
+      shapes = ( { type = "box"; w = 0.05; h = 0.25; density = 1.0;
+                   groupIndex = -1; } ); });
+joints = (
+    { name = "jl"; type = "revolute"; obj1 = "t"; obj2 = "l";
+      position = { x = 0.0; y = 0.75; }; lowerAngle = -1.0; upperAngle = 1.0; },
+    { name = "jr"; type = "revolute"; obj1 = "t"; obj2 = "r";
+      position = { x = 0.0; y = 0.75; }; lowerAngle = -1.0; upperAngle = 1.0; });
+muscles = (
+    { name = "ml"; obj1 = "t"; pos1 = { x = 0.05; y = 0.0; };
+      obj2 = "l"; pos2 = { x = 0.05; y = 0.0; };
+      minK = 10.0; maxK = 50.0; minEq = 0.1; maxEq = 0.4; kd = 1.0; maxPower = 5.0; },
+    { name = "mr"; obj1 = "t"; pos1 = { x = 0.05; y = 0.0; };
+      obj2 = "r"; pos2 = { x = 0.05; y = 0.0; };
+      minK = 10.0; maxK = 50.0; minEq = 0.1; maxEq = 0.4; kd = 1.0; maxPower = 5.0; });
+shapes = (
+    { name = "head"; body = "t"; position = { x = 0.0; y = 0.25; }; },
+    { name = "fl"; body = "l"; position = { x = 0.0; y = -0.25; }; },
+    { name = "fr"; body = "r"; position = { x = 0.0; y = -0.25; }; });
+sensors = (
+    { type = "JointSensor"; target = "jl"; },
+    { type = "HeightSensor"; target = "head"; minH = 0; maxH = 2; },
+    { type = "JointSensor"; target = "jr"; },
+    { type = "HeightSensor"; target = "fr"; minH = 0; maxH = 0.5; },
+    { type = "HeightSensor"; target = "fl"; minH = 0; maxH = 0.5; },
+    { type = "ContactSensor"; target = "l"; },
+    { type = "ContactSensor"; target = "r"; },
+    { type = "ClockSensor"; frequency = 1.0; phase = 0.0; },
+    { type = "ClockSensor"; frequency = 1.0; phase = 1.5708; },
+    { type = "ClockSensor"; frequency = 1.0; phase = 3.1416; },
+    { type = "ClockSensor"; frequency = 1.0; phase = 4.7124; });
+mirror = {
+    pairs = ( ["l", "r"], ["jl", "jr"], ["ml", "mr"], ["fl", "fr"] );
+};
+)";
+
+string twinWith (const string &from, const string &to) {
+    string s = Twin;
+    size_t i = s.find(from);
+    CHECK(i != string::npos);
+    if (i != string::npos) s.replace(i, from.size(), to);
+    return s;
+}
+
+}
+
+// Mirror pairs map sensors and muscles to their images, and the network's
+// neurons with them; clocks map to the clock half a cycle later
+TEST(mirrorSection) {
+    CreatureSpec s = parse(Twin);
+    CHECK(s.sensorMirror == std::vector<int>({2, 1, 0, 4, 3, 6, 5,
+                                              9, 10, 7, 8}));
+    CHECK(s.muscleMirror == std::vector<int>({1, 0}));
+    std::vector<int> n = s.neuronMirror();
+    CHECK(n == std::vector<int>({0, 3, 2, 1, 5, 4, 7, 6, 10, 11, 8, 9,
+                                 14, 15, 12, 13}));
+    CHECK(parse(Base).neuronMirror().empty());
+
+    // "same" maps each clock to itself, and needs no shifted copy
+    const string later = R"(,
+    { type = "ClockSensor"; frequency = 1.0; phase = 3.1416; },
+    { type = "ClockSensor"; frequency = 1.0; phase = 4.7124; });)";
+    string same = twinWith(later, ");");
+    CHECK(mentions(parseError(same), "half a cycle later"));
+    same.insert(same.find("pairs"), "clock = \"same\"; ");
+    s = parse(same);
+    CHECK(s.sensorMirror == std::vector<int>({2, 1, 0, 4, 3, 6, 5, 7, 8}));
+}
+
+TEST(badMirrorsAreRejected) {
+    CHECK(mentions(parseError(twinWith(R"(["fl", "fr"])", R"(["fl", "x"])")),
+                   "unknown name 'x'"));
+    CHECK(mentions(parseError(twinWith(R"(["fl", "fr"])", R"(["fl", "fl"])")),
+                   "pairs 'fl' with itself"));
+    CHECK(mentions(parseError(twinWith(R"(["fl", "fr"])", R"(["fl", "r"])")),
+                   "'r' is already paired"));
+    CHECK(mentions(parseError(twinWith(R"(["fl", "fr"])", R"(["fl", "t"])")),
+                   "limb 't' is paired with 'fl', which is no limb"));
+    CHECK(mentions(parseError(twinWith(R"(["l", "r"], )", "")),
+                   "joint 'jl' and its mirror 'jr' don't join mirrored "
+                   "limbs"));
+    CHECK(mentions(parseError(twinWith("maxK = 50.0;", "maxK = 60.0;")),
+                   "muscle 'ml' and its mirror 'mr' differ"));
+    CHECK(mentions(parseError(twinWith("target = \"fr\"; minH = 0; maxH = 0.5",
+                                       "target = \"fr\"; minH = 0; maxH = 0.6")),
+                   "sensor 3 has no mirror image"));
+    CHECK(mentions(parseError(twinWith("pairs", "clock = \"half\"; pairs")),
+                   "clock must be"));
+}
+
 TEST(builtCreatureMatchesSpec) {
     CreatureSpec s = parse(Base);
     World w;

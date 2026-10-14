@@ -57,11 +57,14 @@ class Genome {
         int numLinks() const { return nLinks; }
         int numEnabledLinks() const;
         int numHiddenNodes() const;
+        //Links tied to their mirror image (see ExpParameters::mirror)
+        int numTiedLinks() const;
 
         //Plain text format: '#' comment lines, a "genome" header line, then
-        // one "link" line per gene.  load() returns an empty pointer (and
-        // prints why) if the file is malformed or doesn't match P's
-        // input/output counts.
+        // one "link" line per gene (with the tied link's innovation as a
+        // last column when the experiment has a mirror map).  load()
+        // returns an empty pointer (and prints why) if the file is
+        // malformed or doesn't match P's input/output counts.
         void save(std::ostream &out) const;
         static GenomeP load(std::istream &in, ExpParameters *P);
 

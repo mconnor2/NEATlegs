@@ -15,6 +15,7 @@ void Link::copy (const Link &l, const double enableRate) {
     outID = l.outID;
     weight = l.weight;
     enabled = l.enabled;
+    mirror = l.mirror;
     //With some probability enable disabled genes
     if (!enabled && rand_double() < enableRate)
         enabled = true;
@@ -29,6 +30,7 @@ void Link::copy (const Link &l1, const Link &l2, const double enableRate) {
     outID = l1.outID;
     weight = (l1.weight + l2.weight) / 2.0;
     enabled = l1.enabled; // && l2.enabled;
+    mirror = l1.mirror;
     //With some probability enable disabled genes
     if (!enabled && rand_double() < enableRate)
         enabled = true;
