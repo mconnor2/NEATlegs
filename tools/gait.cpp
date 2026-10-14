@@ -5,11 +5,12 @@
 //   -f: the two foot limbs (default footL,footR)
 //
 // Columns: distance (max head x), steps, end, head (median height after
-// 2 s), air (share of steps with neither foot down), duty L/R, touchdowns
-// L/R, slide (worse foot's share of its travel spent sliding on the
-// ground), stride (median right-foot touchdown interval, s), phase (circular
-// mean of left touchdowns within the right stride, 0..1), R (its
-// consistency, 0..1), class.
+// 2 s), lean (median forward lean of the limb carrying the head, degrees
+// from its start pose, after 2 s), air (share of steps with neither foot
+// down), duty L/R, touchdowns L/R, slide (worse foot's share of its travel
+// spent sliding on the ground), stride (median right-foot touchdown
+// interval, s), phase (circular mean of left touchdowns within the right
+// stride, 0..1), R (its consistency, 0..1), class.
 //
 // A contact counts once the foot has been down 2 steps, and ends after it
 // has been up 3, so bounces and single-step flickers don't count.  Phase
@@ -128,11 +129,14 @@ int main (int argc, char **argv) {
     P.nInput = spec.numInputs();
     P.nOutput = spec.numOutputs();
     P.mirror = spec.neuronMirror();
+    const int headLimb = spec.pointIndex("head") >= 0 ?
+        spec.points[spec.pointIndex("head")].limb : -1;
     const double dt = 1.0 / opt.hz;
     const int skip = (int)(2.0 / dt);
 
-    printf("%-40s %6s %5s %7s %5s %5s %9s %7s %5s %6s %5s %5s %4s %s\n",
-           "genome", "dist", "steps", "end", "head", "air", "duty", "tds",
+    printf("%-40s %6s %5s %7s %5s %5s %5s %9s %7s %5s %6s %5s %5s %4s %s\n",
+           "genome", "dist", "steps", "end", "head", "lean", "air", "duty",
+           "tds",
            "slide", "stride", "phase", "R", "tied", "class");
     for (int a = first + 1; a < argc; ++a) {
         ifstream in(argv[a]);
@@ -146,7 +150,7 @@ int main (int argc, char **argv) {
             N->run(i, o);
         };
         vector<bool> raw[2];
-        vector<double> footX[2], headY;
+        vector<double> footX[2], headY, lean;
         FrameCallback frame = [&](const Simulation &sim) {
             const Creature &c = sim.creature();
             for (int f = 0; f < 2; ++f) {
@@ -155,6 +159,12 @@ int main (int argc, char **argv) {
                 footX[f].push_back(b2Body_GetPosition(b).x);
             }
             headY.push_back(sim.head().y);
+            if (headLimb >= 0) {
+                //Forward (towards +x) is clockwise
+                BodyId b = c.bodies()[headLimb];
+                lean.push_back(-(b2Rot_GetAngle(b2Body_GetRotation(b)) -
+                                 spec.limbs[headLimb].angle) * 180 / M_PI);
+            }
             return true;
         };
         EpisodeResult r = runEpisode(spec, opt, controller, frame);
@@ -206,11 +216,14 @@ int main (int argc, char **argv) {
         else if (R >= 0.5 && (meanPhase < 0.2 || meanPhase > 0.8))
             cls = "together";
 
-        vector<double> heads(headY.begin() + min(n, (size_t)skip),
-                             headY.end());
-        printf("%-40s %6.2f %5d %7s %5.2f %5.2f %4.2f/%4.2f %3zu/%3zu "
+        size_t from = min(n, (size_t)skip);
+        vector<double> heads(headY.begin() + from, headY.end());
+        vector<double> leans(lean.begin() + min(lean.size(), from),
+                             lean.end());
+        printf("%-40s %6.2f %5d %7s %5.2f %5.1f %5.2f %4.2f/%4.2f %3zu/%3zu "
                "%5.2f %6.2f %5.2f %5.2f %4.2f %s\n",
                argv[a], r.maxHeadX, r.steps, endName(r.end), median(heads),
+               median(leans),
                n ? double(air) / n : 0, n ? duty[0] / n : 0,
                n ? duty[1] / n : 0, td[0].size(), td[1].size(), worse,
                median(strides), meanPhase, R,
