@@ -24,7 +24,7 @@ Libraries, and only `display` uses SDL:
 - `statsview`: stats overlay on a `Canvas`
 - `display`: SDL3 window implementing `Canvas`
 
-Executables `legs`, `hopper`, `xorTest`, `maxTest`, `poleBalance`; tests `neatTests`, `creatureConfig`, `simTests`, `drawTests`, `muscleEnergy`. Everything builds with `-Wall -Wextra` and should stay warning-free. Headers don't use `using namespace std`. C++ is indented 4 spaces, no tabs, within 80 columns (`.editorconfig`).
+Executables `legs`, `hopper`, `xorTest`, `maxTest`, `poleBalance`, `gait`; tests `neatTests`, `creatureConfig`, `simTests`, `drawTests`, `muscleEnergy`. Everything builds with `-Wall -Wextra` and should stay warning-free. Headers don't use `using namespace std`. C++ is indented 4 spaces, no tabs, within 80 columns (`.editorconfig`).
 
 `ld: warning: building for macOS-X but linking with dylib ... built for newer version` comes from an outdated Command Line Tools SDK, not the project.
 
@@ -42,6 +42,7 @@ Other sanity checks:
 - `./build/xorTest`, `./build/poleBalance` — GA works (poleBalance reaches fitness ~1.0)
 - `./build/hopper -C walker.cfg -N 40 -o /tmp/run` — headless GA run on a creature (writes stats CSVs and genome snapshots to the run dir; defaults to `runs/<config>-<time>/`, which is gitignored)
 - `./build/hopper -C <run>/config.cfg -r <run>/best.genome` — replay a saved genome (should reproduce its recorded fitness exactly); `-e` instead of `-r` evaluates it once headless and prints fitness, distance, steps, energy and end reason
+- `./build/gait [-f footL,footR] <run>/config.cfg <genome>...` (`tools/gait.cpp`) — replays genomes of a two-footed creature headless, one line each: distance, end, median head height, airborne share, duty and touchdowns per foot, the worse foot's share of travel spent sliding, median stride, the left touchdowns' phase within the right stride (circular mean, with its consistency R), the tied share of links, and a class: `alt` (phase 0.3–0.7), `together` (below 0.2 or above 0.8), both with R ≥ 0.5, `neither`, or `few` touchdowns. Contacts are debounced and the phase skips the first 2 s. These are the walker's gait classes below; earlier numbers came from scratch scripts with similar rules.
 
 Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To render headlessly use `SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software`.
 
@@ -112,7 +113,7 @@ Visual programs (`legs`, `hopper -V`, `poleBalance -V`) open an SDL window. To r
 - Rate and contact sensors, which helped kanga2, hurt the walker: all three halved the median and the population's survival, foot contact alone did nearly as badly, and torso spin alone made no difference. The walker ships without them.
 - A more human mass split (lighter head, torso density 3) raised the centre of mass and made things worse (median 5 m).
 - Population matters most for the gait. Some winners drag one foot along the ground while the other shuffles on its toes. At population 200 and 500, the median share of the worse foot's travel spent sliding is 0.72, with ~28 switches between left and right single support. At 1000 it is 0.49 with ~60 switches, and the median distance is 26 m (15 m at 200, 25 m at 500). The walker uses 1000.
-- With positive work alone as the budget: kanga2's budget per kg (128 J) binds once gaits work at population 1000 (5 of 8 runs spend it) without making them drag, and gives more distance within 128 J than genomes evolved with 256 J (26 m against 19 m). 256 J gives more total distance (37 m) by spending ~250 J. At population 200 neither budget binds much. A gait-analysis script (per-foot contact, slide and air travel) was used for these numbers; it isn't in the repo.
+- With positive work alone as the budget: kanga2's budget per kg (128 J) binds once gaits work at population 1000 (5 of 8 runs spend it) without making them drag, and gives more distance within 128 J than genomes evolved with 256 J (26 m against 19 m). 256 J gives more total distance (37 m) by spending ~250 J. At population 200 neither budget binds much. These numbers came from a scratch gait-analysis script (per-foot contact, slide and air travel); `gait` now does much the same.
 - Those winners weren't walking naturally. Every one was a lopsided lunge: one hip jammed at its flexion stop, the other at the extension stop (the dragged leg), knees bent 40–120° in stance and almost never locked, head at 1.3–1.5 m of 1.82. Their muscles held 4–7× body weight of force all run, which cost nothing.
 - The rest are 250-generation results with population 1000. Lowering `minK` alone made things worse (median 17 m at maxK/4, 6 m at 0): relaxing only pays when holding costs.
 - The metabolic cost (4, 0.83, c) changed nothing while the 1000-step cap ended runs before the budget did. With `maxSteps` 3000 and budgets set to what the gaits spend per 1000 steps, every run ends by the budget: at `minK` maxK/4, c = 1 went furthest (median 21 m on 950 J), but the lunge stayed at every c.

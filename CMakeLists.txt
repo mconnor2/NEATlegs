@@ -74,6 +74,10 @@ target_link_libraries(maxTest PRIVATE neat)
 add_executable(poleBalance NEAT/poleBalance.cpp)
 target_link_libraries(poleBalance PRIVATE neat statsview display)
 
+# Gait statistics of saved genomes (tools/gait.cpp)
+add_executable(gait tools/gait.cpp)
+target_link_libraries(gait PRIVATE sim neat)
+
 # Tests, run with ctest
 enable_testing()
 set(CREATURES hopper walker kanga kanga2 horse)
