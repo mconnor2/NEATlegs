@@ -35,7 +35,7 @@ P = dict(
     # Optional antagonist: top of torso ahead of the hip to front of thigh
     # (the underside route crosses the hip, the top one doesn't)
     hipFront=False, hipFrontTorso=0.35, hipFrontThigh=0.25, hipFrontOff=0.06,
-    headFloor=0.35, popSize=200,
+    headFloor=0.35, popSize=400,
     balanceShift=0.0,   # move torso box forward (m): >0 nose-heavy
     groundLimbs=['foot'],       # any other limb touching the ground = fall
     rateSensors=True,           # torso spin, torso velocity, foot contact
@@ -205,7 +205,7 @@ L.append('''global: {
     inheritDominant = 0.9;
     linkEnabledRate = 0.1;
 
-    weightMutationRate   = 0.2;
+    weightMutationRate   = 0.8;
     weightPerturbScale   = 0.1;
     weightPerturbNormal  = 0.6;
     weightPerturbUniform = 0.39;
@@ -216,12 +216,17 @@ L.append('''global: {
     compatGDiff = 1.0;
     compatWDiff = 0.4;
 
-    compatThresh = 7.0;
+    compatThresh = 3.0;
 
     singleMate = 0.2;
     specieMate = 0.99;
 
     oldAge = 5;
+
+    //A species stops reproducing after this many generations without
+    // improving; only its fittest survivalThreshold breed
+    dropoffAge = 15;
+    survivalThreshold = 0.2;
 
     targetSpecies = 10;
     threshAdapt = 0.2;

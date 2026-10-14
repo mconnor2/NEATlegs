@@ -1,6 +1,8 @@
 // Unit tests for the NEAT library (no physics or graphics)
 #include <cmath>
+#include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -137,7 +139,7 @@ TEST(compatProperties) {
     CHECK(a->compat(b) == b->compat(a));
     CHECK(a->compat(b) > 0.0);
 
-    // Pure weight changes: distance is compatWDiff * total |dw|
+    // Pure weight changes: distance is compatWDiff * mean |dw|
     GenomeP c = a->clone();
     P.weightMutationRate = 1.0;
     c->mutate();
@@ -145,7 +147,24 @@ TEST(compatProperties) {
     double dw = 0;
     for (size_t i = 0; i < la.size(); ++i)
         dw += fabs(la[i].weight - lc[i].weight);
-    CHECK_NEAR(a->compat(c), P.compatWDiff * dw, 1e-9);
+    CHECK_NEAR(a->compat(c), P.compatWDiff * dw / la.size(), 1e-9);
+}
+
+// Mismatching genes are counted; matching genes' weights are averaged
+TEST(compatCountsGenesAndAveragesWeights) {
+    ExpParameters P = params(2, 1);
+    GenomeP a = loadText("genome inputs 2 outputs 1 nodes 4 links 4\n"
+                         "link 0 0 2 0.5 1\n"
+                         "link 1 1 2 0.5 1\n"
+                         "link 3 0 3 1.0 1\n"
+                         "link 4 3 2 0.5 1\n", &P);
+    GenomeP b = loadText("genome inputs 2 outputs 1 nodes 3 links 2\n"
+                         "link 0 0 2 1.5 1\n"
+                         "link 1 1 2 0.5 1\n", &P);
+    CHECK(a && b);
+    if (!a || !b) return;
+    // 2 of 4 genes don't match; matching weights differ by 1 and 0
+    CHECK_NEAR(a->compat(b), P.compatGDiff * 2 + P.compatWDiff * 0.5, 1e-12);
 }
 
 TEST(matingKeepsInnovationsSortedAndUnique) {
@@ -184,6 +203,37 @@ TEST(matingKeepsInnovationsSortedAndUnique) {
         }
         pop.swap(next);
     }
+}
+
+// Add-link only joins neurons that aren't connected yet (NEAT paper,
+// section 3.1), even when asked to add a link every time
+TEST(addLinkNeverDuplicates) {
+    seed_rand(5);
+    ExpParameters P = params(3, 2);
+    P.addLinkMutationRate = 1.0;
+    P.addNodeMutationRate = 0.2;
+    InnovationStore IS(&P);
+    vector<GenomeP> pop;
+    for (int i = 0; i < 10; ++i) pop.push_back(GenomeP(new Genome(&P)));
+    for (int gen = 0; gen < 40; ++gen) {
+        IS.newGeneration();
+        vector<GenomeP> next;
+        for (int i = 0; i < 10; ++i) {
+            GenomeP p1 = pop[rand_int() % pop.size()],
+                    p2 = pop[rand_int() % pop.size()];
+            next.push_back(i % 2 ? p1->mate(p2, &IS) : p1->singleMate(&IS));
+        }
+        pop.swap(next);
+    }
+    int dups = 0;
+    for (const GenomeP &g : pop) {
+        vector<LinkRec> l = linksOf(g);
+        for (size_t i = 0; i < l.size(); ++i)
+            for (size_t j = i+1; j < l.size(); ++j)
+                if (l[i].in == l[j].in && l[i].out == l[j].out) ++dups;
+        CHECK(g->numLinks() > 6);       // links were still added
+    }
+    CHECK(dups == 0);
 }
 
 TEST(networkMatchesHandCalculation) {
@@ -358,11 +408,79 @@ TEST(gaIsDeterministicForASeed) {
     CHECK(c.best != a.best);
 }
 
+// Fitness is deterministic and species champions are carried over, so the
+// best fitness can never drop, even when the champion is alone in an old
+// species (which is otherwise culled)
+TEST(gaNeverLosesChampion) {
+    for (uint64_t seed = 1; seed <= 10; ++seed) {
+        seed_rand(seed);
+        ExpParameters P = params(3, 1);
+        P.popSize = 40;
+        P.compatThresh = 0.5;
+        P.targetSpecies = 15;
+        P.oldAge = 1;
+        FitnessFunction f = xorFitness;
+        GeneticAlgorithm GA(&P, &f);
+        for (int i = 0; i < 40; ++i) GA.nextGeneration();
+        bool monotone = true;
+        for (size_t i = 1; i < GA.history().size(); ++i)
+            if (GA.history()[i].maxFitness < GA.history()[i-1].maxFitness)
+                monotone = false;
+        CHECK(monotone);
+    }
+}
+
+// A species whose best fitness hasn't improved for dropoffAge generations
+// stops reproducing (and so disappears), unless it holds the champion
+TEST(gaDropsStagnantSpecies) {
+    const int dropoff = 3;
+    int dropped = 0;
+    for (uint64_t seed = 1; seed <= 5; ++seed) {
+        seed_rand(seed);
+        ExpParameters P = params(3, 1);
+        P.popSize = 60;
+        P.targetSpecies = 6;
+        P.dropoffAge = dropoff;
+        FitnessFunction f = xorFitness;
+        GeneticAlgorithm GA(&P, &f);
+        for (int i = 0; i < 40; ++i) GA.nextGeneration();
+
+        map<int, pair<double, int> > best;     //id -> best, generations
+        bool ok = true;
+        for (const GenerationStats &g : GA.history()) {
+            set<int> present;
+            for (const SpecieStats &sp : g.species) {
+                present.insert(sp.id);
+                auto it = best.find(sp.id);
+                if (it == best.end()) {
+                    best[sp.id] = make_pair(sp.maxFitness, 0);
+                    continue;
+                }
+                if (sp.maxFitness > it->second.first)
+                    it->second = make_pair(sp.maxFitness, 0);
+                else
+                    ++it->second.second;
+                if (it->second.second > dropoff &&
+                    sp.maxFitness < g.maxFitness)
+                    ok = false;
+            }
+            for (auto it = best.begin(); it != best.end(); ) {
+                if (present.count(it->first)) { ++it; continue; }
+                if (it->second.second == dropoff) ++dropped;
+                it = best.erase(it);
+            }
+        }
+        CHECK(ok);
+    }
+    CHECK(dropped > 0);         //the rule was exercised
+}
+
 TEST(gaStatsAreConsistent) {
     RunResult r = runGA(9, 15);
     for (size_t i = 0; i < r.history.size(); ++i) {
         const GenerationStats &s = r.history[i];
         CHECK(s.generation == (int)i);
+        if (i > 0) CHECK(s.populationSize == 60);
         CHECK(s.minFitness <= s.meanFitness && s.meanFitness <= s.maxFitness);
         CHECK(s.nSpecies >= 1 && s.nSpecies <= s.populationSize);
         int members = 0;

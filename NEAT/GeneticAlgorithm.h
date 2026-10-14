@@ -46,10 +46,10 @@ struct ExpParameters {
     double addNodeMutationRate;         //Percent of matings that will have
                                         // a new node and two links added
 
-    double compatGDiff;                 //How much gene difference is
-                                        //weighted for compatability
-    double compatWDiff;                 //How much link weight difference is
-                                        //weighed for compatability
+    double compatGDiff;                 //Weight of the number of genes
+                                        // that don't match (c1, c2)
+    double compatWDiff;                 //Weight of the mean weight
+                                        // difference of matching genes (c3)
 
     double compatThresh;                //Compatability threshold for members
                                         // of the same specie
@@ -59,14 +59,22 @@ struct ExpParameters {
     double threshAdapt;                 //Amount to change compatThresh with
                                         // specie number adaptation
 
-    double singleMate;                  //Chance of single specie mating, only
-                                        // mutating one parent
+    double singleMate;                  //Chance a child comes from one
+                                        // parent, by mutation alone
 
-    double specieMate;                  //Number of children whose parents
-                                        // are selected from one specie
+    double specieMate;                  //Chance a crossover's second parent
+                                        // is from the same specie (otherwise
+                                        // from another)
 
     int oldAge;                         //Age after which young species are
                                         // not safe from culling
+
+    int dropoffAge;                     //A species whose best fitness hasn't
+                                        // improved for this many generations
+                                        // stops reproducing (0 = never)
+
+    double survivalThreshold;           //Fraction of each species (its
+                                        // fittest) that breeds
 
     //double championFitnessRate;       //A species champion will continue to
                                         // next generation only if its fitness

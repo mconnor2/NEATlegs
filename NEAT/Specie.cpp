@@ -1,7 +1,23 @@
 #include "Specie.h"
 #include "Genome.h"
 
+#include <algorithm>
 #include <iostream>
+
+void Specie::updateStagnation() {
+    double best = -1e300;
+    for (const GenomeP &m : members) best = std::max(best, m->fitness);
+    if (best > bestFitness) {
+        bestFitness = best;
+        staleness = 0;
+    } else {
+        ++staleness;
+    }
+}
+
+bool Specie::contains(const GenomeP &g) const {
+    return std::find(members.begin(), members.end(), g) != members.end();
+}
 
 double Specie::calculateFitness() {
     fitness = 0;
@@ -34,6 +50,7 @@ double Specie::maxFitness() const {
  *   A species should be removed if:
  *      -it is above a certain age and:
  *        -There is only one viable member
+ *   unless it holds the population's champion, which would then be lost.
  *
  * When removing, subtract fitness from totalFitness and return true
  *
@@ -41,8 +58,9 @@ double Specie::maxFitness() const {
  *  subtract fitness from totalFitness and specie fitness, then set member's
  *  fitness to 0 so won't be selected to mate.
  */
-bool Specie::cull(const int oldAge, double &totalFitness) {
-    if (age >= oldAge and nMembers <= 1) {
+bool Specie::cull(const int oldAge, double &totalFitness,
+                  const GenomeP &champion) {
+    if (age >= oldAge and nMembers <= 1 and members[0] != champion) {
         totalFitness -= fitness;
         members[0]->fitness = 0;
         return true;
