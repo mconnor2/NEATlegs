@@ -67,6 +67,11 @@ hopper runs the actual genetic algorithm, optionally displaying fittest member e
   run after the current generation.
 * -d publish a new fittest member to the window every this many generations
   (default 10; implies -V)
+* -n show the champions of the fittest this many species together (default
+  1; implies -V).  Each runs in its own world; they're drawn over each other,
+  the best in the normal colors with the camera following it, the others
+  tinted behind it, with a legend of species ids and fitness.  Shows how far
+  the species' behaviour has diverged.
 * -o output directory for the run (default runs/<config>-<timestamp>)
 * -s snapshot the top genomes every this many generations (default 10, 0 off)
 * -k number of genomes per snapshot (default 3)
@@ -78,6 +83,7 @@ For example:
 
     ./build/hopper -C walker.cfg -N 200 -V
     ./build/hopper -C walker.cfg -N 500 -d 5
+    ./build/hopper -C horse.cfg -N 500 -d 10 -n 3
     ./build/hopper -C walker.cfg -r runs/walker-20260921-153000/best.genome
 
 Each generation prints a summary line: population, species count, max/mean

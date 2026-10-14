@@ -19,6 +19,25 @@ class Renderer {
         virtual void segment (Vec2 a, Vec2 b, Color c) = 0;
 };
 
+// Passes everything on to another Renderer in a single color, e.g. to draw
+// one creature over another and tell them apart
+class TintRenderer : public Renderer {
+    public:
+        TintRenderer (Renderer &_r, Color _c) : r(_r), c(_c) { }
+
+        void polygon (const Vec2 *points, int n, Color) override {
+            r.polygon(points, n, c);
+        }
+        void circle (Vec2 centre, float radius, Color) override {
+            r.circle(centre, radius, c);
+        }
+        void segment (Vec2 a, Vec2 b, Color) override { r.segment(a, b, c); }
+
+    private:
+        Renderer &r;
+        const Color c;
+};
+
 // Colors the physics draws with
 const Color BodyColor = 0x00FF00FF;     //Box outlines
 const Color BallColor = 0xFF0000FF;     //Circles

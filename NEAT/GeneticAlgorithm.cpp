@@ -283,6 +283,7 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
         st.meanCompat = sumCompat / (n*(n-1)/2.0);
     }
 
+    champions.clear();
     for (const SpecieP &sp : species) {
         SpecieStats ss;
         ss.id = sp->id;
@@ -290,13 +291,20 @@ void GeneticAlgorithm::recordStatistics(double evalSeconds) {
         ss.size = sp->members.size();
         ss.maxFitness = -1e300;
         double specieSum = 0;
+        GenomeP champ;
         for (const GenomeP &g : sp->members) {
             specieSum += g->fitness;
+            if (!champ || g->fitness > ss.maxFitness) champ = g;
             ss.maxFitness = max(ss.maxFitness, g->fitness);
         }
         ss.meanFitness = ss.size ? specieSum / ss.size : 0;
         st.species.push_back(ss);
+        if (champ) champions.push_back({sp->id, champ->fitness, champ});
     }
+    stable_sort(champions.begin(), champions.end(),
+                [](const SpecieChampion &a, const SpecieChampion &b) {
+                    return a.fitness > b.fitness;
+                });
 
     //Best genomes by raw fitness
     top.clear();

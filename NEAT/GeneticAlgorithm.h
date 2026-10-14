@@ -131,6 +131,17 @@ class GeneticAlgorithm {
         // How many genomes topGenomes() keeps (default 10)
         void setKeepTop(int n) { keepTop = n; }
 
+        // The fittest member of each species of the most recently
+        // evaluated generation, with its raw fitness, fittest species first
+        struct SpecieChampion {
+            int specieId;
+            double fitness;
+            GenomeP genome;
+        };
+        const std::vector<SpecieChampion> &speciesChampions() const {
+            return champions;
+        }
+
 
     private:
         ExpParameters *P;
@@ -149,6 +160,7 @@ class GeneticAlgorithm {
 
         std::vector<GenerationStats> stats;
         std::vector<RankedGenome> top;
+        std::vector<SpecieChampion> champions;
         int keepTop = 10;
 
         genomeVec population;

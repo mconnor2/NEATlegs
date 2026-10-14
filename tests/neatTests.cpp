@@ -489,6 +489,34 @@ TEST(gaStatsAreConsistent) {
     }
 }
 
+// One champion per species, with its raw fitness (the species' max in the
+// stats), fittest first, the first being the population's best
+TEST(gaKeepsSpeciesChampions) {
+    seed_rand(11);
+    ExpParameters P = params(3, 1);
+    P.popSize = 60;
+    P.targetSpecies = 6;
+    FitnessFunction f = xorFitness;
+    GeneticAlgorithm GA(&P, &f);
+    for (int i = 0; i < 15; ++i) {
+        GA.nextGeneration();
+        const auto &champs = GA.speciesChampions();
+        const GenerationStats &s = GA.history().back();
+        CHECK(champs.size() == s.species.size());
+        set<int> ids;
+        for (size_t k = 0; k < champs.size(); ++k) {
+            ids.insert(champs[k].specieId);
+            if (k) CHECK(champs[k].fitness <= champs[k-1].fitness);
+            for (const SpecieStats &sp : s.species)
+                if (sp.id == champs[k].specieId)
+                    CHECK(sp.maxFitness == champs[k].fitness);
+        }
+        CHECK(ids.size() == champs.size());
+        CHECK(!champs.empty() &&
+              champs[0].fitness == GA.topGenomes().at(0).first);
+    }
+}
+
 int main () {
     return check::runTests();
 }
