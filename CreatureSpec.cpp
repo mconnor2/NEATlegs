@@ -193,6 +193,15 @@ void parseMirror (const Setting &section, CreatureSpec &spec) {
         if (m.limb1 != limb[u.limb1] || m.limb2 != limb[u.limb2])
             throw error(where, "muscle '" + u.name + "' and its mirror '" +
                         m.name + "' don't join mirrored limbs");
+        //A tied network drives both the same way, so they must be built
+        // alike
+        if (u.pos1.x != m.pos1.x || u.pos1.y != m.pos1.y ||
+            u.pos2.x != m.pos2.x || u.pos2.y != m.pos2.y ||
+            u.minK != m.minK || u.maxK != m.maxK || u.minEq != m.minEq ||
+            u.maxEq != m.maxEq || u.kd != m.kd ||
+            u.maxForce != m.maxForce || u.maxPower != m.maxPower)
+            throw error(where, "muscle '" + u.name + "' and its mirror '" +
+                        m.name + "' differ");
     }
     for (size_t i = 0; i < spec.points.size(); ++i) {
         const PointSpec &p = spec.points[i], &m = spec.points[point[i]];

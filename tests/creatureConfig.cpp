@@ -260,6 +260,8 @@ TEST(badMirrorsAreRejected) {
     CHECK(mentions(parseError(twinWith(R"(["l", "r"], )", "")),
                    "joint 'jl' and its mirror 'jr' don't join mirrored "
                    "limbs"));
+    CHECK(mentions(parseError(twinWith("maxK = 50.0;", "maxK = 60.0;")),
+                   "muscle 'ml' and its mirror 'mr' differ"));
     CHECK(mentions(parseError(twinWith("target = \"fr\"; minH = 0; maxH = 0.5",
                                        "target = \"fr\"; minH = 0; maxH = 0.6")),
                    "sensor 3 has no mirror image"));
