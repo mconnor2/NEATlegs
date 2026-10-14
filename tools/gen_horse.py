@@ -65,7 +65,8 @@ P = dict(
     # shoulder, right hooves as far behind.  Legs of a pair otherwise
     # start identical; staggered, the median distance went from 10 to
     # 12 m (8 seeds, 250 generations), though gaits weren't cleaner.
-    stagger=0.15,
+    # Mirror ties need 0 (see mirror below).
+    stagger=0.0,
     headFloor=0.9, popSize=1000,
     # Extra sensors beyond joint angles, head height and barrel angle, any
     # of 'spin' (barrel angular velocity), 'velocity' (barrel x and y),
@@ -78,6 +79,19 @@ P = dict(
     # and the median distance rose from 12 to 16 m.  1.3 Hz did nearly as
     # well, 0.7 Hz and three clocks at once worse.
     clocks=[2.5],
+    # Mirror symmetry, as the walker's (see gen_walker.py): pair the left
+    # and right leg of each pair so NEAT ties each link to its mirror
+    # image; 'shift' mirrors each clock half a cycle later (adding the
+    # phases pi and 3pi/2), so a tied network moves the legs of a pair
+    # half a stride apart.  Needs stagger 0: staggered, the left and right
+    # legs differ (hip and shoulder muscles attach to the barrel above the
+    # staggered leg, stiffness comes from the staggered start length, and
+    # joint stops are rounded after the stagger), and the shifted clock
+    # breaks the left/right tie anyway.  Tied, the median distance went
+    # from 13 m (square start, untied) to 18 m and alternating pairs from
+    # 2 to 10 of 16; untying even at 0.001 lost the gain.
+    mirror=True, mirrorClock='shift',
+    mirrorInitTied=1.0, mirrorStructure=1.0, untieRate=0.0,
     addLink=0.05, addNode=0.05, # NEAT structural mutation rates
     # Objective, as the walker's: survival shaping, and a metabolic
     # energy cost (positiveWork, negativeWork, forceTime weights; None
@@ -270,7 +284,9 @@ extraDefs = dict(
 extra = [d for k in P['extraSensors'] for d in extraDefs[k]]
 extra += ['{ type = "ClockSensor"; frequency = %s; phase = %s; }'
           % ('%g' % hz, '%.4f' % ph) for hz in P['clocks']
-          for ph in (0, math.pi/2)]
+          for ph in ((0, math.pi/2, math.pi, 3*math.pi/2)
+                     if P['mirror'] and P['mirrorClock'] == 'shift'
+                     else (0, math.pi/2))]
 nSensors = 2*len(legs) + 2 + len(extra)
 
 maxForce = P['forcePerWeight']*weight
@@ -321,7 +337,7 @@ L.append('''global: {
 
     addLinkMutationRate = %s;
     addNodeMutationRate = %s;
-
+%s
     compatGDiff = 1.0;
     compatWDiff = 0.4;
 
@@ -357,6 +373,15 @@ L.append('''global: {
     energyCost = { positiveWork = %s; negativeWork = %s; forceTime = %s; };
 ''' % tuple(f(x) for x in P['energyCost'])),
        f(P['addLink']), f(P['addNode']),
+       ('' if not P['mirror'] else '''
+    //Mirror symmetry (the mirror section): share of initial link pairs
+    // tied, chance a new node or link comes with its tied mirror image,
+    // and chance per child that each tied pair is untied for good
+    mirrorInitTied = %s;
+    mirrorStructure = %s;
+    untieRate = %s;
+''' % (f(P['mirrorInitTied']), f(P['mirrorStructure']),
+       ('%g' % P['untieRate']) if P['untieRate'] else '0.0')),
        nSensors + 1, 2*len(mus)))
 
 L.append('limbs = (')
@@ -451,6 +476,24 @@ L.append('sensors = (\n' + ''.join(
     '    ' + s + ('\n' if s.startswith('#') else
                   (',\n' if k < len(sens) - 1 else ');\n'))
     for k, s in enumerate(sens)))
+if P['mirror']:
+    if not P['pairs'] or P['stagger']:
+        sys.exit('mirror needs pairs and stagger 0')
+    def names(g):
+        return [g.upper.name, g.lower.name, g.hoof.name, g.topJoint,
+                g.midJoint, g.hoofJoint, g.topJoint + 'Muscle',
+                g.midJoint + 'Muscle', hoofName(g)]
+    pairs = [(a, b) for gl in legs if gl.side == 'L'
+             for gr in legs if gr.side == 'R' and gr.sgn == gl.sgn
+             for a, b in zip(names(gl), names(gr))]
+    L.append('''# The left and right leg of each pair mirror each other; the barrel,
+# neck and head are on the midline.
+mirror = {
+    pairs = (%s);
+    clock = "%s";
+};
+''' % (',\n             '.join('["%s", "%s"]' % ab for ab in pairs),
+       P['mirrorClock']))
 open(out, 'w').write('\n'.join(L))
 
 print('mass %.3f kg  weight %.2f N  maxForce %.1f N  maxPower %.2f W/muscle'
